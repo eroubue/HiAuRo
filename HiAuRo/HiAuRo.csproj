@@ -1,0 +1,76 @@
+<Project Sdk="Dalamud.CN.NET.Sdk/15.0.0">
+
+  <PropertyGroup>
+    <AssemblyName>HiAuRo</AssemblyName>
+    <RootNamespace>HiAuRo</RootNamespace>
+    <TargetFramework>net10.0-windows</TargetFramework>
+    <Version>0.1.0</Version>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../OmenTools/OmenTools.csproj">
+      <Private>False</Private>
+    </ProjectReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Browsingway\Browsingway.Common\Browsingway.Common.csproj" />
+    <ProjectReference Include="..\Browsingway\Browsingway\Browsingway.csproj" />
+  </ItemGroup>
+
+  <!-- Roslyn for TreeScriptNode dynamic compilation -->
+  <ItemGroup>
+    <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.13.0" />
+    <PackageReference Include="Microsoft.CodeAnalysis.Common" Version="4.13.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="HiAuRo.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="UI/web/**\*.*" CopyToOutputDirectory="PreserveNewest" LinkBase="UI/web/" />
+    <Compile Remove="Jobs\**" />
+    <None Remove="Jobs\**" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Include="HiAuRo.json" CopyToOutputDirectory="PreserveNewest" />
+    <Content Include="UI/web/**\*.*" CopyToOutputDirectory="PreserveNewest" LinkBase="UI/web/" />
+    <Compile Remove="Jobs\**" />
+    <Compile Remove="Sdk\**" />
+    <None Remove="Jobs\**" />
+    <None Remove="Sdk\**" />
+  </ItemGroup>
+
+  <!-- 构建后打包 zip -->
+  <Target Name="PackagePlugin" AfterTargets="Build">
+    <PropertyGroup>
+      <StagingDir>$(OutputPath)_pkg\</StagingDir>
+      <ZipPath>$(OutputPath)HiAuRo-$(Version).zip</ZipPath>
+    </PropertyGroup>
+
+    <RemoveDir Directories="$(StagingDir)" />
+    <MakeDir Directories="$(StagingDir)\UI\web" />
+
+    <ItemGroup>
+      <MainFiles Include="$(OutputPath)*.dll" Exclude="$(OutputPath)*.pdb" />
+      <MainFiles Include="$(OutputPath)*.json" />
+      <MainFiles Include="$(OutputPath)*.deps.json" />
+      <WebFiles Include="$(OutputPath)UI\web\**\*" />
+      <OmenFiles Include="..\OmenTools\bin\Debug\OmenTools.dll" />
+      <OmenFiles Include="..\OmenTools\bin\Debug\OmenTools.deps.json" />
+    </ItemGroup>
+
+    <Copy SourceFiles="@(MainFiles)" DestinationFolder="$(StagingDir)" />
+    <Copy SourceFiles="@(WebFiles)" DestinationFolder="$(StagingDir)\UI\web" />
+    <Copy SourceFiles="@(OmenFiles)" DestinationFolder="$(StagingDir)" />
+
+    <Delete Files="$(ZipPath)" Condition="Exists('$(ZipPath)')" />
+    <ZipDirectory SourceDirectory="$(StagingDir)" DestinationFile="$(ZipPath)" />
+    <RemoveDir Directories="$(StagingDir)" />
+
+    <Message Importance="high" Text="Package: $(ZipPath)" />
+  </Target>
+
+</Project>

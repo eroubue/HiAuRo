@@ -1,0 +1,85 @@
+using System.Numerics;
+using FFXIVClientStructs.FFXIV.Client.Game;
+using OmenTools.Dalamud.Services.ObjectTable.Abstractions.ObjectKinds;
+
+namespace HiAuRo.ACR;
+
+/// <summary>
+/// Spell 计算属性 + 便利构造函数（partial 补充）
+/// </summary>
+public sealed partial class Spell
+{
+    // === 便利构造函数（对齐 AE）===
+
+    public Spell() { }
+    public Spell(uint id, SpellTargetType targetType) { Id = id; TargetType = targetType; Name = id.ToString(); }
+    public Spell(uint id, IBattleChara target) { Id = id; TargetType = SpellTargetType.SpecifyTarget; SpecifyTarget = target; Name = id.ToString(); }
+    public Spell(uint id, Func<IBattleChara> getTargetFunc) { Id = id; TargetType = SpellTargetType.DynamicTarget; GetDynamicTarget = () => getTargetFunc(); Name = id.ToString(); }
+    public Spell(uint id, Vector3 pos) { Id = id; TargetType = SpellTargetType.Location; UsePos = pos; Name = id.ToString(); }
+    public Spell(uint itemId, bool isHq) { Id = itemId; SpellCategory = SpellCategory.Potion; TargetType = SpellTargetType.Self; Hq = isHq; Name = $"Item_{itemId}"; }
+
+    /// <summary>链式：不使用 GCD 优化偏移</summary>
+    public Spell DontUseGcd() { DontUseGcdOpt = true; return this; }
+
+    /// <summary>静态工厂：创建药水 Spell</summary>
+    public static Spell CreatePotion() => new(0, SpellTargetType.Self) { SpellCategory = SpellCategory.Potion };
+    /// <summary>静态工厂：创建疾跑 Spell</summary>
+    public static Spell CreateSprint() => new(3, SpellTargetType.Self) { Type = SpellType.Ability, SpellCategory = SpellCategory.Sprint };
+    /// <summary>静态工厂：创建极限技 Spell</summary>
+    public static Spell CreateLimitBreak() => new(0, SpellTargetType.Target) { SpellCategory = SpellCategory.LimitBreak };
+    /// <summary>静态工厂：创建舞步 Spell</summary>
+    public static Spell CreateDance() => new(0, SpellTargetType.Self) { SpellCategory = SpellCategory.Dance };
+
+    // === 计算属性（实时读取游戏数据）===
+
+    /// <summary>冷却剩余时间</summary>
+    public unsafe TimeSpan Cooldown => TimeSpan.FromSeconds(
+        Math.Max(0, ActionManager.Instance()->GetRecastTime(ActionType.Action, Id)
+                      - ActionManager.Instance()->GetRecastTimeElapsed(ActionType.Action, Id)));
+
+    /// <summary>冷却剩余时间（毫秒）</summary>
+    public float CooldownMs => (float)Cooldown.TotalMilliseconds;
+
+    /// <summary>冷却剩余时间（秒）</summary>
+    public float CooldownSec => (float)Cooldown.TotalSeconds;
+
+    /// <summary>充能层数</summary>
+    public unsafe float Charges => CooldownHelper.GetCharges(Id);
+
+    /// <summary>最大充能层数</summary>
+    public unsafe int MaxCharges => CooldownHelper.GetMaxCharges(Id);
+
+    /// <summary>咏唱时间</summary>
+    public unsafe TimeSpan CastTime =>
+        SpellHelper.GetActionRow(Id) is { } row ? TimeSpan.FromMilliseconds(row.Cast100ms * 100) : TimeSpan.Zero;
+
+    /// <summary>调整后咏唱时间</summary>
+    public unsafe TimeSpan AdjustedCastTime
+    {
+        get
+        {
+            var row = SpellHelper.GetActionRow(Id);
+            if (row == null) return TimeSpan.Zero;
+            return TimeSpan.FromMilliseconds(
+                ActionManager.GetAdjustedCastTime((FFXIVClientStructs.FFXIV.Client.Game.ActionType)row.Value.ActionCategory.RowId, row.Value.Cast100ms) * 100f);
+        }
+    }
+
+    /// <summary>GCD 复唱时间</summary>
+    public unsafe TimeSpan RecastTime
+    {
+        get
+        {
+            var row = SpellHelper.GetActionRow(Id);
+            if (row == null) return TimeSpan.Zero;
+            return TimeSpan.FromMilliseconds(
+                ActionManager.GetAdjustedRecastTime((FFXIVClientStructs.FFXIV.Client.Game.ActionType)row.Value.ActionCategory.RowId, row.Value.Recast100ms) * 100f);
+        }
+    }
+
+    /// <summary>技能射程</summary>
+    public float ActionRange => SpellHelper.GetActionRow(Id)?.Range ?? 0f;
+
+    /// <summary>MP 消耗</summary>
+    public uint MPNeed => SpellHelper.GetActionRow(Id)?.PrimaryCostValue ?? 0;
+}

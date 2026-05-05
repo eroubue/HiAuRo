@@ -1,0 +1,128 @@
+using System.Reflection;
+using HiAuRo.ACR;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
+
+namespace HiAuRo.Execution;
+
+/// <summary>
+/// C# 脚本动态编译器 — 对齐 AE 的 CSharpCodeProvider
+/// 将脚本字符串编译为可执行的 ITriggerScript 实例
+/// </summary>
+public static class ScriptCompiler
+{
+    private static readonly Dictionary<string, ITriggerScript> _cache = [];
+    private static readonly List<MetadataReference> _refCache = [];
+    private static bool _refsLoaded;
+
+    /// <summary>编译脚本并使用缓存。同一段代码只编译一次</summary>
+    public static ITriggerScript? Compile(string code)
+    {
+        if (string.IsNullOrWhiteSpace(code)) return null;
+
+        // 去空白哈希作为缓存 key
+        var key = code.Trim();
+        if (_cache.TryGetValue(key, out var cached))
+            return cached;
+
+        try
+        {
+            var syntaxTree = CSharpSyntaxTree.ParseText(AddScriptWrapper(code));
+
+            var compilation = CSharpCompilation.Create(
+                $"Script_{Guid.NewGuid():N}",
+                [syntaxTree],
+                GetReferences(),
+                new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
+                    .WithOptimizationLevel(OptimizationLevel.Release));
+
+            using var ms = new MemoryStream();
+            var result = compilation.Emit(ms);
+
+            if (!result.Success)
+            {
+                var errors = string.Join("\n", result.Diagnostics
+                    .Where(d => d.Severity == DiagnosticSeverity.Error)
+                    .Select(d => d.ToString()));
+                DService.Instance().Log.Error($"[ScriptCompiler] 编译失败:\n{errors}");
+                return null;
+            }
+
+            ms.Seek(0, SeekOrigin.Begin);
+            var assembly = Assembly.Load(ms.ToArray());
+            var type = assembly.GetTypes().FirstOrDefault(t =>
+                typeof(ITriggerScript).IsAssignableFrom(t) && !t.IsAbstract);
+
+            if (type == null)
+            {
+                DService.Instance().Log.Error("[ScriptCompiler] 脚本中未找到 ITriggerScript 实现");
+                return null;
+            }
+
+            var instance = (ITriggerScript)Activator.CreateInstance(type)!;
+            _cache[key] = instance;
+            return instance;
+        }
+        catch (Exception ex)
+        {
+            DService.Instance().Log.Error($"[ScriptCompiler] 编译异常: {ex.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>清除编译缓存</summary>
+    public static void ClearCache() => _cache.Clear();
+
+    /// <summary>收集编译引用（首次编译时，后续缓存）</summary>
+    private static List<MetadataReference> GetReferences()
+    {
+        if (_refsLoaded) return _refCache;
+
+        var assemblies = AppDomain.CurrentDomain.GetAssemblies();
+        foreach (var asm in assemblies)
+        {
+            if (asm.IsDynamic || string.IsNullOrEmpty(asm.Location)) continue;
+            try
+            {
+                _refCache.Add(MetadataReference.CreateFromFile(asm.Location));
+            }
+            catch { }
+        }
+
+        _refsLoaded = true;
+        DService.Instance().Log.Debug($"[ScriptCompiler] 加载 {_refCache.Count} 个程序集引用");
+        return _refCache;
+    }
+
+    /// <summary>给用户脚本包上 using + namespace + class</summary>
+    private static string AddScriptWrapper(string userCode)
+    {
+        return $@"
+using System;
+using System.Linq;
+using System.Collections.Generic;
+using System.Numerics;
+using HiAuRo;
+using HiAuRo.ACR;
+using HiAuRo.Data;
+using HiAuRo.Execution;
+using HiAuRo.Runtime;
+using OmenTools;
+using OmenTools.OmenService;
+using OmenTools.Extensions;
+using Dalamud.Game.ClientState.Objects.Types;
+using Dalamud.Game.ClientState.Conditions;
+using FFXIVClientStructs.FFXIV.Client.Game;
+
+namespace HiAuRo.Scripts;
+
+public sealed class DynamicScript : ITriggerScript
+{{
+    public bool Check(ITriggerCondParams? condParams)
+    {{
+        {userCode}
+    }}
+}}
+";
+    }
+}

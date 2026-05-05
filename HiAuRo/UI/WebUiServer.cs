@@ -1,0 +1,117 @@
+using System.Net;
+using System.Net.WebSockets;
+
+namespace HiAuRo.UI;
+
+/// <summary>
+/// HTTP + WebSocket 服务器 —— 仅为 ACR 悬浮窗提供服务
+/// </summary>
+public sealed class WebUiServer
+{
+    private HttpListener? _listener;
+    private readonly string _webRoot;
+    private readonly WebUiBridge _bridge;
+    private CancellationTokenSource? _cts;
+
+    public WebUiServer(string webRoot, WebUiBridge bridge)
+    {
+        _webRoot = webRoot;
+        _bridge = bridge;
+    }
+
+    public void Start()
+    {
+        _cts = new CancellationTokenSource();
+        _listener = new HttpListener();
+        _listener.Prefixes.Add("http://localhost:5678/");
+
+        try { _listener.Start(); }
+        catch (HttpListenerException)
+        {
+            _listener.Prefixes.Clear();
+            _listener.Prefixes.Add("http://localhost:5679/");
+            _listener.Start();
+        }
+
+        _ = Task.Run(() => ListenLoop(_cts.Token));
+    }
+
+    public void Stop()
+    {
+        _cts?.Cancel();
+        try
+        {
+            _listener?.Stop();
+        }
+        catch (ObjectDisposedException) { }
+        try
+        {
+            _listener?.Close();
+        }
+        catch (ObjectDisposedException) { }
+    }
+
+    private async Task ListenLoop(CancellationToken ct)
+    {
+        while (!ct.IsCancellationRequested && _listener is { IsListening: true })
+        {
+            try
+            {
+                var ctx = await _listener.GetContextAsync().WaitAsync(ct);
+                _ = Task.Run(() => HandleRequest(ctx, ct), ct);
+            }
+            catch (OperationCanceledException) { break; }
+            catch (HttpListenerException) { break; }
+            catch (ObjectDisposedException) { break; }
+            catch (Exception) { }
+        }
+    }
+
+    private async Task HandleRequest(HttpListenerContext ctx, CancellationToken ct)
+    {
+        try
+        {
+            var path = ctx.Request.Url?.AbsolutePath ?? "/";
+
+            // WebSocket
+            if (path == "/ws" && ctx.Request.IsWebSocketRequest)
+            {
+                var wsCtx = await ctx.AcceptWebSocketAsync(null);
+                await _bridge.HandleConnection(wsCtx.WebSocket, ct);
+                return;
+            }
+
+            var filePath = path == "/" ? "/main.html" : path;
+            if (!Path.HasExtension(filePath))
+                filePath += ".html";
+            var fullPath = Path.Combine(_webRoot, filePath.TrimStart('/'));
+
+            if (File.Exists(fullPath))
+            {
+                var data = await File.ReadAllBytesAsync(fullPath, ct);
+                ctx.Response.ContentType = GetContentType(fullPath);
+                ctx.Response.ContentLength64 = data.Length;
+                await ctx.Response.OutputStream.WriteAsync(data, ct);
+            }
+            else
+            {
+                ctx.Response.StatusCode = 404;
+            }
+        }
+        catch (ObjectDisposedException) { }
+        catch (Exception) { }
+        finally
+        {
+            try { ctx.Response.OutputStream.Close(); } catch { }
+        }
+    }
+
+    private static string GetContentType(string path) =>
+        Path.GetExtension(path).ToLower() switch
+        {
+            ".html" => "text/html; charset=utf-8",
+            ".js" => "application/javascript; charset=utf-8",
+            ".css" => "text/css; charset=utf-8",
+            _ => "application/octet-stream"
+        };
+}

@@ -1,0 +1,16 @@
+{
+  "Author": "嗨呀www",
+  "Name": "HiAuRo",
+  "Punchline": "FF14 战斗辅助框架",
+  "Description": "FF14 战斗辅助框架 —— 提供运行时、数据层、ACR 接口和执行控制系统，ACR 作者可在此基础上开发各职业的战斗逻辑。",
+  "InternalName": "HiAuRo",
+  "AssemblyVersion": "0.1.0.0",
+  "RepoUrl": "",
+  "ApplicableVersion": "any",
+  "Tags": [
+    "combat",
+    "rotation",
+    "framework",
+    "auto"
+  ]
+}

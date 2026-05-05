@@ -1,0 +1,30 @@
+# .NET
+bin/
+obj/
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+*.userprefs
+
+# VS Code
+.vscode/
+
+# Rider / IntelliJ
+.idea/
+*.sln.iml
+
+# Dalamud plugin build output
+*.zip
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Secrets / local config
+*.secret.json
+appsettings.local.json
+
+# External dependencies (cloned locally)
+/OmenTools/
+

@@ -1,0 +1,43 @@
+using HiAuRo.ACR;
+using HiAuRo.Data;
+
+namespace HiAuRo.Execution.Triggers.Cond;
+
+/// <summary>
+/// 触发条件参数 —— 目标图标
+/// </summary>
+public sealed class TriggerCondParams_检查目标图标 : ITriggerCondParams
+{
+    /// <summary>目标身上的图标 ID（NamePlateIconID）</summary>
+    public uint IconId;
+}
+
+/// <summary>
+/// 检测指定目标（或任意敌人）身上是否有特定图标
+/// </summary>
+public sealed class TriggerCond_检查目标图标 : ITriggerCond
+{
+    private readonly uint _iconId;
+
+    public TriggerCond_检查目标图标(uint iconId)
+    {
+        _iconId = iconId;
+    }
+
+    public bool Handle(ITriggerCondParams? condParams = null)
+    {
+        // 先查当前目标
+        var target = Data.Target.Current;
+        if (target != null && target.NamePlateIconID == _iconId)
+            return true;
+
+        // 再查所有敌人
+        foreach (var enemy in Objects.Enemies)
+        {
+            if (enemy.NamePlateIconID == _iconId)
+                return true;
+        }
+
+        return false;
+    }
+}

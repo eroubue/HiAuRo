@@ -1,0 +1,411 @@
+let ws;
+let state = { enabled: false, paused: false, hotkeys: [], qts: [], job: '' };
+let controls = [];
+let activeTab = '';
+let expanded = false;
+let uiSettings = { qtCols:0, qtBtnW:0, qtVisible:{}, hkCols:0, hkBtnSize:52, hkVisible:{}, hkBindings:{} };
+
+// ================ 日志转发到后端调试 ================
+const _origLog = console.log, _origWarn = console.warn, _origErr = console.error;
+function logRaw(level, msg, src) {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({ type: 'log', data: { level: level, msg: String(msg).substring(0, 500), src: src || 'app' } }));
+    }
+}
+console.log   = function() { _origLog.apply(console, arguments); logRaw('info', Array.from(arguments).join(' ')); };
+console.warn  = function() { _origWarn.apply(console, arguments); logRaw('warn', Array.from(arguments).join(' ')); };
+console.error = function() { _origErr.apply(console, arguments); logRaw('error', Array.from(arguments).join(' ')); };
+
+// ================ WebSocket ================
+function connect() {
+    ws = new WebSocket('ws://localhost:5678/ws');
+    ws.onopen = () => console.log('[HiAuRo] connected');
+    ws.onclose = () => setTimeout(connect, 3000);
+    ws.onerror = () => ws.close();
+    ws.onmessage = (e) => {
+        try {
+            const msg = JSON.parse(e.data);
+            switch (msg.type) {
+                case 'status':
+                    console.log('[HiAuRo] status received, qts:', msg.data.qts?.length, 'hks:', msg.data.hotkeys?.length);
+                    Object.assign(state, msg.data);
+                    renderAll();
+                    break;
+                case 'acrState':
+                    state.enabled = msg.data.enabled;
+                    renderBarHeader();
+                    renderExpandedActions();
+                    break;
+                case 'hotkeyExecuted':
+                    flashHk(msg.data.id);
+                    break;
+                case 'qtChanged':
+                    const qt = (state.qts || []).find(q => q.id === msg.data.id);
+                    if (qt) qt.value = msg.data.value;
+                    renderQt();
+                    break;
+                case 'pauseChanged':
+                    state.paused = msg.data.paused;
+                    renderBarHeader();
+                    renderExpandedActions();
+                    break;
+                case 'controls':
+                    controls = msg.data || [];
+                    if (expanded) renderTabs();
+                    break;
+                case 'uiSettings':
+                    console.log('[HiAuRo] received uiSettings:', JSON.stringify(msg.data).substring(0, 200));
+                    uiSettings = Object.assign(uiSettings, msg.data);
+                    console.log('[HiAuRo] uiSettings updated, calling renderQt/Hk');
+                    if (expanded) renderTabs();
+                    renderQt();
+                    renderHk();
+                    break;
+            }
+        } catch (ex) { console.error('[HiAuRo]', ex); }
+    };
+}
+
+function send(type, data) {
+    if (ws && ws.readyState === WebSocket.OPEN) {
+        console.log('[HiAuRo] send:', type);
+        ws.send(JSON.stringify({ type, data: data || {} }));
+    } else {
+        console.log('[HiAuRo] send FAILED ws state:', ws?.readyState);
+    }
+}
+
+// ================ Bar Header ================
+function renderBarHeader() {
+    const dot = document.getElementById('status-dot');
+    const label = document.getElementById('status-label');
+    if (!dot || !label) return;
+    const btnPause = document.getElementById('btn-pause');
+    const btnAcr = document.getElementById('btn-acr');
+
+    dot.className = 'status-dot';
+    label.className = 'status-label';
+
+    if (!state.enabled) {
+        dot.classList.add('stopped');
+        label.classList.add('stopped');
+        label.textContent = '已停止';
+        btnPause.style.display = 'none';
+        btnAcr.innerHTML = iconPlay();
+        btnAcr.title = '启动';
+    } else if (state.paused) {
+        dot.classList.add('paused');
+        label.classList.add('paused');
+        label.textContent = '已暂停';
+        btnPause.style.display = '';
+        btnPause.innerHTML = iconPlay();
+        btnPause.title = '继续';
+        btnAcr.innerHTML = iconStop();
+        btnAcr.title = '停止';
+    } else {
+        dot.classList.add('running');
+        label.classList.add('running');
+        label.textContent = state.job || '运行中';
+        btnPause.style.display = '';
+        btnPause.innerHTML = iconPause();
+        btnPause.title = '暂停';
+        btnAcr.innerHTML = iconStop();
+        btnAcr.title = '停止';
+    }
+}
+
+function renderExpandedActions() {
+    const btnAcr = document.getElementById('btn-acr-ex');
+    const btnPause = document.getElementById('btn-pause-ex');
+    if (!btnAcr || !btnPause) return;
+
+    if (!state.enabled) {
+        btnAcr.textContent = '启动'; btnAcr.className = 'btn-sm acr-off';
+        btnPause.textContent = '暂停'; btnPause.className = 'btn-sm';
+    } else if (state.paused) {
+        btnAcr.textContent = '停止'; btnAcr.className = 'btn-sm acr-on';
+        btnPause.textContent = '继续'; btnPause.className = 'btn-sm paused';
+    } else {
+        btnAcr.textContent = '停止'; btnAcr.className = 'btn-sm acr-on';
+        btnPause.textContent = '暂停'; btnPause.className = 'btn-sm';
+    }
+}
+
+function iconPlay() {
+    return '<svg viewBox="0 0 24 24" fill="currentColor"><polygon points="5,3 19,12 5,21"/></svg>';
+}
+function iconPause() {
+    return '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"/><rect x="14" y="4" width="4" height="16"/></svg>';
+}
+function iconStop() {
+    return '<svg viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="6" width="12" height="12" rx="1"/></svg>';
+}
+
+// ================ Qt chips ================
+function renderQt() {
+    const grid = document.getElementById('qt-grid');
+    if (!grid) { console.log('[HiAuRo] renderQt: no qt-grid element'); return; }
+    const qts = (state.qts || []).filter(q => uiSettings.qtVisible[q.id] !== false);
+    console.log('[HiAuRo] renderQt:', qts.length, 'items, cols:', uiSettings.qtCols);
+    grid.innerHTML = qts.map(q => 
+        `<button class="qt-chip${q.value ? ' on' : ''}" title="${esc(q.tooltip || '')}" onclick="send('qttoggle',{id:'${esc(q.id)}'})">${esc(q.label)}</button>`
+    ).join('');
+    grid.style.setProperty('--qt-cols', uiSettings.qtCols || bestCols(qts.length));
+}
+
+// ================ Hotkey cells ================
+function renderHk() {
+    const grid = document.getElementById('hk-grid');
+    if (!grid) { console.log('[HiAuRo] renderHk: no hk-grid element'); return; }
+    const hks = (state.hotkeys || []).filter(h => uiSettings.hkVisible[h.id] !== false);
+    console.log('[HiAuRo] renderHk:', hks.length, 'items, cols:', uiSettings.hkCols);
+    grid.innerHTML = hks.map(h => 
+        `<div class="hk-cell${h.available ? '' : ' unavailable'}" id="hk-${esc(h.id)}"
+            title="${esc(h.label)}${h.binding ? ' [' + esc(h.binding) + ']' : ''}"
+            onclick="${h.available ? `send('hotkey',{id:'${esc(h.id)}'})` : ''}">
+            <div class="hk-icon">⚡</div>
+            <div class="hk-label">${esc(h.label)}</div>
+            ${h.binding ? `<div class="hk-bind">${esc(h.binding)}</div>` : ''}
+        </div>`
+    ).join('');
+    grid.style.setProperty('--hk-cols', uiSettings.hkCols || bestCols(hks.length));
+}
+
+function flashHk(id) {
+    const el = document.getElementById('hk-' + id);
+    if (!el) return;
+    el.classList.add('flash');
+    setTimeout(() => el.classList.remove('flash'), 600);
+}
+
+// ================ QT 设置 Tab ================
+function renderQtSettings() {
+    const body = document.getElementById('tab-body');
+    if (!body) return;
+    const qts = state.qts || [];
+    let h = '<div class="set-group"><div class="set-group-title">布局</div>';
+    h += `<div class="set-row"><span class="set-label">每行列数</span>
+        <select class="set-select" onchange="uiSettings.qtCols=+this.value;saveUi();updateQtCols()">
+        ${[2,3,4,5,6].map(c=>`<option value="${c}"${uiSettings.qtCols===c?' selected':''}>${c}</option>`).join('')}</select></div>`;
+    h += '</div>';
+    h += '<div class="set-group"><div class="set-group-title">显示/隐藏</div>';
+    qts.forEach(q => {
+        const vis = uiSettings.qtVisible[q.id] !== false;
+        h += `<div class="set-row"><span class="set-label">${esc(q.label)}</span>
+            <label class="ios-switch"><input type="checkbox"${vis?' checked':''} onchange="uiSettings.qtVisible['${esc(q.id)}']=this.checked;saveUi();renderQt()"><span class="track"></span></label></div>`;
+    });
+    h += '</div>';
+    body.innerHTML = h;
+    initCustomSelects(body);
+}
+
+// ================ 热键设置 Tab ================
+function renderHkSettings() {
+    const body = document.getElementById('tab-body');
+    if (!body) return;
+    const hks = state.hotkeys || [];
+    let h = '<div class="set-group"><div class="set-group-title">布局</div>';
+    h += `<div class="set-row"><span class="set-label">每行列数</span>
+        <select class="set-select" onchange="uiSettings.hkCols=+this.value;saveUi();updateHkCols()">
+        ${[2,3,4,5,6].map(c=>`<option value="${c}"${uiSettings.hkCols===c?' selected':''}>${c}</option>`).join('')}</select></div>`;
+    h += '</div>';
+    h += '<div class="set-group"><div class="set-group-title">显示/隐藏 + 快捷键</div>';
+    hks.forEach(hk => {
+        const vis = uiSettings.hkVisible[hk.id] !== false;
+        const bind = uiSettings.hkBindings[hk.id] || '';
+        h += `<div class="set-row"><span class="set-label">${esc(hk.label)}</span>
+            <label class="ios-switch"><input type="checkbox"${vis?' checked':''} onchange="uiSettings.hkVisible['${esc(hk.id)}']=this.checked;saveUi();renderHk()"><span class="track"></span></label></div>`;
+        h += `<div class="set-row" style="padding-left:8px"><span class="set-label" style="font-size:10px;color:var(--text-tertiary)">快捷键</span>
+            <input class="set-input" value="${bind}" placeholder="如 F1" style="width:80px"
+            onchange="setHkBinding('${esc(hk.id)}',this.value)"></div>`;
+    });
+    h += '</div>';
+    body.innerHTML = h;
+    initCustomSelects(body);
+}
+
+function setHkBinding(id, key) {
+    uiSettings.hkBindings[id] = key;
+    saveUi();
+    send('setHkBinding', { id, key });
+}
+
+function saveUi() {
+    send('saveUiSettings', uiSettings);
+}
+
+
+function updateQtCols() {
+    const g = document.getElementById('qt-grid');
+    if (g) g.style.setProperty('--qt-cols', uiSettings.qtCols);
+}
+
+function updateHkCols() {
+    const g = document.getElementById('hk-grid');
+    if (g) g.style.setProperty('--hk-cols', uiSettings.hkCols);
+}
+
+// ================ Expand / Collapse ================
+function toggleExpand() {
+    expanded = !expanded;
+    const win = document.getElementById('main-win');
+    const btn = document.getElementById('btn-expand');
+    if (!win || !btn) return;
+    const tabBody = document.querySelector('#panel-body .tab-body');
+
+    if (expanded) {
+        win.classList.add('expanded');
+        btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>';
+        renderTabs();
+    } else {
+        win.classList.remove('expanded');
+        btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 6 15 12 9 18"/></svg>';
+    }
+}
+
+function renderTabs() {
+    const tabBar = document.getElementById('tab-bar');
+    if (!tabBar) return;
+    const acrTabs = controls.filter(c => c.type === 'tab');
+    const triggerTab = acrTabs.find(t => t.label === '触发器');
+    const otherTabs = acrTabs.filter(t => t !== triggerTab);
+    const allTabs = triggerTab
+        ? [...otherTabs, triggerTab, { id: '__qt_set', label: 'QT设置' }, { id: '__hk_set', label: '热键设置' }]
+        : [...otherTabs, { id: '__qt_set', label: 'QT设置' }, { id: '__hk_set', label: '热键设置' }];
+
+    if (!allTabs.length) { tabBar.innerHTML = ''; return; }
+    if (!activeTab || !allTabs.find(t => t.id === activeTab)) activeTab = allTabs[0].id;
+
+    tabBar.innerHTML = allTabs.map(t =>
+        `<button class="tab-btn${activeTab === t.id ? ' active' : ''}" onclick="switchTab('${esc(t.id)}')">${esc(t.label)}</button>`
+    ).join('');
+
+    if (activeTab === '__qt_set') renderQtSettings();
+    else if (activeTab === '__hk_set') renderHkSettings();
+    else renderTabBody();
+}
+
+function switchTab(tabId) {
+    activeTab = tabId;
+    renderTabs();
+}
+
+function renderTabBody() {
+    const body = document.getElementById('tab-body');
+    if (!body) return;
+    const tabControls = controls.filter(c => c.parentId === activeTab || (!c.parentId && c.type !== 'tab'));
+    const groups = tabControls.filter(c => c.type === 'group');
+    const orphaned = tabControls.filter(c => c.type !== 'group' && !groups.some(g => c.parentId === g.id));
+
+    let html = '';
+    for (const g of groups) {
+        const items = tabControls.filter(c => c.parentId === g.id);
+        html += `<div class="set-group"><div class="set-group-title">${esc(g.label)}</div>${renderItems(items)}</div>`;
+    }
+    html += renderItems(orphaned);
+    body.innerHTML = html;
+    initCustomSelects(body);
+}
+
+function renderItems(items) {
+    let h = '';
+    for (const c of items) {
+        switch (c.type) {
+            case 'checkbox':
+                h += `<div class="set-row"><span class="set-label">${esc(c.label)}</span>` +
+                    `<label class="ios-switch"><input type="checkbox"${c.value?' checked':''} id="ctl-${esc(c.id)}" onchange="ctlChanged('checkbox','${esc(c.id)}',this.checked)"><span class="track"></span></label></div>`;
+                break;
+            case 'slider':
+                const min = c.options?.min ?? 0, max = c.options?.max ?? 100;
+                h += `<div class="set-row"><span class="set-label">${esc(c.label)}</span>` +
+                    `<input class="set-slider" type="range" min="${min}" max="${max}" value="${c.value}" step="1" oninput="document.getElementById('val-${esc(c.id)}').textContent=this.value" id="ctl-${esc(c.id)}">` +
+                    `<span class="slider-val" id="val-${esc(c.id)}">${c.value}</span></div>`;
+                break;
+            case 'dropdown':
+                const opts = (c.options||[]).map(o=>esc(o));
+                h += `<div class="set-row"><span class="set-label">${esc(c.label)}</span>` +
+                    `<select class="set-select" onchange="ctlChanged('dropdown','${esc(c.id)}',this.value)" id="ctl-${esc(c.id)}">` +
+                    opts.map(o=>`<option value="${o}"${o===c.value?' selected':''}>${o}</option>`).join('')+'</select></div>';
+                break;
+            case 'intInput':
+                h += `<div class="set-row"><span class="set-label">${esc(c.label)}</span>` +
+                    `<input class="set-input" type="number" value="${c.value}" step="${c.meta?.step??1}" id="ctl-${esc(c.id)}" onchange="ctlChanged('intInput','${esc(c.id)}',this.value)"></div>`;
+                break;
+            case 'label':
+                h += `<div class="set-label" style="padding:2px 0">${esc(c.value??c.label)}</div>`; break;
+            case 'separator':
+                h += '<div class="set-divider"></div>'; break;
+        }
+        const tip = items.find(i=>i.type==='tooltip'&&i.id==='__tip__'+c.id);
+        if (tip) h += `<div style="font-size:10px;color:var(--text-tertiary);margin:0 0 2px 2px">${esc(tip.value)}</div>`;
+    }
+    return h;
+}
+
+function ctlChanged(type, id, value) { console.log('[HiAuRo]', type, id, value); }
+
+function initCustomSelects(container) {
+    if (!container) return;
+    const selects = container.querySelectorAll('select.set-select');
+    selects.forEach(sel => {
+        const wrapper = document.createElement('div');
+        wrapper.className = 'custom-select';
+        sel.parentNode.insertBefore(wrapper, sel);
+        wrapper.appendChild(sel);
+        const trigger = document.createElement('button');
+        trigger.className = 'custom-select-trigger';
+        trigger.textContent = sel.options[sel.selectedIndex]?.text || '';
+        trigger.onclick = (e) => { e.stopPropagation(); wrapper.classList.toggle('open'); };
+        wrapper.appendChild(trigger);
+        const drop = document.createElement('div');
+        drop.className = 'custom-select-drop';
+        [...sel.options].forEach(opt => {
+            const div = document.createElement('div');
+            div.className = 'custom-select-opt' + (opt.selected ? ' selected' : '');
+            div.textContent = opt.text;
+            div.onclick = () => {
+                sel.value = opt.value; trigger.textContent = opt.text;
+                wrapper.classList.remove('open');
+                sel.dispatchEvent(new Event('change', { bubbles: true }));
+            };
+            drop.appendChild(div);
+        });
+        wrapper.appendChild(drop);
+    });
+    document.onclick = (e) => {
+        container.querySelectorAll('.custom-select.open').forEach(w => {
+            if (!w.contains(e.target)) w.classList.remove('open');
+        });
+    };
+}
+
+function bestCols(n) {
+    if (n <= 2) return n;
+    let best = 2, be = n%2===0?0:1;
+    for (const c of [3,4]) { const e = (c-n%c)%c; if (e<be||(e===be&&c>best)){best=c;be=e;} }
+    return best;
+}
+
+function renderAll() {
+    renderBarHeader();
+    renderExpandedActions();
+    renderQt();
+    renderHk();
+}
+
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+// ================ 事件绑定（替代 inline onclick，更可靠） ================
+function bind(id, fn) {
+    const el = document.getElementById(id);
+    if (el) el.addEventListener('click', fn);
+}
+bind('btn-acr',    () => send('toggleACR'));
+bind('btn-acr-ex', () => send('toggleACR'));
+bind('btn-pause',    () => send('pause'));
+bind('btn-pause-ex', () => send('pause'));
+bind('btn-save',    () => send('saveACR'));
+bind('btn-save-ex', () => send('saveACR'));
+bind('btn-expand', toggleExpand);
+
+connect();

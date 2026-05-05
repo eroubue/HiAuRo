@@ -1,0 +1,72 @@
+- generic [ref=e2]:
+  - banner [ref=e3]:
+    - generic [ref=e4]:
+      - button "执行轴" [ref=e5] [cursor=pointer]
+      - button "事实轴" [active] [ref=e6] [cursor=pointer]
+      - button "辅助轴" [ref=e7] [cursor=pointer]
+    - generic [ref=e8]:
+      - button "新建" [ref=e9] [cursor=pointer]
+      - button "加载" [ref=e10] [cursor=pointer]
+      - button "保存" [ref=e11] [cursor=pointer]
+      - button "另存" [ref=e12] [cursor=pointer]
+      - button "导出" [ref=e13] [cursor=pointer]
+      - button "导入" [ref=e14] [cursor=pointer]
+  - main [ref=e15]:
+    - complementary [ref=e16]:
+      - generic [ref=e17]:
+        - generic [ref=e18]: 文件
+        - button "选择目录" [ref=e19] [cursor=pointer]
+      - generic [ref=e20]: 未选择目录
+      - generic [ref=e22]: 点"选择目录"浏览文件
+    - generic [ref=e80]:
+      - generic [ref=e81]:
+        - button "＋ 添加阶段" [ref=e82] [cursor=pointer]
+        - button "＋ 添加事件" [ref=e83] [cursor=pointer]
+        - generic [ref=e84]: 1 阶段, 1 事件
+      - generic [ref=e85]:
+        - generic [ref=e87]: 0:00
+        - generic [ref=e89]: 0:05
+        - generic [ref=e91]: 0:10
+        - generic [ref=e93]: 0:15
+        - generic [ref=e95]: 0:20
+        - generic [ref=e97]: 0:25
+        - generic [ref=e99]: 0:30
+        - generic [ref=e101]: 0:35
+        - generic [ref=e103]: 0:40
+        - generic [ref=e105]: 0:45
+        - generic [ref=e107]: 0:50
+        - generic [ref=e109]: 0:55
+        - generic [ref=e111]: 1:00
+        - generic [ref=e113]: 1:05
+        - generic [ref=e115]: 1:10
+      - generic [ref=e117]:
+        - generic [ref=e118]:
+          - text: 测试阶段
+          - button "＋分支" [ref=e119] [cursor=pointer]
+        - generic "测试事件 (10.0s) ability" [ref=e121] [cursor=pointer]: 测试事件
+    - complementary [ref=e31]:
+      - generic [ref=e32]:
+        - generic [ref=e33]: 轴信息
+        - generic [ref=e34]:
+          - generic [ref=e35]:
+            - generic [ref=e36]: 轴类型
+            - generic [ref=e37]: 事实轴
+          - generic [ref=e38]:
+            - generic [ref=e39]: 文件名
+            - generic [ref=e40]: —
+          - generic [ref=e41]:
+            - generic [ref=e42]: 节点数
+            - generic [ref=e43]: "1"
+          - generic [ref=e44]:
+            - generic [ref=e45]: 状态
+            - generic [ref=e46]: 已保存
+      - generic [ref=e47]:
+        - generic [ref=e48]: 时间线
+        - generic [ref=e122]:
+          - generic [ref=e123]: 阶段管理
+          - generic [ref=e124]:
+            - generic [ref=e125]: 测试阶段
+            - button "×" [ref=e126] [cursor=pointer]
+          - button "+ 添加阶段" [ref=e127] [cursor=pointer]
+  - contentinfo [ref=e51]:
+    - generic [ref=e52]: 就绪
