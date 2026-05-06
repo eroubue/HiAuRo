@@ -709,7 +709,7 @@ function renderAllSubBranches() {
                 if (bev.actions) {
                     for (var bai = 0; bai < bev.actions.length; bai++) {
                         if (bev.actions[bai].type === 'switchPhase') {
-                            branchEndTime = (switchEvent ? switchEvent.time : 0) + bev.time;
+                            branchEndTime = bev.time; // bev.time 已是绝对时间
                             break;
                         }
                     }
