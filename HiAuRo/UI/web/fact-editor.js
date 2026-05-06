@@ -986,14 +986,11 @@ function updateActionType(idx, newType) {
     if (!ev || !ev.actions) return;
     ev.actions[idx] = JSON.parse(JSON.stringify(ACTION_TEMPLATES[newType]));
     ev.name = TYPE_NAMES[newType] || '新事件';
-    // 切换阶段默认指向父阶段的下一阶段
+    // 切换阶段默认指向父阶段编号 +1
     if (newType === 'switchPhase') {
-        var nextIdx = currentPhaseIdx + 1;
-        if (nextIdx < timelineData.phases.length) {
-            ev.actions[idx].targetPhase = timelineData.phases[nextIdx].id;
-        } else {
-            ev.actions[idx].targetPhase = 'p' + findLowestPhaseNum();
-        }
+        var curPhase = timelineData.phases[currentPhaseIdx];
+        var curNum = parseInt((curPhase.id || 'p1').substring(1)) || currentPhaseIdx + 1;
+        ev.actions[idx].targetPhase = 'p' + (curNum + 1);
     }
     markDirty();
 }
