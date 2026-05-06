@@ -1234,6 +1234,28 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 
+    // ---- 鼠标时间标线 ----
+    var mouseMarker = document.getElementById('mouseMarker');
+    var mouseMarkerLabel = mouseMarker ? mouseMarker.querySelector('.mouse-marker-label') : null;
+    if (canvas) {
+        canvas.addEventListener('mousemove', function(e) {
+            if (dragState.active && dragState.moved) return; // 拖拽时不显示
+            if (!mouseMarker) return;
+            mouseMarker.classList.remove('hide');
+            var rect = canvas.getBoundingClientRect();
+            var y = e.clientY - rect.top + canvas.scrollTop;
+            var time = y / LINE_HEIGHT * TIME_STEP;
+            time = Math.round(time * 10) / 10; // 精度 0.1s
+            mouseMarker.style.top = y + 'px';
+            if (mouseMarkerLabel) {
+                mouseMarkerLabel.textContent = formatTime(time);
+            }
+        });
+        canvas.addEventListener('mouseleave', function() {
+            if (mouseMarker) mouseMarker.classList.add('hide');
+        });
+    }
+
     // ==================== 键盘快捷键 ====================
 
     document.addEventListener('keydown', function(e) {
