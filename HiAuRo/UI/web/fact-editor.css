@@ -324,6 +324,19 @@ button.danger:hover,
     font-size: 11px;
     color: var(--tx2);
     font-variant-numeric: tabular-nums;
+    overflow: visible;
+}
+
+/* 虚线延伸到画布宽度 */
+.time-line::after {
+    content: '';
+    position: absolute;
+    left: 55px;
+    top: -1px;
+    width: 5000px;
+    height: 0;
+    border-top: 1px dashed rgba(255, 255, 255, 0.06);
+    pointer-events: none;
 }
 
 /* 阶段轨道 */
