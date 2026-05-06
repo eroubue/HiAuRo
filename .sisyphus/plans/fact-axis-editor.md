@@ -57,14 +57,14 @@
 - `HiAuRo/UI/web/fact-editor.js`
 
 ### Definition of Done
-- [ ] 在浏览器中打开 `fact-editor.html` 可正常显示时间轴
-- [ ] 可添加/删除/编辑 phase（主轴）
-- [ ] 可添加/删除/编辑事件节点
-- [ ] 事件节点可垂直拖拽调整时间
-- [ ] 小分支正确显示（相对时间、横向展开）
-- [ ] 属性面板可编辑事件所有字段
-- [ ] 文件操作（新建/加载/保存/导出）可用
-- [ ] 构建通过 `dotnet build HiAuRo/HiAuRo.csproj`
+- [x] 在浏览器中打开 `fact-editor.html` 可正常显示时间轴
+- [x] 可添加/删除/编辑 phase（主轴）
+- [x] 可添加/删除/编辑事件节点
+- [x] 事件节点可垂直拖拽调整时间
+- [x] 小分支正确显示（相对时间、横向展开）
+- [x] 属性面板可编辑事件所有字段
+- [x] 文件操作（新建/加载/保存/导出）可用
+- [x] 构建通过 `dotnet build HiAuRo/HiAuRo.csproj`
 
 ### Must Have
 - 深色主题（`#080b12` 背景）
