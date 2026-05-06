@@ -114,9 +114,24 @@ body {
 
 .timeline-body {
     display: flex;
-    justify-content: center;
-    align-items: flex-start;
+    align-items: stretch;
     min-height: 3600px;
+}
+
+/* 相位区域包裹器 - 居中显示阶段轨道，但不裁切事件标签 */
+.phase-wrapper {
+    flex: 1;
+    display: flex;
+    justify-content: center;
+    overflow: visible;
+    min-width: 0;
+}
+
+/* 相位轨道容器 - 不裁切子元素的事件标签 */
+#phaseTracks {
+    display: flex;
+    overflow: visible;
+    align-items: flex-start;
 }
 
 /* ---- 表单元素 ---- */
@@ -292,7 +307,7 @@ button.danger:hover,
     position: relative;
     flex-shrink: 0;
     width: 55px;
-    height: 100%;
+    min-height: 3600px;
     pointer-events: none;
     user-select: none;
 }
@@ -319,6 +334,7 @@ button.danger:hover,
     flex-direction: column;
     align-items: center;
     flex-shrink: 0;
+    overflow: visible;
 }
 
 .track-main-line {

@@ -445,10 +445,9 @@ function renderPhaseTracks() {
     }
 
     el.innerHTML = '';
-    // 横向 flex 容器，>3 阶段时滚动
+    // 横向 flex 容器
     el.style.display = 'flex';
-    el.style.overflowX = 'auto';
-    el.style.height = '100%';
+    el.style.gap = '4px';
 
     for (var i = 0; i < timelineData.phases.length; i++) {
         var phase = timelineData.phases[i];
@@ -1298,17 +1297,8 @@ document.addEventListener('DOMContentLoaded', function() {
             // 冻结鼠标横线到当前时间位置
             frozenMarkerTime = currentMouseTime;
 
-            var rect = canvas.getBoundingClientRect();
-            var scrollEl3 = canvas.querySelector('.timeline-scroll');
-            var scrollTop3 = scrollEl3 ? scrollEl3.scrollTop : 0;
-            var y = e.clientY - rect.top + scrollTop3;
-            ctxMenuClickTime = Math.round(y / LINE_HEIGHT) * TIME_STEP;
-            var scrollEl3 = canvas.querySelector('.timeline-scroll');
-            var scrollTop3 = scrollEl3 ? scrollEl3.scrollTop : 0;
-            var y = e.clientY - rect.top + scrollTop3;
-            ctxMenuClickTime = Math.round(y / LINE_HEIGHT) * TIME_STEP;
-            if (ctxMenuClickTime < 0) ctxMenuClickTime = 0;
-            if (ctxMenuClickTime > MAX_TIME) ctxMenuClickTime = MAX_TIME;
+            // 右键添加事件使用冻结的鼠标时间（精确时间，不吸附到网格）
+            ctxMenuClickTime = Math.max(0, Math.min(MAX_TIME, frozenMarkerTime !== null ? frozenMarkerTime : 0));
 
             showContextMenu(e.clientX, e.clientY, [
                 { label: '添加事件', action: 'addEvent' }
