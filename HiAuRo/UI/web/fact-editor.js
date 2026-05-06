@@ -52,6 +52,7 @@ var collapsedBranches = {};    // 左侧面板分支折叠状态
 
 var ctxMenuClickTime = 0;     // 画布右键点击计算的时间位置
 var ctxMenuTargetPath = '';   // 当前右键目标事件路径
+var frozenMarkerTime = null;  // 冻结的横线时间（null=正常追踪）
 var dragState = { active: false, srcPath: null, startY: 0, moved: false, preventClick: false };
 var _dragHandlersBound = false; // 防止重复绑定拖拽事件
 
@@ -1183,10 +1184,6 @@ function showContextMenu(x, y, items) {
     var menu = document.getElementById('ctxMenu');
     if (!menu) return;
 
-    // 冻结鼠标横线，防止右键后跟着鼠标移动
-    var marker = document.getElementById('mouseMarker');
-    if (marker) marker.classList.add('frozen');
-
     var html = '';
     for (var i = 0; i < items.length; i++) {
         var item = items[i];
@@ -1212,18 +1209,12 @@ function showContextMenu(x, y, items) {
     };
 }
 
-/** 隐藏右键菜单（不自动解冻横线） */
+/** 隐藏右键菜单 */
 function hideContextMenu() {
     var menu = document.getElementById('ctxMenu');
     if (!menu) return;
     menu.innerHTML = '';
     menu.classList.add('hide');
-}
-
-/** 解冻鼠标横线 */
-function unfreezeMarker() {
-    var marker = document.getElementById('mouseMarker');
-    if (marker) { marker.classList.remove('frozen'); marker.classList.add('hide'); }
 }
 
 /** 处理菜单动作分发 */
@@ -1270,7 +1261,7 @@ function handleContextAction(action) {
         }
     }
     hideContextMenu();
-    unfreezeMarker();
+    if (action === 'addEvent') frozenMarkerTime = null; // 添加事件后解锁
 }
 
 // ==================== 页面初始化 ====================
@@ -1304,7 +1295,14 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
             e.stopPropagation();
 
+            // 冻结鼠标横线到当前时间位置
+            frozenMarkerTime = currentMouseTime;
+
             var rect = canvas.getBoundingClientRect();
+            var scrollEl3 = canvas.querySelector('.timeline-scroll');
+            var scrollTop3 = scrollEl3 ? scrollEl3.scrollTop : 0;
+            var y = e.clientY - rect.top + scrollTop3;
+            ctxMenuClickTime = Math.round(y / LINE_HEIGHT) * TIME_STEP;
             var scrollEl3 = canvas.querySelector('.timeline-scroll');
             var scrollTop3 = scrollEl3 ? scrollEl3.scrollTop : 0;
             var y = e.clientY - rect.top + scrollTop3;
@@ -1328,6 +1326,9 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
             e.stopPropagation();
 
+            // 冻结鼠标横线
+            frozenMarkerTime = currentMouseTime;
+
             ctxMenuTargetPath = node.dataset.path;
 
             // 自动选中该事件
@@ -1346,13 +1347,14 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // 点击菜单外部任意位置 → 关闭菜单
+    // 点击菜单外部任意位置 → 关闭菜单；左键点击 → 解锁横线
     document.addEventListener('mousedown', function(e) {
+        // 左键点击任意位置解锁横线
+        if (e.button === 0) frozenMarkerTime = null;
         var menu = document.getElementById('ctxMenu');
         if (!menu || menu.classList.contains('hide')) return;
         if (!menu.contains(e.target)) {
             hideContextMenu();
-            unfreezeMarker();
         }
     });
 
@@ -1360,24 +1362,29 @@ document.addEventListener('DOMContentLoaded', function() {
     var mouseMarker = document.getElementById('mouseMarker');
     var mouseMarkerLabel = mouseMarker ? mouseMarker.querySelector('.mouse-marker-label') : null;
     var scrollEl = canvas ? canvas.querySelector('.timeline-scroll') : null;
+    var currentMouseTime = 0;
     if (canvas) {
         canvas.addEventListener('mousemove', function(e) {
             if (dragState.active && dragState.moved) return;
             if (!mouseMarker) return;
-            if (mouseMarker.classList.contains('frozen')) return; // 菜单打开时冻结
-            mouseMarker.classList.remove('hide');
             var rect = canvas.getBoundingClientRect();
             var scrollTop = scrollEl ? scrollEl.scrollTop : 0;
             var y = e.clientY - rect.top + scrollTop;
-            var time = y / LINE_HEIGHT * TIME_STEP;
-            time = Math.round(time * 10) / 10; // 精度 0.1s
+            currentMouseTime = y / LINE_HEIGHT * TIME_STEP;
+            currentMouseTime = Math.round(currentMouseTime * 10) / 10;
+            // 正常追踪 或 冻结显示
+            var displayTime = (frozenMarkerTime !== null) ? frozenMarkerTime : currentMouseTime;
+            var displayY = (frozenMarkerTime !== null)
+                ? (frozenMarkerTime / TIME_STEP * LINE_HEIGHT - scrollTop + rect.top)
+                : (e.clientY - rect.top);
+            mouseMarker.classList.remove('hide');
             mouseMarker.style.top = (e.clientY - rect.top) + 'px';
             if (mouseMarkerLabel) {
-                mouseMarkerLabel.textContent = formatTime(time);
+                mouseMarkerLabel.textContent = formatTime(displayTime);
             }
         });
         canvas.addEventListener('mouseleave', function() {
-            if (mouseMarker) mouseMarker.classList.add('hide');
+            if (frozenMarkerTime === null && mouseMarker) mouseMarker.classList.add('hide');
         });
     }
 
