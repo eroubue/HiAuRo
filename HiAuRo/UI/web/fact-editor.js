@@ -46,6 +46,13 @@ var isDirty = false;           // 未保存修改标记
 var selectedEventPath = null;  // 选中事件路径 (如 'p0_ev0')
 var currentPhaseIdx = 0;       // 当前编辑的阶段索引
 
+// ==================== 右键菜单状态 ====================
+
+var ctxMenuClickTime = 0;     // 画布右键点击计算的时间位置
+var ctxMenuTargetPath = '';   // 当前右键目标事件路径
+var dragState = { active: false, srcPath: null, startY: 0, moved: false, preventClick: false };
+var _dragHandlersBound = false; // 防止重复绑定拖拽事件
+
 // ==================== 工具函数 ====================
 
 function esc(s) {
@@ -144,7 +151,183 @@ function markDirty() {
 
 // ==================== 渲染 (占位 — T5~T8 实现) ====================
 
-function renderAll() { renderTimeScale(); renderPhaseTracks(); renderEvents(); renderProps(); }
+function renderAll() { renderPhaseList(); renderPhaseTabs(); renderTimeScale(); renderPhaseTracks(); renderEvents(); renderProps(); bindDragHandlers(); }
+
+// ==================== 阶段管理 ====================
+
+/** 切换到指定阶段 */
+function switchPhase(idx) {
+    if (!timelineData || !timelineData.phases) return;
+    if (idx < 0 || idx >= timelineData.phases.length) return;
+    currentPhaseIdx = idx;
+    selectedEventPath = null;
+    renderAll();
+}
+
+/** 渲染左侧阶段列表 */
+function renderPhaseList() {
+    var el = document.getElementById('phaseList');
+    if (!el) return;
+
+    if (!timelineData || !timelineData.phases) {
+        el.innerHTML = '<div class="hint">暂无阶段</div>';
+        return;
+    }
+
+    var phases = timelineData.phases;
+    var html = '';
+    for (var i = 0; i < phases.length; i++) {
+        var active = (i === currentPhaseIdx) ? ' active' : '';
+        html += '<div class="phase-item' + active + '" data-idx="' + i + '">';
+        html += '<span class="phase-name" data-idx="' + i + '">' + esc(phases[i].name) + '</span>';
+        if (phases.length > 1) {
+            html += '<button class="phase-del" data-idx="' + i + '" title="删除阶段">×</button>';
+        }
+        html += '</div>';
+    }
+
+    var canAdd = phases.length < MAX_PHASES;
+    html += '<button class="phase-add" id="btnAddPhase"' + (canAdd ? '' : ' disabled') + '>' + esc(canAdd ? '+ 添加阶段' : '已达上限') + '</button>';
+
+    el.innerHTML = html;
+
+    // 阶段点击切换
+    el.querySelectorAll('.phase-item').forEach(function(item) {
+        item.addEventListener('click', function(e) {
+            if (e.target.closest('.phase-del')) return;
+            var idx = parseInt(this.dataset.idx);
+            if (!isNaN(idx) && idx !== currentPhaseIdx) {
+                switchPhase(idx);
+            }
+        });
+    });
+
+    // 双击重命名
+    el.querySelectorAll('.phase-name').forEach(function(span) {
+        span.addEventListener('dblclick', function(e) {
+            e.stopPropagation();
+            var idx = parseInt(this.dataset.idx);
+            if (!isNaN(idx)) startRename(idx, this);
+        });
+    });
+
+    // 删除按钮
+    el.querySelectorAll('.phase-del').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            var idx = parseInt(this.dataset.idx);
+            if (!isNaN(idx)) deletePhase(idx);
+        });
+    });
+
+    // 添加按钮
+    var addBtn = document.getElementById('btnAddPhase');
+    if (addBtn && !addBtn.disabled) {
+        addBtn.addEventListener('click', addPhase);
+    }
+}
+
+/** 渲染工具栏阶段选项卡 */
+function renderPhaseTabs() {
+    var el = document.getElementById('phaseTabs');
+    if (!el) return;
+
+    if (!timelineData || !timelineData.phases || timelineData.phases.length === 0) {
+        el.innerHTML = '';
+        return;
+    }
+
+    var html = '';
+    for (var i = 0; i < timelineData.phases.length; i++) {
+        var active = (i === currentPhaseIdx) ? 'active' : '';
+        html += '<button class="' + active + '" data-idx="' + i + '">' + esc(timelineData.phases[i].name) + '</button>';
+    }
+    el.innerHTML = html;
+
+    el.querySelectorAll('button').forEach(function(btn) {
+        btn.addEventListener('click', function() {
+            var idx = parseInt(this.dataset.idx);
+            if (!isNaN(idx) && idx !== currentPhaseIdx) {
+                switchPhase(idx);
+            }
+        });
+    });
+}
+
+/** 双击行内重命名 */
+function startRename(idx, span) {
+    var phase = getPhase(idx);
+    if (!phase) return;
+
+    var input = document.createElement('input');
+    input.type = 'text';
+    input.className = 'phase-rename-input';
+    input.value = phase.name;
+
+    span.style.display = 'none';
+    span.parentNode.insertBefore(input, span.nextSibling);
+    input.focus();
+    input.select();
+
+    function finish() {
+        var val = input.value.trim();
+        if (val && val !== phase.name) {
+            phase.name = val;
+            markDirty();
+            return; // markDirty 已通过 renderAll 重绘了列表
+        }
+        // 取消或无变化 — 恢复显示
+        input.remove();
+        span.style.display = '';
+    }
+
+    input.addEventListener('blur', finish);
+    input.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            input.blur();
+        } else if (e.key === 'Escape') {
+            input.value = phase.name; // 重置
+            input.blur();
+        }
+    });
+}
+
+/** 添加新阶段 */
+function addPhase() {
+    if (!timelineData) return;
+    if (timelineData.phases.length >= MAX_PHASES) return;
+
+    var newId = 'p' + (timelineData.phases.length + 1);
+    timelineData.phases.push({
+        id: newId,
+        name: '新阶段',
+        events: [],
+        switch: null
+    });
+    currentPhaseIdx = timelineData.phases.length - 1;
+    selectedEventPath = null;
+    markDirty();
+}
+
+/** 删除阶段 */
+function deletePhase(idx) {
+    if (!timelineData || timelineData.phases.length <= 1) return;
+    if (!confirm('确定删除阶段 "' + timelineData.phases[idx].name + '"？')) return;
+
+    timelineData.phases.splice(idx, 1);
+
+    // 调整 currentPhaseIdx
+    if (idx < currentPhaseIdx) {
+        currentPhaseIdx--;
+    }
+    if (currentPhaseIdx >= timelineData.phases.length) {
+        currentPhaseIdx = timelineData.phases.length - 1;
+    }
+
+    selectedEventPath = null;
+    markDirty();
+}
 
 function renderTimeScale() {
     var el = document.getElementById('timeScale');
@@ -248,6 +431,7 @@ function renderEvents() {
         // 点击选中
         (function(path, el) {
             el.addEventListener('click', function(e) {
+                if (dragState.preventClick) return;
                 e.stopPropagation();
                 selectedEventPath = path;
 
@@ -382,6 +566,7 @@ function renderAllSubBranches() {
             // 点击选中
             (function(p, el) {
                 el.addEventListener('click', function(e) {
+                    if (dragState.preventClick) return;
                     e.stopPropagation();
                     selectedEventPath = p;
 
@@ -443,7 +628,7 @@ function renderProps() {
     // 名称
     html += '<div class="prop-row">';
     html += '<span class="prop-label">名称</span>';
-    html += '<input class="prop-input" type="text" value="' + esc(ev.name || '') + '">';
+    html += '<input class="prop-input" type="text" value="' + esc(ev.name || '') + '" onchange="updateEventProp(\'name\', this.value)">';
     html += '</div>';
 
     // ID (只读)
@@ -455,13 +640,13 @@ function renderProps() {
     // 时间(s)
     html += '<div class="prop-row">';
     html += '<span class="prop-label">时间(s)</span>';
-    html += '<input class="prop-input" type="number" value="' + (ev.time || 0) + '" step="0.1">';
+    html += '<input class="prop-input" type="number" value="' + (ev.time || 0) + '" step="0.1" onchange="updateEventNumProp(\'time\', this.value)">';
     html += '</div>';
 
     // 持续(s)
     html += '<div class="prop-row">';
     html += '<span class="prop-label">持续(s)</span>';
-    html += '<input class="prop-input" type="number" value="' + (ev.duration || 0) + '" step="0.1">';
+    html += '<input class="prop-input" type="number" value="' + (ev.duration || 0) + '" step="0.1" onchange="updateEventNumProp(\'duration\', this.value)">';
     html += '</div>';
 
     html += '</div>'; // end 基本信息
@@ -474,38 +659,38 @@ function renderProps() {
     if (ev.startSync) {
         html += '<div style="margin-bottom:8px;">';
         html += '<span style="display:inline-block;width:60px;font-size:11px;color:var(--tx1);">开始同步</span>';
-        html += '<select class="prop-input" style="width:auto;">';
-        html += '<option value="startsUsing"' + (ev.startSync.type === 'startsUsing' ? ' selected' : '') + '>startsUsing</option>';
-        html += '<option value="ability"' + (ev.startSync.type === 'ability' ? ' selected' : '') + '>ability</option>';
-        html += '<option value="inCombat"' + (ev.startSync.type === 'inCombat' ? ' selected' : '') + '>inCombat</option>';
+        html += '<select class="prop-input" style="width:auto;" onchange="updateSyncProp(\'startSync\',\'type\',this.value)">';
+        html += '<option value="startsUsing"' + (ev.startSync.type === 'startsUsing' ? ' selected' : '') + '>读条</option>';
+        html += '<option value="ability"' + (ev.startSync.type === 'ability' ? ' selected' : '') + '>技能</option>';
+        html += '<option value="inCombat"' + (ev.startSync.type === 'inCombat' ? ' selected' : '') + '>进战</option>';
         html += '</select>';
         html += '</div>';
         html += '<div class="prop-row">';
         html += '<span class="prop-label">技能ID</span>';
-        html += '<input class="prop-input" type="text" value="' + esc((ev.startSync.abilityIds || []).join(',')) + '" placeholder="逗号分隔">';
+        html += '<input class="prop-input" type="text" value="' + esc((ev.startSync.abilityIds || []).join(',')) + '" placeholder="逗号分隔" onchange="updateSyncProp(\'startSync\',\'abilityIds\',this.value)">';
         html += '</div>';
-        html += '<button class="btn danger" style="margin-bottom:8px;">移除</button>';
+        html += '<button class="btn danger" style="margin-bottom:8px;" onclick="removeSync(\'startSync\')">移除</button>';
     } else {
-        html += '<button class="btn" style="margin-bottom:4px;">+ 添加开始同步</button>';
+        html += '<button class="btn" style="margin-bottom:4px;" onclick="addSync(\'startSync\')">+ 添加开始同步</button>';
     }
 
     // 结束同步
     if (ev.endSync) {
         html += '<div style="margin-bottom:8px;">';
         html += '<span style="display:inline-block;width:60px;font-size:11px;color:var(--tx1);">结束同步</span>';
-        html += '<select class="prop-input" style="width:auto;">';
-        html += '<option value="startsUsing"' + (ev.endSync.type === 'startsUsing' ? ' selected' : '') + '>startsUsing</option>';
-        html += '<option value="ability"' + (ev.endSync.type === 'ability' ? ' selected' : '') + '>ability</option>';
-        html += '<option value="inCombat"' + (ev.endSync.type === 'inCombat' ? ' selected' : '') + '>inCombat</option>';
+        html += '<select class="prop-input" style="width:auto;" onchange="updateSyncProp(\'endSync\',\'type\',this.value)">';
+        html += '<option value="startsUsing"' + (ev.endSync.type === 'startsUsing' ? ' selected' : '') + '>读条</option>';
+        html += '<option value="ability"' + (ev.endSync.type === 'ability' ? ' selected' : '') + '>技能</option>';
+        html += '<option value="inCombat"' + (ev.endSync.type === 'inCombat' ? ' selected' : '') + '>进战</option>';
         html += '</select>';
         html += '</div>';
         html += '<div class="prop-row">';
         html += '<span class="prop-label">技能ID</span>';
-        html += '<input class="prop-input" type="text" value="' + esc((ev.endSync.abilityIds || []).join(',')) + '" placeholder="逗号分隔">';
+        html += '<input class="prop-input" type="text" value="' + esc((ev.endSync.abilityIds || []).join(',')) + '" placeholder="逗号分隔" onchange="updateSyncProp(\'endSync\',\'abilityIds\',this.value)">';
         html += '</div>';
-        html += '<button class="btn danger" style="margin-bottom:8px;">移除</button>';
+        html += '<button class="btn danger" style="margin-bottom:8px;" onclick="removeSync(\'endSync\')">移除</button>';
     } else {
-        html += '<button class="btn">+ 添加结束同步</button>';
+        html += '<button class="btn" onclick="addSync(\'endSync\')">+ 添加结束同步</button>';
     }
 
     html += '</div>'; // end 同步校准
@@ -522,7 +707,7 @@ function renderProps() {
         // 动作类型下拉
         html += '<div class="prop-row">';
         html += '<span class="prop-label">类型</span>';
-        html += '<select class="prop-input">';
+        html += '<select class="prop-input" onchange="updateActionType(' + i + ', this.value)">';
         html += '<option value="demand"' + (a.type === 'demand' ? ' selected' : '') + '>需求</option>';
         html += '<option value="skillSuggestion"' + (a.type === 'skillSuggestion' ? ' selected' : '') + '>技能建议</option>';
         html += '<option value="setVariable"' + (a.type === 'setVariable' ? ' selected' : '') + '>设置变量</option>';
@@ -535,55 +720,309 @@ function renderProps() {
 
         // 按类型渲染字段
         if (a.type === 'demand') {
-            html += '<div class="prop-row"><span class="prop-label">减伤%</span><input class="prop-input" type="number" value="' + (a['需求减伤'] || 0) + '"></div>';
-            html += '<div class="prop-row"><span class="prop-label">治疗</span><input class="prop-input" type="number" value="' + (a['需求治疗'] || 0) + '"></div>';
+            html += '<div class="prop-row"><span class="prop-label">减伤%</span><input class="prop-input" type="number" value="' + (a['需求减伤'] || 0) + '" onchange="updateActionProp(' + i + ', \'需求减伤\', parseFloat(this.value) || 0)"></div>';
+            html += '<div class="prop-row"><span class="prop-label">治疗</span><input class="prop-input" type="number" value="' + (a['需求治疗'] || 0) + '" onchange="updateActionProp(' + i + ', \'需求治疗\', parseFloat(this.value) || 0)"></div>';
         } else if (a.type === 'skillSuggestion') {
-            html += '<div class="prop-row"><span class="prop-label">技能ID</span><input class="prop-input" type="number" value="' + (a.skillId || 0) + '"></div>';
-            html += '<div class="prop-row"><span class="prop-label">名称</span><input class="prop-input" type="text" value="' + esc(a.label || '') + '"></div>';
+            html += '<div class="prop-row"><span class="prop-label">技能ID</span><input class="prop-input" type="number" value="' + (a.skillId || 0) + '" onchange="updateActionProp(' + i + ', \'skillId\', parseInt(this.value) || 0)"></div>';
+            html += '<div class="prop-row"><span class="prop-label">名称</span><input class="prop-input" type="text" value="' + esc(a.label || '') + '" onchange="updateActionProp(' + i + ', \'label\', this.value)"></div>';
             html += '<div class="prop-row"><span class="prop-label">优先级</span>';
-            html += '<select class="prop-input">';
+            html += '<select class="prop-input" onchange="updateActionProp(' + i + ', \'priority\', this.value)">';
             html += '<option value="high"' + (a.priority === 'high' ? ' selected' : '') + '>high</option>';
             html += '<option value="normal"' + (a.priority === 'normal' ? ' selected' : '') + '>normal</option>';
             html += '<option value="optional"' + (a.priority === 'optional' ? ' selected' : '') + '>optional</option>';
             html += '</select></div>';
         } else if (a.type === 'setVariable') {
-            html += '<div class="prop-row"><span class="prop-label">变量名</span><input class="prop-input" type="text" value="' + esc(a.variableName || '') + '"></div>';
+            html += '<div class="prop-row"><span class="prop-label">变量名</span><input class="prop-input" type="text" value="' + esc(a.variableName || '') + '" onchange="updateActionProp(' + i + ', \'variableName\', this.value)"></div>';
             html += '<div class="prop-row"><span class="prop-label">值</span>';
-            html += '<select class="prop-input">';
+            html += '<select class="prop-input" onchange="updateActionProp(' + i + ', \'value\', this.value === \'true\')">';
             html += '<option value="true"' + (a.value === true ? ' selected' : '') + '>true</option>';
             html += '<option value="false"' + (a.value === false ? ' selected' : '') + '>false</option>';
             html += '</select></div>';
         } else if (a.type === 'toggleVariable') {
-            html += '<div class="prop-row"><span class="prop-label">变量名</span><input class="prop-input" type="text" value="' + esc(a.variableName || '') + '"></div>';
+            html += '<div class="prop-row"><span class="prop-label">变量名</span><input class="prop-input" type="text" value="' + esc(a.variableName || '') + '" onchange="updateActionProp(' + i + ', \'variableName\', this.value)"></div>';
         } else if (a.type === 'logMessage') {
-            html += '<div class="prop-row"><span class="prop-label">消息</span><input class="prop-input" type="text" value="' + esc(a.message || '') + '"></div>';
+            html += '<div class="prop-row"><span class="prop-label">消息</span><input class="prop-input" type="text" value="' + esc(a.message || '') + '" onchange="updateActionProp(' + i + ', \'message\', this.value)"></div>';
         } else if (a.type === 'switchPhase') {
-            html += '<div class="prop-row"><span class="prop-label">目标阶段</span><input class="prop-input" type="text" value="' + esc(a.targetPhase || '') + '"></div>';
-            html += '<div class="prop-row"><span class="prop-label">标签</span><input class="prop-input" type="text" value="' + esc(a.label || '') + '"></div>';
+            html += '<div class="prop-row"><span class="prop-label">目标阶段</span><input class="prop-input" type="text" value="' + esc(a.targetPhase || '') + '" onchange="updateActionProp(' + i + ', \'targetPhase\', this.value)"></div>';
+            html += '<div class="prop-row"><span class="prop-label">标签</span><input class="prop-input" type="text" value="' + esc(a.label || '') + '" onchange="updateActionProp(' + i + ', \'label\', this.value)"></div>';
         } else if (a.type === 'switchBranch') {
-            html += '<div class="prop-row"><span class="prop-label">条件变量</span><input class="prop-input" type="text" value="' + esc(a.condition || '') + '"></div>';
-            html += '<div class="prop-row"><span class="prop-label">目标分支</span><input class="prop-input" type="text" value="' + esc(a.targetBranch || '') + '"></div>';
+            html += '<div class="prop-row"><span class="prop-label">条件变量</span><input class="prop-input" type="text" value="' + esc(a.condition || '') + '" onchange="updateActionProp(' + i + ', \'condition\', this.value)"></div>';
+            html += '<div class="prop-row"><span class="prop-label">目标分支</span><input class="prop-input" type="text" value="' + esc(a.targetBranch || '') + '" onchange="updateActionProp(' + i + ', \'targetBranch\', this.value)"></div>';
         }
 
         // 删除按钮
-        html += '<button class="btn danger" style="margin-top:4px;">×</button>';
+        html += '<button class="btn danger" style="margin-top:4px;" onclick="deleteAction(' + i + ')">×</button>';
         html += '</div>'; // end action-item
     }
 
     // 添加动作按钮
-    html += '<button class="btn" style="margin-top:4px;">+ 添加动作</button>';
+    html += '<button class="btn" style="margin-top:4px;" onclick="addAction()">+ 添加动作</button>';
 
     html += '</div>'; // end 动作
 
     // ==================== 删除事件 ====================
-    html += '<button class="btn danger" style="width:100%;">删除事件</button>';
+    html += '<button class="btn danger" style="width:100%;" onclick="deleteEvent()">删除事件</button>';
 
     panel.innerHTML = html;
+}
+
+// ==================== 属性面板事件处理器 ====================
+
+function updateEventProp(field, value) {
+    var ev = getEventByPath(selectedEventPath);
+    if (!ev) return;
+    ev[field] = value;
+    markDirty();
+}
+
+function updateEventNumProp(field, value) {
+    var ev = getEventByPath(selectedEventPath);
+    if (!ev) return;
+    ev[field] = parseFloat(value) || 0;
+    markDirty();
+}
+
+function addSync(side) {
+    var ev = getEventByPath(selectedEventPath);
+    if (!ev) return;
+    ev[side] = { type: 'startsUsing', abilityIds: [] };
+    markDirty();
+}
+
+function removeSync(side) {
+    var ev = getEventByPath(selectedEventPath);
+    if (!ev) return;
+    delete ev[side];
+    markDirty();
+}
+
+function updateSyncProp(side, field, value) {
+    var ev = getEventByPath(selectedEventPath);
+    if (!ev || !ev[side]) return;
+    if (field === 'abilityIds') {
+        ev[side][field] = value ? value.split(',').map(function(s) { return parseInt(s.trim()) || 0; }).filter(function(id) { return id > 0; }) : [];
+    } else {
+        ev[side][field] = value;
+    }
+    markDirty();
+}
+
+function updateActionType(idx, newType) {
+    var ev = getEventByPath(selectedEventPath);
+    if (!ev || !ev.actions) return;
+    ev.actions[idx] = JSON.parse(JSON.stringify(ACTION_TEMPLATES[newType]));
+    markDirty();
+}
+
+function updateActionProp(idx, field, value) {
+    var ev = getEventByPath(selectedEventPath);
+    if (!ev || !ev.actions || !ev.actions[idx]) return;
+    ev.actions[idx][field] = value;
+    markDirty();
+}
+
+function deleteAction(idx) {
+    if (!confirm('确定删除此动作?')) return;
+    var ev = getEventByPath(selectedEventPath);
+    if (!ev || !ev.actions) return;
+    ev.actions.splice(idx, 1);
+    markDirty();
+}
+
+function addAction() {
+    var ev = getEventByPath(selectedEventPath);
+    if (!ev) return;
+    if (!ev.actions) ev.actions = [];
+    ev.actions.push(JSON.parse(JSON.stringify(ACTION_TEMPLATES.skillSuggestion)));
+    markDirty();
+}
+
+function deleteEvent() {
+    if (!confirm('确定删除此事件?')) return;
+    var info = getParentInfo(selectedEventPath);
+    if (!info) return;
+    info.container.splice(info.idx, 1);
+    selectedEventPath = null;
+    markDirty();
 }
 
 function updateFooter() {
     var el = document.getElementById('footer');
     if (el) el.textContent = currentFile ? currentFile + (isDirty ? ' (未保存)' : '') : '就绪';
+}
+
+// ==================== 拖拽 (垂直时间调整) ====================
+
+function bindDragHandlers() {
+    if (_dragHandlersBound) return;
+    _dragHandlersBound = true;
+
+    var tracksEl = document.getElementById('phaseTracks');
+    if (!tracksEl) return;
+
+    // -- 创建 drop indicator (复用) --
+    var dropIndicator = document.createElement('div');
+    dropIndicator.className = 'drop-indicator';
+    dropIndicator.style.display = 'none';
+    tracksEl.appendChild(dropIndicator);
+
+    // -- mousedown: 事件代理在 #phaseTracks --
+    tracksEl.addEventListener('mousedown', function(e) {
+        if (e.button !== 0) return; // 只响应左键
+        var node = e.target.closest('.event-node, .sub-branch-event');
+        if (!node) return;
+        dragState.active = true;
+        dragState.srcPath = node.dataset.path;
+        dragState.startY = e.clientY;
+        dragState.moved = false;
+        e.preventDefault(); // 防止文本选中
+    });
+
+    // -- mousemove: 全局 --
+    document.addEventListener('mousemove', function(e) {
+        if (!dragState.active) return;
+        if (dragState.moved) return; // 已经移动过, 跳过重复计算
+        if (Math.abs(e.clientY - dragState.startY) < 4) return; // 阈值
+
+        dragState.moved = true;
+
+        // 给源节点添加 .dragging 类
+        var srcNode = document.querySelector('[data-path="' + dragState.srcPath + '"]');
+        if (srcNode) {
+            srcNode.classList.add('dragging');
+        }
+
+        // 显示 drop indicator
+        dropIndicator.style.display = 'block';
+    });
+
+    // -- mouseup: 全局 --
+    document.addEventListener('mouseup', function(e) {
+        if (!dragState.active) return;
+
+        var wasMoved = dragState.moved;
+        var srcPath = dragState.srcPath;
+
+        // 重置拖拽状态
+        var srcNode = document.querySelector('[data-path="' + srcPath + '"]');
+        if (srcNode) {
+            srcNode.classList.remove('dragging');
+        }
+        dropIndicator.style.display = 'none';
+        dragState.active = false;
+        dragState.srcPath = null;
+        dragState.moved = false;
+
+        if (!wasMoved) return;
+
+        // 计算新时间
+        var canvasEl = document.getElementById('timelineCanvas');
+        if (!canvasEl) return;
+        var rect = canvasEl.getBoundingClientRect();
+        var canvasTop = rect.top;
+        var rawTime = (e.clientY - canvasTop) / LINE_HEIGHT * TIME_STEP;
+        var newTime = Math.max(0, Math.min(MAX_TIME, Math.round(rawTime / TIME_STEP) * TIME_STEP));
+
+        // 解析事件并更新时间
+        var ev = getEventByPath(srcPath);
+        if (!ev) return;
+        ev.time = newTime;
+        markDirty();
+
+        // 防止后续 click 事件误触发
+        dragState.preventClick = true;
+        setTimeout(function() { dragState.preventClick = false; }, 50);
+    });
+}
+
+// ==================== 右键菜单 ====================
+
+/**
+ * 在 (x, y) 处显示右键菜单
+ * @param {number} x 屏幕 x 坐标 (clientX)
+ * @param {number} y 屏幕 y 坐标 (clientY)
+ * @param {Array} items 菜单项数组: { label, action, danger, separator }
+ */
+function showContextMenu(x, y, items) {
+    var menu = document.getElementById('ctxMenu');
+    if (!menu) return;
+
+    var html = '';
+    for (var i = 0; i < items.length; i++) {
+        var item = items[i];
+        if (item.separator) {
+            html += '<div class="ctx-sep"></div>';
+        } else {
+            var cls = 'ctx-item' + (item.danger ? ' ctx-danger' : '');
+            html += '<div class="' + cls + '" data-action="' + esc(item.action) + '">' + esc(item.label) + '</div>';
+        }
+    }
+    menu.innerHTML = html;
+
+    menu.style.left = x + 'px';
+    menu.style.top = y + 'px';
+    menu.classList.remove('hide');
+
+    // 菜单项点击
+    menu.onclick = function(e) {
+        var target = e.target.closest('.ctx-item');
+        if (!target) return;
+        e.stopPropagation();
+        handleContextAction(target.dataset.action);
+    };
+}
+
+/** 隐藏右键菜单 */
+function hideContextMenu() {
+    var menu = document.getElementById('ctxMenu');
+    if (!menu) return;
+    menu.innerHTML = '';
+    menu.classList.add('hide');
+}
+
+/** 处理菜单动作分发 */
+function handleContextAction(action) {
+    switch (action) {
+        case 'addEvent': {
+            // 在当前阶段添加新事件
+            var phase = getPhase(currentPhaseIdx);
+            if (!phase) break;
+            var newEv = {
+                id: 'ev' + (phase.events.length + 1),
+                name: '新事件',
+                time: ctxMenuClickTime,
+                duration: 0,
+                actions: []
+            };
+            phase.events.push(newEv);
+            markDirty();
+            break;
+        }
+        case 'addAction': {
+            // 给当前右键目标事件添加一个默认动作
+            var ev = getEventByPath(ctxMenuTargetPath);
+            if (!ev) break;
+            if (!ev.actions) ev.actions = [];
+            ev.actions.push({
+                type: 'demand',
+                '需求减伤': 0,
+                '需求治疗': 0
+            });
+            markDirty();
+            break;
+        }
+        case 'deleteEvent': {
+            // 删除事件（需要确认）
+            if (!confirm('确认删除此事件？')) break;
+            var info = getParentInfo(ctxMenuTargetPath);
+            if (!info) break;
+            info.container.splice(info.idx, 1);
+            selectedEventPath = null;
+            markDirty();
+            break;
+        }
+    }
+    hideContextMenu();
 }
 
 // ==================== 页面初始化 ====================
@@ -594,4 +1033,62 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     renderAll();
     updateFooter();
+
+    // ---- 右键菜单事件绑定 ----
+
+    // 画布空白处右键 → 添加事件
+    var canvas = document.getElementById('timelineCanvas');
+    if (canvas) {
+        canvas.addEventListener('contextmenu', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+
+            var rect = canvas.getBoundingClientRect();
+            var y = e.clientY - rect.top;
+            ctxMenuClickTime = Math.round(y / LINE_HEIGHT) * TIME_STEP;
+            if (ctxMenuClickTime < 0) ctxMenuClickTime = 0;
+            if (ctxMenuClickTime > MAX_TIME) ctxMenuClickTime = MAX_TIME;
+
+            showContextMenu(e.clientX, e.clientY, [
+                { label: '添加事件', action: 'addEvent' }
+            ]);
+        });
+    }
+
+    // 事件节点/子分支事件右键 → 添加动作 / 删除事件
+    var tracks = document.getElementById('phaseTracks');
+    if (tracks) {
+        tracks.addEventListener('contextmenu', function(e) {
+            var node = e.target.closest('.event-node, .sub-branch-event');
+            if (!node) return;
+
+            e.preventDefault();
+            e.stopPropagation();
+
+            ctxMenuTargetPath = node.dataset.path;
+
+            // 自动选中该事件
+            selectedEventPath = ctxMenuTargetPath;
+            var allNodes = tracks.querySelectorAll('.event-node, .sub-branch-event');
+            for (var i = 0; i < allNodes.length; i++) {
+                allNodes[i].classList.remove('sel');
+            }
+            node.classList.add('sel');
+            renderProps();
+
+            showContextMenu(e.clientX, e.clientY, [
+                { label: '添加动作', action: 'addAction' },
+                { label: '删除事件', action: 'deleteEvent', danger: true }
+            ]);
+        });
+    }
+
+    // 点击菜单外部任意位置 → 关闭菜单
+    document.addEventListener('mousedown', function(e) {
+        var menu = document.getElementById('ctxMenu');
+        if (!menu || menu.classList.contains('hide')) return;
+        if (!menu.contains(e.target)) {
+            hideContextMenu();
+        }
+    });
 });
