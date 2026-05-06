@@ -439,7 +439,6 @@ function addPhase() {
 /** 删除阶段 */
 function deletePhase(idx) {
     if (!timelineData || timelineData.phases.length <= 1) return;
-    if (!confirm('确定删除阶段 "' + timelineData.phases[idx].name + '"？')) return;
 
     timelineData.phases.splice(idx, 1);
 
@@ -1028,12 +1027,19 @@ function createBranchForAction(actionIdx) {
 }
 
 function deleteEvent() {
-    if (!confirm('确定删除此事件?')) return;
-    var info = getParentInfo(selectedEventPath);
-    if (!info) return;
-    info.container.splice(info.idx, 1);
-    selectedEventPath = null;
-    markDirty();
+    // 双击确认删除（1s 内连续点击两次）
+    var now = Date.now();
+    var last = eventDeleteTimers[selectedEventPath] || 0;
+    if (now - last < 1000) {
+        var info = getParentInfo(selectedEventPath);
+        if (!info) return;
+        info.container.splice(info.idx, 1);
+        selectedEventPath = null;
+        delete eventDeleteTimers[selectedEventPath];
+        markDirty();
+    } else {
+        eventDeleteTimers[selectedEventPath] = now;
+    }
 }
 
 function updateFooter() {
@@ -1523,12 +1529,18 @@ document.addEventListener('DOMContentLoaded', function() {
             var tag = e.target.tagName;
             if (tag === 'INPUT' || tag === 'TEXTAREA') return;
             e.preventDefault();
-            if (confirm('确认删除此事件？')) {
+            // 双击 Delete 确认删除
+            var now = Date.now();
+            var last = eventDeleteTimers[selectedEventPath] || 0;
+            if (now - last < 1000) {
                 var info = getParentInfo(selectedEventPath);
                 if (!info) return;
                 info.container.splice(info.idx, 1);
                 selectedEventPath = null;
+                delete eventDeleteTimers[selectedEventPath];
                 markDirty();
+            } else {
+                eventDeleteTimers[selectedEventPath] = now;
             }
             return;
         }
