@@ -593,12 +593,6 @@ function renderAllSubBranches() {
         track.appendChild(container);
     }
 }
-            node.style.background = brColor;
-            node.style.boxShadow = '0 0 8px ' + brColor;
-
-        track.appendChild(container);
-    }
-}
 
 function renderProps() {
     var panel = document.getElementById('propPanel');
