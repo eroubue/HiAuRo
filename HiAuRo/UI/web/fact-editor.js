@@ -498,18 +498,24 @@ function renderPhaseTracks() {
         }
 
         // 检查是否有 switchPhase 事件，如果有则截断主线到此事件时间
+        var switchPhaseTime = null;
         if (phase.events && phase.events.length) {
             for (var ei = 0; ei < phase.events.length; ei++) {
                 var evt = phase.events[ei];
                 if (evt.actions) {
                     for (var ai = 0; ai < evt.actions.length; ai++) {
                         if (evt.actions[ai].type === 'switchPhase') {
-                            mainLine.style.maxHeight = timeToY(evt.time) + 'px';
+                            switchPhaseTime = evt.time;
                             break;
                         }
                     }
                 }
+                if (switchPhaseTime !== null) break;
             }
+        }
+        if (switchPhaseTime !== null) {
+            mainLine.style.flex = 'none';
+            mainLine.style.height = timeToY(switchPhaseTime) + 'px';
         }
 
         track.appendChild(label);
@@ -684,9 +690,25 @@ function renderAllSubBranches() {
         trackLine.className = 'sub-branch-track';
         trackLine.style.background = brColor;
         trackLine.style.boxShadow = '0 0 4px ' + brColor;
-        // 延伸至 MAX_TIME（从切换事件时间到最大时间）
-        var remainingTime = MAX_TIME - (switchEvent ? switchEvent.time : 0);
-        trackLine.style.minHeight = (remainingTime / TIME_STEP * LINE_HEIGHT) + 'px';
+        // 延伸至 MAX_TIME（从切换事件时间到最大时间），若有 switchPhase 则截断
+        var branchEndTime = MAX_TIME;
+        if (branch.events) {
+            for (var bei = 0; bei < branch.events.length; bei++) {
+                var bev = branch.events[bei];
+                if (bev.actions) {
+                    for (var bai = 0; bai < bev.actions.length; bai++) {
+                        if (bev.actions[bai].type === 'switchPhase') {
+                            branchEndTime = (switchEvent ? switchEvent.time : 0) + bev.time;
+                            break;
+                        }
+                    }
+                }
+                if (branchEndTime < MAX_TIME) break;
+            }
+        }
+        var remainingTime = branchEndTime - (switchEvent ? switchEvent.time : 0);
+        trackLine.style.flex = 'none';
+        trackLine.style.height = (remainingTime / TIME_STEP * LINE_HEIGHT) + 'px';
         container.appendChild(trackLine);
 
         // ---- 分支事件 ----
