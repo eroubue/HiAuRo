@@ -692,6 +692,43 @@ button.danger:hover,
     cursor: not-allowed;
 }
 
+/* ---- 阶段树形视图 ---- */
+.phase-toggle {
+    width: 16px; height: 16px;
+    font-size: 10px; line-height: 16px;
+    text-align: center; flex-shrink: 0;
+    color: var(--tx2); cursor: pointer; margin-right: 4px;
+    transition: transform 0.15s;
+}
+.phase-toggle.expanded { transform: rotate(90deg); }
+
+.phase-children { overflow: hidden; transition: max-height 0.2s ease; }
+.phase-children.collapsed { max-height: 0 !important; }
+
+.tree-event {
+    display: flex; align-items: center;
+    padding: 3px 8px; margin: 1px 0; border-radius: 4px;
+    cursor: pointer; font-size: 11px; color: var(--tx1);
+    transition: background 0.1s;
+}
+.tree-event:hover { background: var(--accent-bg); color: var(--tx0); }
+.tree-event.active { background: rgba(0,212,255,0.12); color: var(--accent); }
+
+.tree-dot {
+    width: 8px; height: 8px; border-radius: 50%;
+    flex-shrink: 0; margin-right: 6px;
+}
+
+.tree-branch-header {
+    display: flex; align-items: center;
+    padding: 3px 8px; margin: 2px 0; border-radius: 4px;
+    cursor: pointer; font-size: 11px; color: var(--tx1);
+    font-weight: 600;
+}
+.tree-branch-header:hover { background: var(--accent-bg); }
+
+.tree-branch-toggle { margin-right: 4px; font-size: 10px; color: var(--tx2); }
+
 .phase-rename-input {
     flex: 1;
     font-size: 13px;

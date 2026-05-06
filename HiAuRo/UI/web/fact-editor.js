@@ -45,6 +45,8 @@ var fileHandle = null;         // FileSystemFileHandle
 var isDirty = false;           // 未保存修改标记
 var selectedEventPath = null;  // 选中事件路径 (如 'p0_ev0')
 var currentPhaseIdx = 0;       // 当前编辑的阶段索引
+var collapsedPhases = {};      // 左侧面板阶段折叠状态
+var collapsedBranches = {};    // 左侧面板分支折叠状态
 
 // ==================== 右键菜单状态 ====================
 
@@ -73,7 +75,7 @@ function newTimeline() {
         territoryId: 0,
         author: '',
         phases: [
-            { id: 'p1', name: '阶段1', events: [], switch: null }
+            { id: 'p1', name: 'P1', events: [], switch: null }
         ]
     };
 }
@@ -167,7 +169,7 @@ function switchPhase(idx) {
     renderAll();
 }
 
-/** 渲染左侧阶段列表 */
+/** 渲染左侧阶段列表（树形视图） */
 function renderPhaseList() {
     var el = document.getElementById('phaseList');
     if (!el) return;
@@ -176,6 +178,148 @@ function renderPhaseList() {
         el.innerHTML = '<div class="hint">暂无阶段</div>';
         return;
     }
+
+    var phases = timelineData.phases;
+    var html = '';
+    for (var i = 0; i < phases.length; i++) {
+        var ph = phases[i];
+        var activeClass = (i === currentPhaseIdx) ? ' active' : '';
+        var collapsed = collapsedPhases[i];
+        var toggleClass = collapsed ? '' : ' expanded';
+        var childClass = collapsed ? ' collapsed' : '';
+
+        html += '<div class="phase-item' + activeClass + '" data-idx="' + i + '">';
+        html += '<span class="phase-toggle' + toggleClass + '" data-idx="' + i + '" title="展开/折叠">▶</span>';
+        html += '<span class="phase-name" data-idx="' + i + '">' + esc(ph.name) + '</span>';
+        html += '<span style="font-size:10px;color:var(--tx2);margin-right:4px">' + (ph.events ? ph.events.length : 0) + '事件</span>';
+        if (ph.switch && ph.switch.branches && ph.switch.branches.length) {
+            html += '<span style="font-size:10px;color:var(--tx2);margin-right:4px">' + ph.switch.branches.length + '分支</span>';
+        }
+        if (phases.length > 1) {
+            html += '<button class="phase-del" data-idx="' + i + '" title="删除阶段">×</button>';
+        }
+        html += '</div>';
+
+        // 展开的子项
+        html += '<div class="phase-children' + childClass + '" data-phase-idx="' + i + '">';
+        // 事件
+        if (ph.events && ph.events.length) {
+            for (var evIdx = 0; evIdx < ph.events.length; evIdx++) {
+                var ev = ph.events[evIdx];
+                var evPath = 'p' + i + '_ev' + evIdx;
+                var evColor = getEventColor(ev);
+                var evActive = selectedEventPath === evPath ? ' active' : '';
+                html += '<div class="tree-event' + evActive + '" data-path="' + evPath + '" style="padding-left:24px">';
+                html += '<span class="tree-dot" style="background:' + evColor + '"></span>';
+                html += '<span>' + esc(formatTime(ev.time)) + ' | ' + esc(ev.name) + '</span>';
+                html += '</div>';
+
+                // 如果此事件触发了分支切换（是switch event），且当前phase有switch分支
+                var isSwitchEv = ev.actions && ev.actions.length && ev.actions[0].type === 'switchBranch';
+                if (isSwitchEv && ph.switch && ph.switch.branches && ph.switch.branches.length) {
+                    for (var brIdx = 0; brIdx < ph.switch.branches.length; brIdx++) {
+                        var br = ph.switch.branches[brIdx];
+                        var brKey = 'p' + i + '_br' + brIdx;
+                        var brCollapsed = collapsedBranches[brKey];
+                        var brToggle = brCollapsed ? '▶' : '▼';
+                        html += '<div class="tree-branch-header" data-branch-key="' + brKey + '" style="padding-left:40px">';
+                        html += '<span class="tree-branch-toggle">' + brToggle + '</span>';
+                        html += '<span>' + esc(br.name) + '</span>';
+                        html += '</div>';
+                        if (!brCollapsed && br.events && br.events.length) {
+                            for (var brEvIdx = 0; brEvIdx < br.events.length; brEvIdx++) {
+                                var brEv = br.events[brEvIdx];
+                                var brEvPath = 'p' + i + '_switch_br' + brIdx + '_ev' + brEvIdx;
+                                var brEvActive = selectedEventPath === brEvPath ? ' active' : '';
+                                html += '<div class="tree-event' + brEvActive + '" data-path="' + brEvPath + '" style="padding-left:56px">';
+                                html += '<span class="tree-dot" style="background:' + BRANCH_COLORS[brIdx % BRANCH_COLORS.length] + '"></span>';
+                                html += '<span>' + esc(formatTime(brEv.time)) + ' | ' + esc(brEv.name) + '</span>';
+                                html += '</div>';
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        html += '</div>';
+    }
+
+    var canAdd = phases.length < MAX_PHASES;
+    html += '<button class="phase-add" id="btnAddPhase"' + (canAdd ? '' : ' disabled') + '>' + esc(canAdd ? '+ 添加阶段' : '已达上限 (' + MAX_PHASES + ')') + '</button>';
+
+    el.innerHTML = html;
+
+    // 阶段点击切换
+    el.querySelectorAll('.phase-item').forEach(function(item) {
+        item.addEventListener('click', function(e) {
+            if (e.target.closest('.phase-del') || e.target.closest('.phase-toggle')) return;
+            var idx = parseInt(this.dataset.idx);
+            if (!isNaN(idx) && idx !== currentPhaseIdx) {
+                switchPhase(idx);
+            }
+        });
+    });
+
+    // 折叠/展开阶段
+    el.querySelectorAll('.phase-toggle').forEach(function(toggle) {
+        toggle.addEventListener('click', function(e) {
+            e.stopPropagation();
+            var idx = parseInt(this.dataset.idx);
+            if (isNaN(idx)) return;
+            collapsedPhases[idx] = !collapsedPhases[idx];
+            renderPhaseList(); // 重新渲染
+        });
+    });
+
+    // 折叠/展开分支
+    el.querySelectorAll('.tree-branch-header').forEach(function(header) {
+        header.addEventListener('click', function(e) {
+            e.stopPropagation();
+            var key = this.dataset.branchKey;
+            if (!key) return;
+            collapsedBranches[key] = !collapsedBranches[key];
+            renderPhaseList();
+        });
+    });
+
+    // 事件点击（树中选中）
+    el.querySelectorAll('.tree-event').forEach(function(evEl) {
+        evEl.addEventListener('click', function(e) {
+            e.stopPropagation();
+            var path = this.dataset.path;
+            if (!path) return;
+            selectedEventPath = path;
+            // 同步更新时间轴
+            var phaseMatch = path.match(/^p(\d+)/);
+            if (phaseMatch) {
+                var pIdx = parseInt(phaseMatch[1]);
+                if (!isNaN(pIdx) && pIdx !== currentPhaseIdx) {
+                    currentPhaseIdx = pIdx;
+                }
+            }
+            markDirty();
+        });
+    });
+
+    // 双击重命名
+    el.querySelectorAll('.phase-name').forEach(function(span) {
+        span.addEventListener('dblclick', function(e) {
+            e.stopPropagation();
+            var idx = parseInt(this.dataset.idx);
+            if (!isNaN(idx)) startRename(idx, this);
+        });
+    });
+
+    // 删除按钮
+    el.querySelectorAll('.phase-del').forEach(function(btn) {
+        btn.addEventListener('click', function(e) {
+            e.stopPropagation();
+            if (!confirm('确定删除此阶段？')) return;
+            var idx = parseInt(this.dataset.idx);
+            if (!isNaN(idx)) deletePhase(idx);
+        });
+    });
+}
 
     var phases = timelineData.phases;
     var html = '';
@@ -299,7 +443,7 @@ function addPhase() {
     var newId = 'p' + (timelineData.phases.length + 1);
     timelineData.phases.push({
         id: newId,
-        name: '新阶段',
+        name: 'P' + (timelineData.phases.length + 1),
         events: [],
         switch: null
     });
@@ -546,11 +690,14 @@ function renderAllSubBranches() {
         label.textContent = esc(branch.name);
         container.appendChild(label);
 
-        // ---- 分支轨道线 (从切换点向下延伸) ----
+        // ---- 分支轨道线 (从切换点向下延伸至时间轴底部) ----
         var trackLine = document.createElement('div');
         trackLine.className = 'sub-branch-track';
         trackLine.style.background = brColor;
         trackLine.style.boxShadow = '0 0 4px ' + brColor;
+        // 延伸至 MAX_TIME（从切换事件时间到最大时间）
+        var remainingTime = MAX_TIME - (switchEvent ? switchEvent.time : 0);
+        trackLine.style.minHeight = (remainingTime / TIME_STEP * LINE_HEIGHT) + 'px';
         container.appendChild(trackLine);
 
         // ---- 分支事件 ----
@@ -836,7 +983,7 @@ function createPhaseForAction(actionIdx) {
     if (timelineData.phases.length >= MAX_PHASES) { showError('已达阶段上限 (' + MAX_PHASES + ')'); return; }
     var ev = getEventByPath(selectedEventPath);
     if (!ev || !ev.actions || !ev.actions[actionIdx]) return;
-    var newPhase = { id: 'p' + (timelineData.phases.length + 1), name: '新阶段', events: [], switch: null };
+    var newPhase = { id: 'p' + (timelineData.phases.length + 1), name: 'P' + (timelineData.phases.length + 1), events: [], switch: null };
     timelineData.phases.push(newPhase);
     ev.actions[actionIdx].targetPhase = newPhase.id;
     markDirty();
@@ -851,7 +998,7 @@ function createBranchForAction(actionIdx) {
     }
     var ev = getEventByPath(selectedEventPath);
     if (!ev || !ev.actions || !ev.actions[actionIdx]) return;
-    var newBranch = { name: '新分支', events: [] };
+    var newBranch = { name: '分支' + (phase.switch.branches.length + 1), events: [] };
     phase.switch.branches.push(newBranch);
     ev.actions[actionIdx].targetBranch = newBranch.name;
     markDirty();
@@ -1118,16 +1265,18 @@ function showContextMenu(x, y, items) {
     };
 }
 
-/** 隐藏右键菜单 */
+/** 隐藏右键菜单（不自动解冻横线） */
 function hideContextMenu() {
     var menu = document.getElementById('ctxMenu');
     if (!menu) return;
     menu.innerHTML = '';
     menu.classList.add('hide');
+}
 
-    // 解冻鼠标横线
+/** 解冻鼠标横线 */
+function unfreezeMarker() {
     var marker = document.getElementById('mouseMarker');
-    if (marker) marker.classList.remove('frozen');
+    if (marker) { marker.classList.remove('frozen'); marker.classList.add('hide'); }
 }
 
 /** 处理菜单动作分发 */
@@ -1174,6 +1323,7 @@ function handleContextAction(action) {
         }
     }
     hideContextMenu();
+    unfreezeMarker();
 }
 
 // ==================== 页面初始化 ====================
@@ -1255,6 +1405,7 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!menu || menu.classList.contains('hide')) return;
         if (!menu.contains(e.target)) {
             hideContextMenu();
+            unfreezeMarker();
         }
     });
 
