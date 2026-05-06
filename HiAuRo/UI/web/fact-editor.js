@@ -1048,8 +1048,9 @@ function bindDragHandlers() {
         var canvasEl = document.getElementById('timelineCanvas');
         if (!canvasEl) return;
         var rect = canvasEl.getBoundingClientRect();
-        var canvasTop = rect.top;
-        var rawTime = (e.clientY - canvasTop) / LINE_HEIGHT * TIME_STEP;
+        var scrollEl2 = canvasEl.querySelector('.timeline-scroll');
+        var scrollTop = scrollEl2 ? scrollEl2.scrollTop : 0;
+        var rawTime = (e.clientY - rect.top + scrollTop) / LINE_HEIGHT * TIME_STEP;
         var newTime = Math.max(0, Math.min(MAX_TIME, Math.round(rawTime / TIME_STEP) * TIME_STEP));
 
         // 解析事件并更新时间
@@ -1186,7 +1187,9 @@ document.addEventListener('DOMContentLoaded', function() {
             e.stopPropagation();
 
             var rect = canvas.getBoundingClientRect();
-            var y = e.clientY - rect.top;
+            var scrollEl3 = canvas.querySelector('.timeline-scroll');
+            var scrollTop3 = scrollEl3 ? scrollEl3.scrollTop : 0;
+            var y = e.clientY - rect.top + scrollTop3;
             ctxMenuClickTime = Math.round(y / LINE_HEIGHT) * TIME_STEP;
             if (ctxMenuClickTime < 0) ctxMenuClickTime = 0;
             if (ctxMenuClickTime > MAX_TIME) ctxMenuClickTime = MAX_TIME;
@@ -1237,16 +1240,18 @@ document.addEventListener('DOMContentLoaded', function() {
     // ---- 鼠标时间标线 ----
     var mouseMarker = document.getElementById('mouseMarker');
     var mouseMarkerLabel = mouseMarker ? mouseMarker.querySelector('.mouse-marker-label') : null;
+    var scrollEl = canvas ? canvas.querySelector('.timeline-scroll') : null;
     if (canvas) {
         canvas.addEventListener('mousemove', function(e) {
             if (dragState.active && dragState.moved) return; // 拖拽时不显示
             if (!mouseMarker) return;
             mouseMarker.classList.remove('hide');
             var rect = canvas.getBoundingClientRect();
-            var y = e.clientY - rect.top + canvas.scrollTop;
+            var scrollTop = scrollEl ? scrollEl.scrollTop : 0;
+            var y = e.clientY - rect.top + scrollTop;
             var time = y / LINE_HEIGHT * TIME_STEP;
             time = Math.round(time * 10) / 10; // 精度 0.1s
-            mouseMarker.style.top = y + 'px';
+            mouseMarker.style.top = (e.clientY - rect.top) + 'px';
             if (mouseMarkerLabel) {
                 mouseMarkerLabel.textContent = formatTime(time);
             }
