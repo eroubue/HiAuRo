@@ -831,7 +831,7 @@ Wave FINAL (Verification — 4 parallel reviews):
 
   **Commit**: YES
 
-- [ ] **T15. Polish (Node Colors, Scroll Sync, Edge Cases)**
+- [x] **T15. Polish (Node Colors, Scroll Sync, Edge Cases)**
 
   **What to do**:
   Final polish pass:

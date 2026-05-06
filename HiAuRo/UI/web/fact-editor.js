@@ -16,7 +16,7 @@ var EVENT_COLORS = {
     skillSuggestion:  '#00d4ff',  // 青色 - 技能建议
     setVariable:      '#00f0a0',  // 绿色 - 设置变量
     toggleVariable:   '#00f0a0',  // 绿色 - 切换变量
-    logMessage:       '#64748b',  // 灰色 - 日志
+    logMessage:       '#94a3b8',  // 灰色 - 日志（提高亮度确保在深色背景可见）
     default:          '#00d4ff'   // 青色 - 默认
 };
 
@@ -144,9 +144,12 @@ function getEventColor(ev) {
 }
 
 function markDirty() {
-    isDirty = true;
-    renderAll();
-    updateFooter();
+    if (markDirty._timer) clearTimeout(markDirty._timer);
+    markDirty._timer = setTimeout(function() {
+        isDirty = true;
+        renderAll();
+        updateFooter();
+    }, 30);
 }
 
 // ==================== 渲染 (占位 — T5~T8 实现) ====================
@@ -345,7 +348,7 @@ function renderPhaseTracks() {
     if (!el) return;
 
     if (!timelineData || !timelineData.phases || timelineData.phases.length === 0) {
-        el.innerHTML = '<div class="hint">暂无阶段数据</div>';
+        el.innerHTML = '<div class="hint">暂无阶段数据，点击"新建"开始创建</div>';
         return;
     }
 
@@ -401,8 +404,8 @@ function renderEvents() {
     }
 
     var events = phase.events;
-    var prevTop = -999;      // 上一个事件 top 位置
-    var prevSide = 'right';  // 上一个标签使用哪一侧
+    var lastRightTop = -9999; // 右侧最后一个可见标签的 top
+    var lastLeftTop = -9999;  // 左侧最后一个可见标签的 top
 
     for (var i = 0; i < events.length; i++) {
         var ev = events[i];
@@ -413,6 +416,7 @@ function renderEvents() {
         node.className = 'event-node';
         node.style.top = top + 'px';
         node.dataset.path = 'p' + currentPhaseIdx + '_ev' + i;
+        node.title = esc(ev.name) + ' (' + formatTime(ev.time) + ')';
 
         var color = getEventColor(ev);
         node.style.background = color;
@@ -446,20 +450,28 @@ function renderEvents() {
         label.style.top = top + 'px';
         label.textContent = formatTime(ev.time) + ' | ' + ev.name;
 
-        // 防重叠：与上一个标签垂直距离 < 30px 则交替换侧
-        var distance = Math.abs(top - prevTop);
-        if (distance < 30 && prevSide === 'right') {
-            label.className = 'event-label-alt';
-            prevSide = 'left';
-        } else if (distance < 30 && prevSide === 'left') {
-            label.className = 'event-label';
-            prevSide = 'right';
-        } else {
-            label.className = 'event-label';
-            prevSide = 'right';
+        // 防重叠：与同一侧标签垂直距离 < 40px 则换侧；换侧后仍重叠则隐藏
+        var distRight = Math.abs(top - lastRightTop);
+        var distLeft = Math.abs(top - lastLeftTop);
+        var useLeft = false;
+        var hideLabel = false;
+
+        if (distRight < 40) {
+            useLeft = true;
+            if (distLeft < 40) {
+                hideLabel = true;
+            }
         }
 
-        prevTop = top;
+        if (hideLabel) {
+            label.style.display = 'none';
+        } else if (useLeft) {
+            label.className = 'event-label-alt';
+            lastLeftTop = top;
+        } else {
+            label.className = 'event-label';
+            lastRightTop = top;
+        }
 
         track.appendChild(node);
         track.appendChild(label);
@@ -551,6 +563,7 @@ function renderAllSubBranches() {
             node.className = 'sub-branch-event';
             node.style.top = evTop + 'px';
             node.dataset.path = path;
+            node.title = esc(ev.name) + ' (' + formatTime(ev.time) + ')';
             node.style.background = brColor;
             node.style.boxShadow = '0 0 8px ' + brColor;
 
@@ -846,6 +859,24 @@ function updateFooter() {
     if (el) el.textContent = currentFile ? currentFile + (isDirty ? ' (未保存)' : '') : '就绪';
 }
 
+function showError(msg) {
+    var el = document.getElementById('footer');
+    if (!el) return;
+    el.textContent = msg;
+    el.style.color = 'var(--red)';
+    setTimeout(function() {
+        el.style.color = '';
+        updateFooter();
+    }, 3000);
+}
+
+function showLoading(msg) {
+    var el = document.getElementById('footer');
+    if (!el) return;
+    el.textContent = msg;
+    el.style.color = '';
+}
+
 // ==================== 文件操作 ====================
 
 function newFile() {
@@ -866,6 +897,7 @@ function loadFile() {
 }
 
 function readFileObj(file) {
+    showLoading('加载中...');
     var reader = new FileReader();
     reader.onload = function() {
         try {
@@ -879,8 +911,11 @@ function readFileObj(file) {
             renderAll();
             updateFooter();
         } catch (ex) {
-            document.getElementById('footer').textContent = 'JSON解析失败: ' + esc(ex.message);
+            showError('JSON解析失败: ' + esc(ex.message));
         }
+    };
+    reader.onerror = function() {
+        showError('文件读取失败');
     };
     reader.readAsText(file);
 }
