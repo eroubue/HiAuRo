@@ -488,7 +488,7 @@ function renderAllSubBranches() {
     var track = document.querySelector('.phase-track[data-phase-idx="' + currentPhaseIdx + '"]');
     if (!track) return;
 
-    // 清除旧的子分支元素
+    // 清除旧的子分支
     var oldBranches = track.querySelectorAll('.sub-branch');
     for (var b = 0; b < oldBranches.length; b++) {
         oldBranches[b].remove();
@@ -506,25 +506,39 @@ function renderAllSubBranches() {
             break;
         }
     }
-    if (!switchEvent && events.length > 0) {
-        switchEvent = events[events.length - 1];
-    }
-    if (!events.length) return; // 无事件，无法定位分支原点
+    if (!switchEvent && events.length > 0) switchEvent = events[events.length - 1];
+    if (!events.length) return;
 
     var branchOriginTop = switchEvent ? (switchEvent.time / TIME_STEP * LINE_HEIGHT) : 0;
-
+    // 主轴在 .phase-track 中居中 (100px 宽), 主轴线约在 45px 处
+    var mainLineX = 45;
     var branches = phase.switch.branches;
+
     for (var brIdx = 0; brIdx < branches.length; brIdx++) {
         var branch = branches[brIdx];
         var brColor = BRANCH_COLORS[brIdx % BRANCH_COLORS.length];
+        var branchX = mainLineX + 18 + brIdx * 20; // 分支线在主轴线右侧
 
-        // ---- 容器 ----
+        // ---- 分支容器 ----
         var container = document.createElement('div');
         container.className = 'sub-branch';
         container.setAttribute('data-branch-idx', brIdx);
         container.setAttribute('data-phase-idx', currentPhaseIdx);
         container.style.top = branchOriginTop + 'px';
-        container.style.left = (120 + brIdx * 130) + 'px';
+        container.style.left = branchX + 'px';
+        // 容器宽度 = 其子元素最大宽度
+        container.style.minWidth = '40px';
+
+        // ---- 横向折线 (从主轴线连到分支线) ----
+        var hook = document.createElement('div');
+        hook.className = 'sub-branch-hook';
+        hook.style.width = (branchX - mainLineX) + 'px';
+        hook.style.position = 'absolute';
+        hook.style.left = '-' + (branchX - mainLineX) + 'px';
+        hook.style.top = '-1px';
+        hook.style.background = brColor;
+        hook.style.boxShadow = '0 0 4px ' + brColor;
+        container.appendChild(hook);
 
         // ---- 分支标签 ----
         var label = document.createElement('div');
@@ -532,26 +546,12 @@ function renderAllSubBranches() {
         label.textContent = esc(branch.name);
         container.appendChild(label);
 
-        // ---- 分支轨道线 ----
+        // ---- 分支轨道线 (从切换点向下延伸) ----
         var trackLine = document.createElement('div');
         trackLine.className = 'sub-branch-track';
         trackLine.style.background = brColor;
+        trackLine.style.boxShadow = '0 0 4px ' + brColor;
         container.appendChild(trackLine);
-
-        // ---- 迷你时间刻度（相对时间）----
-        var ruler = document.createElement('div');
-        ruler.className = 'sub-branch-ruler';
-        for (var t = 0; t <= MAX_TIME; t += TIME_STEP) {
-            var tick = document.createElement('div');
-            tick.className = 'tick';
-            tick.style.position = 'absolute';
-            tick.style.left = '0';
-            tick.style.right = '0';
-            tick.style.top = (t / TIME_STEP * LINE_HEIGHT) + 'px';
-            tick.textContent = formatTime(t);
-            ruler.appendChild(tick);
-        }
-        container.appendChild(ruler);
 
         // ---- 分支事件 ----
         for (var evIdx = 0; evIdx < branch.events.length; evIdx++) {
@@ -562,50 +562,39 @@ function renderAllSubBranches() {
             var node = document.createElement('div');
             node.className = 'sub-branch-event';
             node.style.top = evTop + 'px';
+            node.style.background = brColor;
+            node.style.boxShadow = '0 0 6px ' + brColor;
             node.dataset.path = path;
             node.title = esc(ev.name) + ' (' + formatTime(ev.time) + ')';
-            node.style.background = brColor;
-            node.style.boxShadow = '0 0 8px ' + brColor;
 
-            if (selectedEventPath === path) {
-                node.classList.add('sel');
-            }
+            if (selectedEventPath === path) node.classList.add('sel');
 
-            // 点击选中
             (function(p, el) {
                 el.addEventListener('click', function(e) {
-                    if (dragState.preventClick) return;
                     e.stopPropagation();
+                    if (dragState.preventClick) return;
                     selectedEventPath = p;
-
-                    // 清除所有子分支事件的 .sel
-                    var allSubNodes = track.querySelectorAll('.sub-branch-event');
-                    for (var a = 0; a < allSubNodes.length; a++) {
-                        allSubNodes[a].classList.remove('sel');
-                    }
-                    // 清除主事件节点的 .sel
-                    var allMainNodes = track.querySelectorAll('.event-node');
-                    for (var m = 0; m < allMainNodes.length; m++) {
-                        allMainNodes[m].classList.remove('sel');
-                    }
-
+                    var allNodes = track.querySelectorAll('.event-node, .sub-branch-event');
+                    for (var a = 0; a < allNodes.length; a++) allNodes[a].classList.remove('sel');
                     el.classList.add('sel');
                     renderProps();
                 });
             })(path, node);
 
-            // 事件标签
             var evLabel = document.createElement('span');
             evLabel.className = 'event-label';
             evLabel.style.top = evTop + 'px';
             evLabel.textContent = formatTime(ev.time) + ' | ' + ev.name;
-            evLabel.style.left = '50%';
-            evLabel.style.marginLeft = '16px';
-            evLabel.style.transform = 'translateY(-50%)';
 
             container.appendChild(node);
             container.appendChild(evLabel);
         }
+
+        track.appendChild(container);
+    }
+}
+            node.style.background = brColor;
+            node.style.boxShadow = '0 0 8px ' + brColor;
 
         track.appendChild(container);
     }
@@ -1106,14 +1095,9 @@ function showContextMenu(x, y, items) {
     var menu = document.getElementById('ctxMenu');
     if (!menu) return;
 
-    // 锁定横向滚动，防止菜单与画布内容错位
-    var scrollEl = document.querySelector('.timeline-scroll');
-    if (scrollEl) {
-        if (scrollEl.dataset.savedScrollLeft === undefined) {
-            scrollEl.dataset.savedScrollLeft = scrollEl.scrollLeft;
-        }
-        scrollEl.style.overflowX = 'hidden';
-    }
+    // 冻结鼠标横线，防止右键后跟着鼠标移动
+    var marker = document.getElementById('mouseMarker');
+    if (marker) marker.classList.add('frozen');
 
     var html = '';
     for (var i = 0; i < items.length; i++) {
@@ -1147,13 +1131,9 @@ function hideContextMenu() {
     menu.innerHTML = '';
     menu.classList.add('hide');
 
-    // 恢复横向滚动
-    var scrollEl = document.querySelector('.timeline-scroll');
-    if (scrollEl && scrollEl.dataset.savedScrollLeft !== undefined) {
-        scrollEl.style.overflowX = '';
-        scrollEl.scrollLeft = parseInt(scrollEl.dataset.savedScrollLeft);
-        delete scrollEl.dataset.savedScrollLeft;
-    }
+    // 解冻鼠标横线
+    var marker = document.getElementById('mouseMarker');
+    if (marker) marker.classList.remove('frozen');
 }
 
 /** 处理菜单动作分发 */
@@ -1290,8 +1270,9 @@ document.addEventListener('DOMContentLoaded', function() {
     var scrollEl = canvas ? canvas.querySelector('.timeline-scroll') : null;
     if (canvas) {
         canvas.addEventListener('mousemove', function(e) {
-            if (dragState.active && dragState.moved) return; // 拖拽时不显示
+            if (dragState.active && dragState.moved) return;
             if (!mouseMarker) return;
+            if (mouseMarker.classList.contains('frozen')) return; // 菜单打开时冻结
             mouseMarker.classList.remove('hide');
             var rect = canvas.getBoundingClientRect();
             var scrollTop = scrollEl ? scrollEl.scrollTop : 0;
