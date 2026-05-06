@@ -717,7 +717,8 @@ function renderAllSubBranches() {
         // ---- 分支事件 ----
         for (var evIdx = 0; evIdx < branch.events.length; evIdx++) {
             var ev = branch.events[evIdx];
-            var evTop = ev.time / TIME_STEP * LINE_HEIGHT;
+            // 绝对时间 → 容器内像素偏移
+            var evTop = (ev.time - (switchEvent ? switchEvent.time : 0)) / TIME_STEP * LINE_HEIGHT;
             var path = 'p' + currentPhaseIdx + '_switch_br' + brIdx + '_ev' + evIdx;
 
             var node = document.createElement('div');
@@ -1300,16 +1301,8 @@ function handleContextAction(action) {
                 // 添加到分支
                 var br = phase.switch.branches[ctxMenuBranchIdx];
                 if (br && br.events) {
-                    // 分支事件时间是相对时间：绝对时间 - 切换事件时间
-                    var parentSwitchTime = 0;
-                    var events = phase.events || [];
-                    for (var si = 0; si < events.length; si++) {
-                        if (events[si].actions && events[si].actions.length && events[si].actions[0].type === 'switchBranch') {
-                            parentSwitchTime = events[si].time;
-                            break;
-                        }
-                    }
-                    newEv.time = Math.max(0, ctxMenuClickTime - parentSwitchTime);
+                    // 分支事件时间 = 绝对时间
+                    newEv.time = Math.max(MIN_TIME, ctxMenuClickTime);
                     br.events.push(newEv);
                     selectedEventPath = 'p' + currentPhaseIdx + '_switch_br' + ctxMenuBranchIdx + '_ev' + (br.events.length - 1);
                 }
@@ -1427,6 +1420,32 @@ document.addEventListener('DOMContentLoaded', function() {
                 { label: '添加动作', action: 'addAction' },
                 { label: '删除事件', action: 'deleteEvent', danger: true }
             ]);
+        });
+    }
+
+    // 左键点击 phase track / branch 区域 → 选中高亮
+    if (tracks) {
+        tracks.addEventListener('click', function(e) {
+            if (dragState.preventClick) return;
+            // 不拦截事件节点点击（事件节点有自己的点击处理）
+            if (e.target.closest('.event-node') || e.target.closest('.sub-branch-event')) return;
+            // 点击分支区域
+            var subBranch = e.target.closest('.sub-branch');
+            if (subBranch) {
+                document.querySelectorAll('.sub-branch.sel-phase').forEach(function(s) { s.classList.remove('sel-phase'); });
+                subBranch.classList.add('sel-phase');
+                return;
+            }
+            // 点击相位轨道区域
+            var phaseTrack = e.target.closest('.phase-track');
+            if (phaseTrack) {
+                document.querySelectorAll('.phase-track.sel-phase').forEach(function(p) { p.classList.remove('sel-phase'); });
+                phaseTrack.classList.add('sel-phase');
+                var idx = parseInt(phaseTrack.dataset.phaseIdx);
+                if (!isNaN(idx) && idx !== currentPhaseIdx) {
+                    switchPhase(idx);
+                }
+            }
         });
     }
 

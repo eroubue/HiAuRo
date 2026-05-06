@@ -393,6 +393,17 @@ button.danger:hover,
     align-items: center;
     flex-shrink: 0;
     overflow: visible;
+    border-radius: 6px;
+    transition: background 0.15s;
+}
+
+.phase-track.sel-phase {
+    background: var(--accent-bg);
+}
+
+.sub-branch.sel-phase {
+    background: var(--accent-bg);
+    border-radius: 4px;
 }
 
 .track-main-line {
