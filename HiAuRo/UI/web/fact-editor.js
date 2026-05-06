@@ -53,6 +53,7 @@ var collapsedBranches = {};    // 左侧面板分支折叠状态
 
 var ctxMenuClickTime = 0;     // 画布右键点击计算的时间位置
 var ctxMenuTargetPath = '';   // 当前右键目标事件路径
+var ctxMenuBranchIdx = -1;    // 右键目标分支索引 (-1=主阶段)
 var frozenMarkerTime = null;  // 冻结的横线时间（null=正常追踪）
 var dragState = { active: false, srcPath: null, startY: 0, moved: false, preventClick: false };
 var _dragHandlersBound = false; // 防止重复绑定拖拽事件
@@ -515,6 +516,7 @@ function renderPhaseTracks() {
         }
         if (switchPhaseTime !== null) {
             mainLine.style.flex = 'none';
+            mainLine.style.minHeight = '0px';
             mainLine.style.height = timeToY(switchPhaseTime) + 'px';
         }
 
@@ -708,6 +710,7 @@ function renderAllSubBranches() {
         }
         var remainingTime = branchEndTime - (switchEvent ? switchEvent.time : 0);
         trackLine.style.flex = 'none';
+        trackLine.style.minHeight = '0px';
         trackLine.style.height = (remainingTime / TIME_STEP * LINE_HEIGHT) + 'px';
         container.appendChild(trackLine);
 
@@ -1284,7 +1287,6 @@ function hideContextMenu() {
 function handleContextAction(action) {
     switch (action) {
         case 'addEvent': {
-            // 在当前阶段添加新事件
             var phase = getPhase(currentPhaseIdx);
             if (!phase) break;
             var newEv = {
@@ -1294,8 +1296,27 @@ function handleContextAction(action) {
                 duration: 0,
                 actions: []
             };
-            phase.events.push(newEv);
-            selectedEventPath = 'p' + currentPhaseIdx + '_ev' + (phase.events.length - 1);
+            if (ctxMenuBranchIdx >= 0 && phase.switch && phase.switch.branches) {
+                // 添加到分支
+                var br = phase.switch.branches[ctxMenuBranchIdx];
+                if (br && br.events) {
+                    // 分支事件时间是相对时间：绝对时间 - 切换事件时间
+                    var parentSwitchTime = 0;
+                    var events = phase.events || [];
+                    for (var si = 0; si < events.length; si++) {
+                        if (events[si].actions && events[si].actions.length && events[si].actions[0].type === 'switchBranch') {
+                            parentSwitchTime = events[si].time;
+                            break;
+                        }
+                    }
+                    newEv.time = Math.max(0, ctxMenuClickTime - parentSwitchTime);
+                    br.events.push(newEv);
+                    selectedEventPath = 'p' + currentPhaseIdx + '_switch_br' + ctxMenuBranchIdx + '_ev' + (br.events.length - 1);
+                }
+            } else {
+                phase.events.push(newEv);
+                selectedEventPath = 'p' + currentPhaseIdx + '_ev' + (phase.events.length - 1);
+            }
             markDirty();
             break;
         }
@@ -1358,14 +1379,22 @@ document.addEventListener('DOMContentLoaded', function() {
             e.preventDefault();
             e.stopPropagation();
 
+            // 检测是否在分支区域上右键
+            var subBranch = e.target.closest('.sub-branch');
+            ctxMenuBranchIdx = -1;
+            if (subBranch && subBranch.dataset.branchIdx !== undefined) {
+                ctxMenuBranchIdx = parseInt(subBranch.dataset.branchIdx);
+            }
+
             // 冻结鼠标横线到当前时间位置
             frozenMarkerTime = currentMouseTime;
 
-            // 右键添加事件使用冻结的鼠标时间（精确时间，不吸附到网格）
-            ctxMenuClickTime = Math.max(0, Math.min(MAX_TIME, frozenMarkerTime !== null ? frozenMarkerTime : 0));
+            // 右键添加事件使用冻结的鼠标时间
+            ctxMenuClickTime = Math.max(MIN_TIME, Math.min(MAX_TIME, frozenMarkerTime !== null ? frozenMarkerTime : 0));
 
+            var label = (ctxMenuBranchIdx >= 0) ? '添加分支事件' : '添加事件';
             showContextMenu(e.clientX, e.clientY, [
-                { label: '添加事件', action: 'addEvent' }
+                { label: label, action: 'addEvent' }
             ]);
         });
     }
