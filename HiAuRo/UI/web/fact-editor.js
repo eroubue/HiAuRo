@@ -442,6 +442,12 @@ function deletePhase(idx) {
 
     timelineData.phases.splice(idx, 1);
 
+    // 重新编号所有阶段（P1, P2, P3... 保持连续）
+    for (var ri = 0; ri < timelineData.phases.length; ri++) {
+        timelineData.phases[ri].id = 'p' + (ri + 1);
+        timelineData.phases[ri].name = 'P' + (ri + 1);
+    }
+
     // 调整 currentPhaseIdx
     if (idx < currentPhaseIdx) {
         currentPhaseIdx--;
