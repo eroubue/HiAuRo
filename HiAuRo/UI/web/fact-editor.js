@@ -146,9 +146,64 @@ function markDirty() {
 
 function renderAll() { renderTimeScale(); renderPhaseTracks(); renderEvents(); renderProps(); }
 
-function renderTimeScale() {}
+function renderTimeScale() {
+    var el = document.getElementById('timeScale');
+    if (!el) return;
+    el.innerHTML = '';
+    for (var t = 0; t <= MAX_TIME; t += TIME_STEP) {
+        var div = document.createElement('div');
+        div.className = 'time-line';
+        div.style.position = 'absolute';
+        div.style.left = '0';
+        div.style.right = '0';
+        div.style.top = (t / TIME_STEP * LINE_HEIGHT) + 'px';
+        div.textContent = formatTime(t);
+        el.appendChild(div);
+    }
+}
 
-function renderPhaseTracks() {}
+function renderPhaseTracks() {
+    var el = document.getElementById('phaseTracks');
+    if (!el) return;
+
+    if (!timelineData || !timelineData.phases || timelineData.phases.length === 0) {
+        el.innerHTML = '<div class="hint">暂无阶段数据</div>';
+        return;
+    }
+
+    el.innerHTML = '';
+    // 横向 flex 容器，>3 阶段时滚动
+    el.style.display = 'flex';
+    el.style.overflowX = 'auto';
+    el.style.height = '100%';
+
+    for (var i = 0; i < timelineData.phases.length; i++) {
+        var phase = timelineData.phases[i];
+        var track = document.createElement('div');
+        track.className = 'phase-track';
+        track.setAttribute('data-phase-idx', i);
+
+        var label = document.createElement('div');
+        label.className = 'track-label';
+        label.textContent = phase.name; // textContent 自带转义
+
+        var glare = document.createElement('div');
+        glare.className = 'track-glare';
+
+        var mainLine = document.createElement('div');
+        mainLine.className = 'track-main-line';
+        if (phase.events && phase.events.length > 0) {
+            mainLine.style.background = getEventColor(phase.events[0]);
+        } else {
+            mainLine.style.background = 'var(--accent)';
+        }
+
+        track.appendChild(label);
+        track.appendChild(glare);
+        track.appendChild(mainLine);
+        el.appendChild(track);
+    }
+}
 
 function renderEvents() {}
 
@@ -158,3 +213,13 @@ function updateFooter() {
     var el = document.getElementById('footer');
     if (el) el.textContent = currentFile ? currentFile + (isDirty ? ' (未保存)' : '') : '就绪';
 }
+
+// ==================== 页面初始化 ====================
+
+document.addEventListener('DOMContentLoaded', function() {
+    if (!timelineData) {
+        timelineData = newTimeline();
+    }
+    renderAll();
+    updateFooter();
+});
