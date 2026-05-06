@@ -317,15 +317,54 @@ button.danger:hover,
     left: 0;
     right: 0;
     height: 60px;
-    border-top: 1px solid rgba(255, 255, 255, 0.04);
     display: flex;
     align-items: flex-start;
-    padding-top: 2px;
     padding-left: 6px;
     font-size: 11px;
     color: var(--tx2);
     font-variant-numeric: tabular-nums;
     overflow: visible;
+    border-top: 1px dashed rgba(255, 255, 255, 0.06);
+}
+
+/* 文字背景遮住虚线 */
+.time-line span {
+    background: var(--bg0);
+    padding: 1px 3px 0 3px;
+    margin-top: -1px;
+    border-radius: 0 0 2px 2px;
+    line-height: 1.2;
+}
+
+/* 虚线延伸到画布宽度 */
+.time-line::after {
+    content: '';
+    position: absolute;
+    left: 55px;
+    top: -1px;
+    width: 5000px;
+    height: 0;
+    border-top: 1px dashed rgba(255, 255, 255, 0.06);
+    pointer-events: none;
+}
+
+/* 虚线穿过文字中央 */
+.time-line::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    right: 0;
+    top: 50%;
+    border-top: 1px dashed rgba(255, 255, 255, 0.06);
+    pointer-events: none;
+}
+
+/* 文字背景遮住虚线（刻线穿过效果） */
+.time-line span {
+    position: relative;
+    z-index: 1;
+    background: var(--bg0);
+    padding: 0 2px;
 }
 
 /* 虚线延伸到画布宽度 */

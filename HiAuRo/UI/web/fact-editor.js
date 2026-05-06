@@ -430,7 +430,7 @@ function renderTimeScale() {
         div.style.left = '0';
         div.style.right = '0';
         div.style.top = (t / TIME_STEP * LINE_HEIGHT) + 'px';
-        div.textContent = formatTime(t) + ' (' + (t / TIME_STEP * LINE_HEIGHT) + 'px)';
+        div.innerHTML = '<span>' + esc(formatTime(t) + ' (' + (t / TIME_STEP * LINE_HEIGHT) + 'px)') + '</span>';
         el.appendChild(div);
     }
 }
