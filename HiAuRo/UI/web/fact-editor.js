@@ -430,7 +430,7 @@ function renderTimeScale() {
         div.style.left = '0';
         div.style.right = '0';
         div.style.top = (t / TIME_STEP * LINE_HEIGHT) + 'px';
-        div.textContent = formatTime(t);
+        div.textContent = formatTime(t) + ' (' + (t / TIME_STEP * LINE_HEIGHT) + 'px)';
         el.appendChild(div);
     }
 }
@@ -1370,7 +1370,7 @@ document.addEventListener('DOMContentLoaded', function() {
             mouseMarker.classList.remove('hide');
             mouseMarker.style.top = displayY + 'px';
             if (mouseMarkerLabel) {
-                mouseMarkerLabel.textContent = formatTime(displayTime);
+                mouseMarkerLabel.textContent = formatTime(displayTime) + ' (' + Math.round(displayY) + 'px)';
             }
         });
         canvas.addEventListener('mouseleave', function() {
