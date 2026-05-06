@@ -1370,7 +1370,7 @@ document.addEventListener('DOMContentLoaded', function() {
             mouseMarker.classList.remove('hide');
             mouseMarker.style.top = displayY + 'px';
             if (mouseMarkerLabel) {
-                mouseMarkerLabel.textContent = formatTime(displayTime) + ' (' + Math.round(displayY) + 'px)';
+                mouseMarkerLabel.textContent = formatTime(displayTime) + ' (' + Math.round(displayY) + 'px, scroll=' + scrollTop + ')';
             }
         });
         canvas.addEventListener('mouseleave', function() {
