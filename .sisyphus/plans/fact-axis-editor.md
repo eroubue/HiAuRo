@@ -917,11 +917,11 @@ ls HiAuRo/UI/web/fact-editor.js
 ```
 
 ### Final Checklist
-- [ ] `fact-editor.html` opens without errors
-- [ ] Can add/edit/delete phases
-- [ ] Can add/edit/delete events
-- [ ] Event drag adjusts time
-- [ ] Sub-branches render correctly
-- [ ] Property panel works
-- [ ] File operations work
-- [ ] 0 build errors
+- [x] `fact-editor.html` opens without errors
+- [x] Can add/edit/delete phases
+- [x] Can add/edit/delete events
+- [x] Event drag adjusts time
+- [x] Sub-branches render correctly
+- [x] Property panel works
+- [x] File operations work
+- [x] 0 build errors
