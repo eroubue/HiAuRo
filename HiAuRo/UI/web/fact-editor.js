@@ -1375,10 +1375,10 @@ document.addEventListener('DOMContentLoaded', function() {
             // 正常追踪 或 冻结显示
             var displayTime = (frozenMarkerTime !== null) ? frozenMarkerTime : currentMouseTime;
             var displayY = (frozenMarkerTime !== null)
-                ? (frozenMarkerTime / TIME_STEP * LINE_HEIGHT - scrollTop + rect.top)
+                ? (frozenMarkerTime / TIME_STEP * LINE_HEIGHT - scrollTop)
                 : (e.clientY - rect.top);
             mouseMarker.classList.remove('hide');
-            mouseMarker.style.top = (e.clientY - rect.top) + 'px';
+            mouseMarker.style.top = displayY + 'px';
             if (mouseMarkerLabel) {
                 mouseMarkerLabel.textContent = formatTime(displayTime);
             }
