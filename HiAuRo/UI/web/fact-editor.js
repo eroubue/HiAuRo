@@ -286,10 +286,300 @@ function renderEvents() {
         track.appendChild(label);
     }
 
+    // 渲染子分支
+    renderAllSubBranches();
+
     updateFooter();
 }
 
-function renderProps() {}
+// 渲染当前阶段的所有子分支
+function renderAllSubBranches() {
+    var track = document.querySelector('.phase-track[data-phase-idx="' + currentPhaseIdx + '"]');
+    if (!track) return;
+
+    // 清除旧的子分支元素
+    var oldBranches = track.querySelectorAll('.sub-branch');
+    for (var b = 0; b < oldBranches.length; b++) {
+        oldBranches[b].remove();
+    }
+
+    var phase = getPhase(currentPhaseIdx);
+    if (!phase || !phase.switch || !phase.switch.branches || phase.switch.branches.length === 0) return;
+
+    // 找到 switch 事件（action type 为 switchBranch），否则用最后一个事件
+    var events = phase.events || [];
+    var switchEvent = null;
+    for (var i = 0; i < events.length; i++) {
+        if (events[i].actions && events[i].actions.length > 0 && events[i].actions[0].type === 'switchBranch') {
+            switchEvent = events[i];
+            break;
+        }
+    }
+    if (!switchEvent && events.length > 0) {
+        switchEvent = events[events.length - 1];
+    }
+    if (!events.length) return; // 无事件，无法定位分支原点
+
+    var branchOriginTop = switchEvent ? (switchEvent.time / TIME_STEP * LINE_HEIGHT) : 0;
+
+    var branches = phase.switch.branches;
+    for (var brIdx = 0; brIdx < branches.length; brIdx++) {
+        var branch = branches[brIdx];
+        var brColor = BRANCH_COLORS[brIdx % BRANCH_COLORS.length];
+
+        // ---- 容器 ----
+        var container = document.createElement('div');
+        container.className = 'sub-branch';
+        container.setAttribute('data-branch-idx', brIdx);
+        container.setAttribute('data-phase-idx', currentPhaseIdx);
+        container.style.top = branchOriginTop + 'px';
+        container.style.left = (120 + brIdx * 130) + 'px';
+
+        // ---- 分支标签 ----
+        var label = document.createElement('div');
+        label.className = 'sub-branch-label';
+        label.textContent = esc(branch.name);
+        container.appendChild(label);
+
+        // ---- 分支轨道线 ----
+        var trackLine = document.createElement('div');
+        trackLine.className = 'sub-branch-track';
+        trackLine.style.background = brColor;
+        container.appendChild(trackLine);
+
+        // ---- 迷你时间刻度（相对时间）----
+        var ruler = document.createElement('div');
+        ruler.className = 'sub-branch-ruler';
+        for (var t = 0; t <= MAX_TIME; t += TIME_STEP) {
+            var tick = document.createElement('div');
+            tick.className = 'tick';
+            tick.style.position = 'absolute';
+            tick.style.left = '0';
+            tick.style.right = '0';
+            tick.style.top = (t / TIME_STEP * LINE_HEIGHT) + 'px';
+            tick.textContent = formatTime(t);
+            ruler.appendChild(tick);
+        }
+        container.appendChild(ruler);
+
+        // ---- 分支事件 ----
+        for (var evIdx = 0; evIdx < branch.events.length; evIdx++) {
+            var ev = branch.events[evIdx];
+            var evTop = ev.time / TIME_STEP * LINE_HEIGHT;
+            var path = 'p' + currentPhaseIdx + '_switch_br' + brIdx + '_ev' + evIdx;
+
+            var node = document.createElement('div');
+            node.className = 'sub-branch-event';
+            node.style.top = evTop + 'px';
+            node.dataset.path = path;
+            node.style.background = brColor;
+            node.style.boxShadow = '0 0 8px ' + brColor;
+
+            if (selectedEventPath === path) {
+                node.classList.add('sel');
+            }
+
+            // 点击选中
+            (function(p, el) {
+                el.addEventListener('click', function(e) {
+                    e.stopPropagation();
+                    selectedEventPath = p;
+
+                    // 清除所有子分支事件的 .sel
+                    var allSubNodes = track.querySelectorAll('.sub-branch-event');
+                    for (var a = 0; a < allSubNodes.length; a++) {
+                        allSubNodes[a].classList.remove('sel');
+                    }
+                    // 清除主事件节点的 .sel
+                    var allMainNodes = track.querySelectorAll('.event-node');
+                    for (var m = 0; m < allMainNodes.length; m++) {
+                        allMainNodes[m].classList.remove('sel');
+                    }
+
+                    el.classList.add('sel');
+                    renderProps();
+                });
+            })(path, node);
+
+            // 事件标签
+            var evLabel = document.createElement('span');
+            evLabel.className = 'event-label';
+            evLabel.style.top = evTop + 'px';
+            evLabel.textContent = formatTime(ev.time) + ' | ' + ev.name;
+            evLabel.style.left = '50%';
+            evLabel.style.marginLeft = '16px';
+            evLabel.style.transform = 'translateY(-50%)';
+
+            container.appendChild(node);
+            container.appendChild(evLabel);
+        }
+
+        track.appendChild(container);
+    }
+}
+
+function renderProps() {
+    var panel = document.getElementById('propPanel');
+    if (!panel) return;
+    panel.innerHTML = '';
+
+    if (!selectedEventPath) {
+        panel.innerHTML = '<div class="hint">点击事件查看属性</div>';
+        return;
+    }
+
+    var ev = getEventByPath(selectedEventPath);
+    if (!ev) {
+        panel.innerHTML = '<div class="hint">事件未找到</div>';
+        return;
+    }
+
+    var html = '';
+
+    // ==================== 基本信息 ====================
+    html += '<div class="prop-section">';
+    html += '<div class="prop-section-header">基本信息</div>';
+
+    // 名称
+    html += '<div class="prop-row">';
+    html += '<span class="prop-label">名称</span>';
+    html += '<input class="prop-input" type="text" value="' + esc(ev.name || '') + '">';
+    html += '</div>';
+
+    // ID (只读)
+    html += '<div class="prop-row">';
+    html += '<span class="prop-label">ID</span>';
+    html += '<input class="prop-input" type="text" value="' + esc(ev.id || '') + '" readonly>';
+    html += '</div>';
+
+    // 时间(s)
+    html += '<div class="prop-row">';
+    html += '<span class="prop-label">时间(s)</span>';
+    html += '<input class="prop-input" type="number" value="' + (ev.time || 0) + '" step="0.1">';
+    html += '</div>';
+
+    // 持续(s)
+    html += '<div class="prop-row">';
+    html += '<span class="prop-label">持续(s)</span>';
+    html += '<input class="prop-input" type="number" value="' + (ev.duration || 0) + '" step="0.1">';
+    html += '</div>';
+
+    html += '</div>'; // end 基本信息
+
+    // ==================== 同步校准 ====================
+    html += '<div class="prop-section">';
+    html += '<div class="prop-section-header">同步校准</div>';
+
+    // 开始同步
+    if (ev.startSync) {
+        html += '<div style="margin-bottom:8px;">';
+        html += '<span style="display:inline-block;width:60px;font-size:11px;color:var(--tx1);">开始同步</span>';
+        html += '<select class="prop-input" style="width:auto;">';
+        html += '<option value="startsUsing"' + (ev.startSync.type === 'startsUsing' ? ' selected' : '') + '>startsUsing</option>';
+        html += '<option value="ability"' + (ev.startSync.type === 'ability' ? ' selected' : '') + '>ability</option>';
+        html += '<option value="inCombat"' + (ev.startSync.type === 'inCombat' ? ' selected' : '') + '>inCombat</option>';
+        html += '</select>';
+        html += '</div>';
+        html += '<div class="prop-row">';
+        html += '<span class="prop-label">技能ID</span>';
+        html += '<input class="prop-input" type="text" value="' + esc((ev.startSync.abilityIds || []).join(',')) + '" placeholder="逗号分隔">';
+        html += '</div>';
+        html += '<button class="btn danger" style="margin-bottom:8px;">移除</button>';
+    } else {
+        html += '<button class="btn" style="margin-bottom:4px;">+ 添加开始同步</button>';
+    }
+
+    // 结束同步
+    if (ev.endSync) {
+        html += '<div style="margin-bottom:8px;">';
+        html += '<span style="display:inline-block;width:60px;font-size:11px;color:var(--tx1);">结束同步</span>';
+        html += '<select class="prop-input" style="width:auto;">';
+        html += '<option value="startsUsing"' + (ev.endSync.type === 'startsUsing' ? ' selected' : '') + '>startsUsing</option>';
+        html += '<option value="ability"' + (ev.endSync.type === 'ability' ? ' selected' : '') + '>ability</option>';
+        html += '<option value="inCombat"' + (ev.endSync.type === 'inCombat' ? ' selected' : '') + '>inCombat</option>';
+        html += '</select>';
+        html += '</div>';
+        html += '<div class="prop-row">';
+        html += '<span class="prop-label">技能ID</span>';
+        html += '<input class="prop-input" type="text" value="' + esc((ev.endSync.abilityIds || []).join(',')) + '" placeholder="逗号分隔">';
+        html += '</div>';
+        html += '<button class="btn danger" style="margin-bottom:8px;">移除</button>';
+    } else {
+        html += '<button class="btn">+ 添加结束同步</button>';
+    }
+
+    html += '</div>'; // end 同步校准
+
+    // ==================== 动作列表 ====================
+    html += '<div class="prop-section">';
+    html += '<div class="prop-section-header">动作</div>';
+
+    var actions = ev.actions || [];
+    for (var i = 0; i < actions.length; i++) {
+        var a = actions[i];
+        html += '<div class="action-item">';
+
+        // 动作类型下拉
+        html += '<div class="prop-row">';
+        html += '<span class="prop-label">类型</span>';
+        html += '<select class="prop-input">';
+        html += '<option value="demand"' + (a.type === 'demand' ? ' selected' : '') + '>需求</option>';
+        html += '<option value="skillSuggestion"' + (a.type === 'skillSuggestion' ? ' selected' : '') + '>技能建议</option>';
+        html += '<option value="setVariable"' + (a.type === 'setVariable' ? ' selected' : '') + '>设置变量</option>';
+        html += '<option value="toggleVariable"' + (a.type === 'toggleVariable' ? ' selected' : '') + '>切换变量</option>';
+        html += '<option value="logMessage"' + (a.type === 'logMessage' ? ' selected' : '') + '>日志</option>';
+        html += '<option value="switchPhase"' + (a.type === 'switchPhase' ? ' selected' : '') + '>切换阶段</option>';
+        html += '<option value="switchBranch"' + (a.type === 'switchBranch' ? ' selected' : '') + '>切换分支</option>';
+        html += '</select>';
+        html += '</div>';
+
+        // 按类型渲染字段
+        if (a.type === 'demand') {
+            html += '<div class="prop-row"><span class="prop-label">减伤%</span><input class="prop-input" type="number" value="' + (a['需求减伤'] || 0) + '"></div>';
+            html += '<div class="prop-row"><span class="prop-label">治疗</span><input class="prop-input" type="number" value="' + (a['需求治疗'] || 0) + '"></div>';
+        } else if (a.type === 'skillSuggestion') {
+            html += '<div class="prop-row"><span class="prop-label">技能ID</span><input class="prop-input" type="number" value="' + (a.skillId || 0) + '"></div>';
+            html += '<div class="prop-row"><span class="prop-label">名称</span><input class="prop-input" type="text" value="' + esc(a.label || '') + '"></div>';
+            html += '<div class="prop-row"><span class="prop-label">优先级</span>';
+            html += '<select class="prop-input">';
+            html += '<option value="high"' + (a.priority === 'high' ? ' selected' : '') + '>high</option>';
+            html += '<option value="normal"' + (a.priority === 'normal' ? ' selected' : '') + '>normal</option>';
+            html += '<option value="optional"' + (a.priority === 'optional' ? ' selected' : '') + '>optional</option>';
+            html += '</select></div>';
+        } else if (a.type === 'setVariable') {
+            html += '<div class="prop-row"><span class="prop-label">变量名</span><input class="prop-input" type="text" value="' + esc(a.variableName || '') + '"></div>';
+            html += '<div class="prop-row"><span class="prop-label">值</span>';
+            html += '<select class="prop-input">';
+            html += '<option value="true"' + (a.value === true ? ' selected' : '') + '>true</option>';
+            html += '<option value="false"' + (a.value === false ? ' selected' : '') + '>false</option>';
+            html += '</select></div>';
+        } else if (a.type === 'toggleVariable') {
+            html += '<div class="prop-row"><span class="prop-label">变量名</span><input class="prop-input" type="text" value="' + esc(a.variableName || '') + '"></div>';
+        } else if (a.type === 'logMessage') {
+            html += '<div class="prop-row"><span class="prop-label">消息</span><input class="prop-input" type="text" value="' + esc(a.message || '') + '"></div>';
+        } else if (a.type === 'switchPhase') {
+            html += '<div class="prop-row"><span class="prop-label">目标阶段</span><input class="prop-input" type="text" value="' + esc(a.targetPhase || '') + '"></div>';
+            html += '<div class="prop-row"><span class="prop-label">标签</span><input class="prop-input" type="text" value="' + esc(a.label || '') + '"></div>';
+        } else if (a.type === 'switchBranch') {
+            html += '<div class="prop-row"><span class="prop-label">条件变量</span><input class="prop-input" type="text" value="' + esc(a.condition || '') + '"></div>';
+            html += '<div class="prop-row"><span class="prop-label">目标分支</span><input class="prop-input" type="text" value="' + esc(a.targetBranch || '') + '"></div>';
+        }
+
+        // 删除按钮
+        html += '<button class="btn danger" style="margin-top:4px;">×</button>';
+        html += '</div>'; // end action-item
+    }
+
+    // 添加动作按钮
+    html += '<button class="btn" style="margin-top:4px;">+ 添加动作</button>';
+
+    html += '</div>'; // end 动作
+
+    // ==================== 删除事件 ====================
+    html += '<button class="btn danger" style="width:100%;">删除事件</button>';
+
+    panel.innerHTML = html;
+}
 
 function updateFooter() {
     var el = document.getElementById('footer');
