@@ -356,8 +356,10 @@ button.danger:hover,
 }
 
 .track-label {
-    position: sticky;
+    position: absolute;
     top: 0;
+    left: 50%;
+    transform: translateX(-50%);
     z-index: 10;
     background: var(--bg1);
     border: 1px solid var(--accent);
@@ -366,7 +368,7 @@ button.danger:hover,
     padding: 4px 8px;
     font-size: 11px;
     text-align: center;
-    margin-bottom: 8px;
+    white-space: nowrap;
 }
 
 /* 事件节点 */
