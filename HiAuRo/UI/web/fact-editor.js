@@ -625,7 +625,8 @@ function renderEvents() {
 
         track.appendChild(node);
         track.appendChild(label);
-    }
+        } // end inner event loop
+    } // end outer phase loop
 
     // 渲染子分支
     renderAllSubBranches();
@@ -756,7 +757,8 @@ function renderAllSubBranches() {
         }
 
         track.appendChild(container);
-    }
+        } // end branch loop
+    } // end phase loop
 }
 
 function renderProps() {
