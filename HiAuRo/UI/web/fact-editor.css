@@ -1,0 +1,263 @@
+/* ============================================================
+   HiAuRo 事实轴编辑器 — 深色主题基础样式
+   ============================================================ */
+
+:root {
+    /* 背景层级 */
+    --bg0: #080b12;
+    --bg1: #101622;
+    --bg2: #151b2b;
+
+    /* 文字层级 */
+    --tx0: #e0e0e0;
+    --tx1: #a0aec0;
+    --tx2: #64748b;
+
+    /* 强调色 */
+    --accent: #00d4ff;
+    --accent-dim: #0077aa;
+    --accent-bg: rgba(0, 212, 255, 0.08);
+
+    /* 语义色 */
+    --red: #ff4477;
+    --green: #00f0a0;
+    --purple: #7e57c2;
+    --orange: #ff9f0a;
+    --yellow: #f0d000;
+
+    /* 边框 */
+    --border: #1e293b;
+    --border-light: rgba(255, 255, 255, 0.06);
+
+    /* 字体 */
+    --font: 'Segoe UI', -apple-system, sans-serif;
+}
+
+/* ---- 全局重置 ---- */
+*,
+*::before,
+*::after {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+/* ---- 页面基础 ---- */
+body {
+    background: var(--bg0);
+    color: var(--tx0);
+    font-family: var(--font);
+    font-size: 13px;
+    line-height: 1.4;
+    overflow: hidden;
+    height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    background-image:
+        radial-gradient(circle at 10% 20%, rgba(26, 35, 126, 0.05) 0%, transparent 20%),
+        radial-gradient(circle at 90% 80%, rgba(106, 27, 154, 0.05) 0%, transparent 20%);
+}
+
+/* ---- 编辑器布局 ---- */
+.editor-layout {
+    display: flex;
+    height: 100vh;
+}
+
+/* ---- 工具栏 ---- */
+.toolbar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 16px;
+    background: var(--bg1);
+    border-bottom: 1px solid var(--border);
+    flex-shrink: 0;
+}
+
+/* ---- 侧边面板（左） ---- */
+.side-panel {
+    width: 280px;
+    background: var(--bg1);
+    border-right: 1px solid var(--border);
+    padding: 16px;
+    overflow-y: auto;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ---- 属性面板（右） ---- */
+.properties-panel {
+    width: 320px;
+    background: var(--bg1);
+    border-left: 1px solid var(--border);
+    padding: 16px;
+    overflow-y: auto;
+    flex-shrink: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+/* ---- 时间轴画布 ---- */
+.timeline-canvas {
+    flex: 1;
+    position: relative;
+    overflow: auto;
+    background: var(--bg0);
+}
+
+/* ---- 表单元素 ---- */
+input[type="text"],
+input[type="number"],
+input[type="password"],
+select,
+textarea {
+    font-family: var(--font);
+    font-size: 13px;
+    padding: 8px 10px;
+    background: var(--bg2);
+    color: var(--tx0);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    width: 100%;
+}
+
+input[type="text"]:focus,
+input[type="number"]:focus,
+input[type="password"]:focus,
+select:focus,
+textarea:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(0, 212, 255, 0.15);
+}
+
+input[type="text"]::placeholder,
+input[type="number"]::placeholder,
+textarea::placeholder {
+    color: var(--tx2);
+}
+
+input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: var(--accent);
+    cursor: pointer;
+}
+
+/* ---- 按钮 ---- */
+button,
+.btn {
+    font-family: var(--font);
+    font-size: 13px;
+    padding: 8px 14px;
+    background: var(--bg2);
+    color: var(--tx0);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.15s;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+}
+
+button:hover,
+.btn:hover {
+    background: var(--accent-bg);
+    border-color: var(--accent-dim);
+}
+
+button:active,
+.btn:active {
+    transform: scale(0.96);
+}
+
+button.primary,
+.btn.primary {
+    background: var(--accent-bg);
+    color: var(--accent);
+    border-color: var(--accent);
+}
+
+button.primary:hover,
+.btn.primary:hover {
+    background: rgba(0, 212, 255, 0.15);
+}
+
+button.danger,
+.btn.danger {
+    background: rgba(255, 68, 119, 0.08);
+    color: var(--red);
+    border-color: var(--red);
+}
+
+button.danger:hover,
+.btn.danger:hover {
+    background: rgba(255, 68, 119, 0.15);
+}
+
+/* ---- 滚动条 ---- */
+::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--tx2);
+    border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--tx1);
+}
+
+::-webkit-scrollbar-corner {
+    background: transparent;
+}
+
+/* ---- 底部状态栏 ---- */
+.footer {
+    height: 24px;
+    padding: 0 14px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    border-top: 1px solid var(--border);
+    background: var(--bg1);
+    font-size: 11px;
+    color: var(--tx2);
+    flex-shrink: 0;
+}
+
+/* ---- 分区标签 ---- */
+.section-label {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--tx2);
+    letter-spacing: 0.05em;
+    margin-bottom: 8px;
+}
+
+/* ---- 卡片 ---- */
+.card {
+    background: var(--bg2);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 12px;
+}
+
+/* ---- 提示文字 ---- */
+.hint {
+    color: var(--tx2);
+    font-size: 12px;
+    text-align: center;
+    padding: 20px 0;
+}

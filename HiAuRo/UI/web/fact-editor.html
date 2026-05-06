@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HiAuRo 事实轴编辑器</title>
+<link rel="stylesheet" href="puppertino/buttons.css">
+<link rel="stylesheet" href="puppertino/forms.css">
+<link rel="stylesheet" href="puppertino/segmented-controls.css">
+<link rel="stylesheet" href="puppertino-bridge.css">
+<link rel="stylesheet" href="fact-editor.css">
+</head>
+<body>
+<div id="app">
+  <header class="toolbar">
+    <div class="p-segmented-controls" id="phaseTabs"></div>
+    <div class="actions">
+      <button class="p-btn" id="btnNew">新建</button>
+      <button class="p-btn" id="btnLoad">加载</button>
+      <button class="p-btn p-prim-col" id="btnSave">保存</button>
+      <button class="p-btn" id="btnExport">导出</button>
+    </div>
+  </header>
+
+  <main class="editor-layout">
+    <aside class="sidebar-left" id="phaseList"></aside>
+
+    <section class="timeline-canvas" id="timelineCanvas">
+      <div class="time-scale" id="timeScale"></div>
+      <div class="phase-tracks" id="phaseTracks"></div>
+    </section>
+
+    <aside class="sidebar-right" id="propPanel"></aside>
+  </main>
+
+  <footer class="footer" id="footer"></footer>
+
+  <div class="context-menu hide" id="ctxMenu"></div>
+  <input type="file" id="fileInput" accept=".json,.txt">
+</div>
+<script src="fact-editor.js"></script>
+</body>
+</html>
