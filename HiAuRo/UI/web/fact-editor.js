@@ -321,59 +321,6 @@ function renderPhaseList() {
     });
 }
 
-    var phases = timelineData.phases;
-    var html = '';
-    for (var i = 0; i < phases.length; i++) {
-        var active = (i === currentPhaseIdx) ? ' active' : '';
-        html += '<div class="phase-item' + active + '" data-idx="' + i + '">';
-        html += '<span class="phase-name" data-idx="' + i + '">' + esc(phases[i].name) + '</span>';
-        if (phases.length > 1) {
-            html += '<button class="phase-del" data-idx="' + i + '" title="删除阶段">×</button>';
-        }
-        html += '</div>';
-    }
-
-    var canAdd = phases.length < MAX_PHASES;
-    html += '<button class="phase-add" id="btnAddPhase"' + (canAdd ? '' : ' disabled') + '>' + esc(canAdd ? '+ 添加阶段' : '已达上限') + '</button>';
-
-    el.innerHTML = html;
-
-    // 阶段点击切换
-    el.querySelectorAll('.phase-item').forEach(function(item) {
-        item.addEventListener('click', function(e) {
-            if (e.target.closest('.phase-del')) return;
-            var idx = parseInt(this.dataset.idx);
-            if (!isNaN(idx) && idx !== currentPhaseIdx) {
-                switchPhase(idx);
-            }
-        });
-    });
-
-    // 双击重命名
-    el.querySelectorAll('.phase-name').forEach(function(span) {
-        span.addEventListener('dblclick', function(e) {
-            e.stopPropagation();
-            var idx = parseInt(this.dataset.idx);
-            if (!isNaN(idx)) startRename(idx, this);
-        });
-    });
-
-    // 删除按钮
-    el.querySelectorAll('.phase-del').forEach(function(btn) {
-        btn.addEventListener('click', function(e) {
-            e.stopPropagation();
-            var idx = parseInt(this.dataset.idx);
-            if (!isNaN(idx)) deletePhase(idx);
-        });
-    });
-
-    // 添加按钮
-    var addBtn = document.getElementById('btnAddPhase');
-    if (addBtn && !addBtn.disabled) {
-        addBtn.addEventListener('click', addPhase);
-    }
-}
-
 /** 渲染工具栏阶段选项卡 */
 function renderPhaseTabs() {
     var el = document.getElementById('phaseTabs');
