@@ -239,19 +239,14 @@ function renderPhaseTabs() {
 
     var html = '';
     for (var i = 0; i < timelineData.phases.length; i++) {
-        var active = (i === currentPhaseIdx) ? 'active' : '';
-        html += '<button class="' + active + '" data-idx="' + i + '">' + esc(timelineData.phases[i].name) + '</button>';
+        var active = (i === currentPhaseIdx) ? ' active' : '';
+        html += '<button class="tab' + active + '" data-idx="' + i + '" onclick="switchPhase(' + i + ')">' + esc(timelineData.phases[i].name) + '</button>';
     }
     el.innerHTML = html;
 
-    el.querySelectorAll('button').forEach(function(btn) {
-        btn.addEventListener('click', function() {
-            var idx = parseInt(this.dataset.idx);
-            if (!isNaN(idx) && idx !== currentPhaseIdx) {
-                switchPhase(idx);
-            }
-        });
-    });
+    // 多阶段时允许横向滚动
+    el.style.overflowX = 'auto';
+    el.style.flexWrap = 'nowrap';
 }
 
 /** 双击行内重命名 */
@@ -851,6 +846,105 @@ function updateFooter() {
     if (el) el.textContent = currentFile ? currentFile + (isDirty ? ' (未保存)' : '') : '就绪';
 }
 
+// ==================== 文件操作 ====================
+
+function newFile() {
+    if (timelineData && isDirty && !confirm('当前有未保存的修改，是否放弃？')) return;
+    timelineData = newTimeline();
+    currentFile = '';
+    fileHandle = null;
+    isDirty = false;
+    currentPhaseIdx = 0;
+    selectedEventPath = null;
+    renderAll();
+    updateFooter();
+}
+
+function loadFile() {
+    if (timelineData && isDirty && !confirm('当前有未保存的修改，是否放弃？')) return;
+    document.getElementById('fileInput').click();
+}
+
+function readFileObj(file) {
+    var reader = new FileReader();
+    reader.onload = function() {
+        try {
+            var data = JSON.parse(reader.result);
+            timelineData = data;
+            currentFile = file.name;
+            fileHandle = null;
+            isDirty = false;
+            currentPhaseIdx = 0;
+            selectedEventPath = null;
+            renderAll();
+            updateFooter();
+        } catch (ex) {
+            document.getElementById('footer').textContent = 'JSON解析失败: ' + esc(ex.message);
+        }
+    };
+    reader.readAsText(file);
+}
+
+async function saveFile() {
+    if (!timelineData) return;
+    var json = JSON.stringify(timelineData, null, 2);
+    if (fileHandle && typeof fileHandle.createWritable === 'function') {
+        try {
+            var writable = await fileHandle.createWritable();
+            await writable.write(json);
+            await writable.close();
+            isDirty = false;
+            updateFooter();
+            return;
+        } catch (e) {
+            // 降级到 Save As
+        }
+    }
+    saveFileAs();
+}
+
+async function saveFileAs() {
+    if (!timelineData) return;
+    var json = JSON.stringify(timelineData, null, 2);
+    var name = currentFile || 'timeline.json';
+    if (window.showSaveFilePicker) {
+        try {
+            var handle = await window.showSaveFilePicker({
+                suggestedName: name,
+                types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }]
+            });
+            var writable = await handle.createWritable();
+            await writable.write(json);
+            await writable.close();
+            fileHandle = handle;
+            currentFile = handle.name;
+            isDirty = false;
+            updateFooter();
+            return;
+        } catch (e) {
+            if (e.name === 'AbortError') return;
+        }
+    }
+    downloadJson(json, name);
+}
+
+function exportFile() {
+    if (!timelineData) return;
+    var json = JSON.stringify(timelineData, null, 2);
+    var name = currentFile || 'timeline.json';
+    downloadJson(json, name);
+}
+
+function downloadJson(json, name) {
+    var blob = new Blob([json], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
 // ==================== 拖拽 (垂直时间调整) ====================
 
 function bindDragHandlers() {
@@ -1034,6 +1128,19 @@ document.addEventListener('DOMContentLoaded', function() {
     renderAll();
     updateFooter();
 
+    // ---- 文件操作绑定 ----
+
+    document.getElementById('btnNew').addEventListener('click', newFile);
+    document.getElementById('btnLoad').addEventListener('click', loadFile);
+    document.getElementById('btnSave').addEventListener('click', saveFile);
+    document.getElementById('btnExport').addEventListener('click', exportFile);
+    document.getElementById('fileInput').addEventListener('change', function() {
+        if (this.files && this.files[0]) {
+            readFileObj(this.files[0]);
+            this.value = '';
+        }
+    });
+
     // ---- 右键菜单事件绑定 ----
 
     // 画布空白处右键 → 添加事件
@@ -1089,6 +1196,49 @@ document.addEventListener('DOMContentLoaded', function() {
         if (!menu || menu.classList.contains('hide')) return;
         if (!menu.contains(e.target)) {
             hideContextMenu();
+        }
+    });
+
+    // ==================== 键盘快捷键 ====================
+
+    document.addEventListener('keydown', function(e) {
+        // Ctrl+S / Cmd+S → 触发生成器的保存按钮
+        if ((e.ctrlKey || e.metaKey) && e.key === 's') {
+            e.preventDefault();
+            var saveBtn = document.getElementById('btnSave');
+            if (saveBtn) saveBtn.click();
+            return;
+        }
+
+        // Delete → 删除选中事件（跳过编辑框）
+        if (e.key === 'Delete' && selectedEventPath) {
+            var tag = e.target.tagName;
+            if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+            e.preventDefault();
+            if (confirm('确认删除此事件？')) {
+                var info = getParentInfo(selectedEventPath);
+                if (!info) return;
+                info.container.splice(info.idx, 1);
+                selectedEventPath = null;
+                markDirty();
+            }
+            return;
+        }
+
+        // Escape → 关闭右键菜单，清除事件选中
+        if (e.key === 'Escape') {
+            hideContextMenu();
+            if (selectedEventPath) {
+                selectedEventPath = null;
+                var tracks = document.getElementById('phaseTracks');
+                if (tracks) {
+                    tracks.querySelectorAll('.event-node, .sub-branch-event').forEach(function(n) {
+                        n.classList.remove('sel');
+                    });
+                }
+                renderProps();
+            }
+            return;
         }
     });
 });

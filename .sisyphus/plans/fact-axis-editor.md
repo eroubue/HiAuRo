@@ -744,7 +744,7 @@ Wave FINAL (Verification — 4 parallel reviews):
 
 ## TODOs (Wave 4 — File Operations + Polish)
 
-- [ ] **T13. File Operations (New/Load/Save/Export)**
+- [x] **T13. File Operations (New/Load/Save/Export)**
 
   **What to do**:
   Implement file operations toolbar buttons:
@@ -788,7 +788,7 @@ Wave FINAL (Verification — 4 parallel reviews):
 
   **Commit**: YES
 
-- [ ] **T14. Phase Tab Navigation + Keyboard Shortcuts**
+- [x] **T14. Phase Tab Navigation + Keyboard Shortcuts**
 
   **What to do**:
   - Phase tabs: horizontal scrollable tab bar above canvas, click to switch phase
