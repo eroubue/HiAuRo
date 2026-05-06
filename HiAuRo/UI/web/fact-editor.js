@@ -419,15 +419,28 @@ function startRename(idx, span) {
     });
 }
 
+/** 查找最小可用阶段编号 */
+function findLowestPhaseNum() {
+    var used = {};
+    for (var i = 0; i < timelineData.phases.length; i++) {
+        var m = (timelineData.phases[i].id || '').match(/^p(\d+)$/);
+        if (m) used[parseInt(m[1])] = true;
+    }
+    for (var n = 1; n <= MAX_PHASES; n++) {
+        if (!used[n]) return n;
+    }
+    return timelineData.phases.length + 1;
+}
+
 /** 添加新阶段 */
 function addPhase() {
     if (!timelineData) return;
     if (timelineData.phases.length >= MAX_PHASES) return;
 
-    var newId = 'p' + (timelineData.phases.length + 1);
+    var newNum = findLowestPhaseNum();
     timelineData.phases.push({
-        id: newId,
-        name: 'P' + (timelineData.phases.length + 1),
+        id: 'p' + newNum,
+        name: 'P' + newNum,
         events: [],
         switch: null
     });
@@ -441,12 +454,6 @@ function deletePhase(idx) {
     if (!timelineData || timelineData.phases.length <= 1) return;
 
     timelineData.phases.splice(idx, 1);
-
-    // 重新编号所有阶段（P1, P2, P3... 保持连续）
-    for (var ri = 0; ri < timelineData.phases.length; ri++) {
-        timelineData.phases[ri].id = 'p' + (ri + 1);
-        timelineData.phases[ri].name = 'P' + (ri + 1);
-    }
 
     // 调整 currentPhaseIdx
     if (idx < currentPhaseIdx) {
@@ -979,6 +986,11 @@ function updateActionType(idx, newType) {
     if (!ev || !ev.actions) return;
     ev.actions[idx] = JSON.parse(JSON.stringify(ACTION_TEMPLATES[newType]));
     ev.name = TYPE_NAMES[newType] || '新事件';
+    // 切换阶段默认指向下一阶段
+    if (newType === 'switchPhase') {
+        var nextNum = findLowestPhaseNum();
+        ev.actions[idx].targetPhase = 'p' + nextNum;
+    }
     markDirty();
 }
 
@@ -1011,7 +1023,8 @@ function createPhaseForAction(actionIdx) {
     if (timelineData.phases.length >= MAX_PHASES) { showError('已达阶段上限 (' + MAX_PHASES + ')'); return; }
     var ev = getEventByPath(selectedEventPath);
     if (!ev || !ev.actions || !ev.actions[actionIdx]) return;
-    var newPhase = { id: 'p' + (timelineData.phases.length + 1), name: 'P' + (timelineData.phases.length + 1), events: [], switch: null };
+    var newNum = findLowestPhaseNum();
+    var newPhase = { id: 'p' + newNum, name: 'P' + newNum, events: [], switch: null };
     timelineData.phases.push(newPhase);
     ev.actions[actionIdx].targetPhase = newPhase.id;
     markDirty();
