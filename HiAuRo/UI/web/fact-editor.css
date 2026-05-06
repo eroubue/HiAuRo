@@ -261,3 +261,305 @@ button.danger:hover,
     text-align: center;
     padding: 20px 0;
 }
+
+/* ---- 时间轴渲染样式 ---- */
+#app {
+    display: flex;
+    flex-direction: column;
+    height: 100vh;
+}
+
+.editor-layout {
+    flex: 1;
+    overflow: hidden;
+}
+
+/* 时间刻度 */
+.time-scale {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    pointer-events: none;
+}
+
+.time-line {
+    height: 60px;
+    border-top: 1px solid rgba(255, 255, 255, 0.04);
+    display: flex;
+    align-items: center;
+    padding-left: 10px;
+    font-size: 11px;
+    color: var(--tx2);
+}
+
+/* 阶段轨道 */
+.phase-track {
+    width: 100px;
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    flex-shrink: 0;
+}
+
+.track-main-line {
+    width: 3px;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent), 0 0 16px rgba(0, 212, 255, 0.3);
+    flex: 1;
+    min-height: 3600px;
+}
+
+.track-glare {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 212, 255, 0.03);
+    pointer-events: none;
+}
+
+.track-label {
+    position: sticky;
+    top: 0;
+    z-index: 10;
+    background: var(--bg1);
+    border: 1px solid var(--accent);
+    color: var(--accent);
+    border-radius: 4px;
+    padding: 4px 8px;
+    font-size: 11px;
+    text-align: center;
+    margin-bottom: 8px;
+}
+
+/* 事件节点 */
+.event-node {
+    position: absolute;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    cursor: grab;
+    z-index: 5;
+    transition: box-shadow 0.15s;
+}
+
+.event-node::after {
+    content: '';
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background: #fff;
+    border-radius: 50%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.event-node.sel {
+    box-shadow: 0 0 14px currentColor;
+    outline: 2px solid #fff;
+    outline-offset: 2px;
+}
+
+.event-node.dragging {
+    opacity: 0.5;
+    cursor: grabbing;
+}
+
+/* 事件标签 */
+.event-label {
+    position: absolute;
+    left: 50%;
+    margin-left: 16px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 10px;
+    color: #fff;
+    background: rgba(13, 17, 23, 0.85);
+    padding: 2px 6px;
+    border-radius: 3px;
+    white-space: nowrap;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: none;
+}
+
+.event-label-alt {
+    position: absolute;
+    left: 50%;
+    margin-left: -136px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 10px;
+    color: #fff;
+    background: rgba(13, 17, 23, 0.85);
+    padding: 2px 6px;
+    border-radius: 3px;
+    white-space: nowrap;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    pointer-events: none;
+}
+
+/* 子分支 */
+.sub-branch {
+    position: absolute;
+    background: rgba(0, 0, 0, 0.15);
+    border-left: 1px solid var(--border);
+    padding-left: 4px;
+}
+
+.sub-branch-track {
+    width: 2px;
+    flex: 1;
+}
+
+.sub-branch-event {
+    position: absolute;
+    left: 50%;
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    cursor: grab;
+    z-index: 5;
+    transition: box-shadow 0.15s;
+}
+
+.sub-branch-event::after {
+    content: '';
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    background: #fff;
+    border-radius: 50%;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.sub-branch-label {
+    font-size: 10px;
+    color: var(--tx1);
+    text-align: center;
+    margin-bottom: 4px;
+}
+
+.sub-branch-ruler {
+    font-size: 9px;
+    color: var(--tx2);
+}
+
+.sub-branch-ruler .tick {
+    height: 30px;
+    border-top: 1px solid rgba(255, 255, 255, 0.03);
+    display: flex;
+    align-items: center;
+    padding-left: 4px;
+}
+
+/* 拖放指示器 */
+.drop-indicator {
+    position: absolute;
+    left: 0;
+    right: 0;
+    height: 2px;
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent);
+    z-index: 20;
+    pointer-events: none;
+}
+
+/* 右键菜单 */
+.context-menu {
+    position: fixed;
+    z-index: 10000;
+    min-width: 140px;
+    background: var(--bg2);
+    border: 1px solid var(--accent);
+    border-radius: 6px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+    overflow: hidden;
+}
+
+.context-menu .ctx-item {
+    padding: 10px 14px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: background 0.1s;
+}
+
+.context-menu .ctx-item:hover {
+    background: var(--accent-bg);
+}
+
+.context-menu .ctx-sep {
+    height: 1px;
+    background: var(--border);
+    margin: 4px 0;
+}
+
+.context-menu .ctx-danger {
+    color: var(--red);
+}
+
+/* 工具类 */
+.hide {
+    display: none !important;
+}
+
+/* 属性面板 */
+.prop-section {
+    margin-bottom: 16px;
+}
+
+.prop-section-header {
+    font-size: 10px;
+    font-weight: 600;
+    text-transform: uppercase;
+    color: var(--tx2);
+    margin-bottom: 8px;
+    padding-bottom: 4px;
+    border-bottom: 1px solid var(--border);
+}
+
+.prop-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    margin-bottom: 6px;
+}
+
+.prop-label {
+    width: 60px;
+    font-size: 11px;
+    color: var(--tx1);
+    flex-shrink: 0;
+}
+
+.prop-input {
+    flex: 1;
+}
+
+/* 动作列表 */
+.action-item {
+    background: var(--bg0);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    padding: 8px;
+    margin-bottom: 6px;
+}
+
+.action-item-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 4px;
+}
