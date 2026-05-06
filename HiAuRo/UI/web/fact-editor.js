@@ -6,7 +6,8 @@
 
 var TIME_STEP = 5;          // 每格秒数
 var LINE_HEIGHT = 60;       // 每 TIME_STEP 像素高度
-var MAX_TIME = 300;         // 最大秒数 (5分钟)
+var MIN_TIME = -25;         // 时间轴起始秒数
+var MAX_TIME = 300;         // 最大秒数
 var MAX_PHASES = 10;        // 阶段数硬上限
 
 var EVENT_COLORS = {
@@ -64,10 +65,26 @@ function esc(s) {
 
 function formatTime(t) {
     t = Number(t) || 0;
-    if (t < 60) return t.toFixed(1) + 's';
-    var m = Math.floor(t / 60);
-    var s = Math.round(t % 60);
-    return m + ':' + (s < 10 ? '0' : '') + s;
+    var neg = t < 0;
+    if (neg) t = -t;
+    var s;
+    if (t < 60) s = t.toFixed(1) + 's';
+    else { var m = Math.floor(t / 60); var sec = Math.round(t % 60); s = m + ':' + (sec < 10 ? '0' : '') + sec; }
+    return (neg ? '-' : '') + s;
+}
+
+/** 时间 → 像素 (相对于容器顶部) */
+function timeToY(time) {
+    return (time - MIN_TIME) / TIME_STEP * LINE_HEIGHT;
+}
+
+/** 设置画布高度 */
+function setCanvasHeight() {
+    var h = timeToY(MAX_TIME) + 'px';
+    var body = document.querySelector('.timeline-body');
+    if (body) { body.style.minHeight = h; body.style.height = h; }
+    var ts = document.getElementById('timeScale');
+    if (ts) { ts.style.minHeight = h; ts.style.height = h; }
 }
 
 function newTimeline() {
@@ -157,7 +174,7 @@ function markDirty() {
 
 // ==================== 渲染 (占位 — T5~T8 实现) ====================
 
-function renderAll() { renderPhaseList(); renderPhaseTabs(); renderTimeScale(); renderPhaseTracks(); renderEvents(); renderProps(); bindDragHandlers(); }
+function renderAll() { setCanvasHeight(); renderPhaseList(); renderPhaseTabs(); renderTimeScale(); renderPhaseTracks(); renderEvents(); renderProps(); bindDragHandlers(); }
 
 // ==================== 阶段管理 ====================
 
@@ -423,14 +440,16 @@ function renderTimeScale() {
     var el = document.getElementById('timeScale');
     if (!el) return;
     el.innerHTML = '';
-    for (var t = 0; t <= MAX_TIME; t += TIME_STEP) {
+    var firstTick = Math.ceil(MIN_TIME / TIME_STEP) * TIME_STEP;
+    for (var t = firstTick; t <= MAX_TIME; t += TIME_STEP) {
         var div = document.createElement('div');
         div.className = 'time-line';
+        if (t === 0) div.classList.add('time-line-zero');
         div.style.position = 'absolute';
         div.style.left = '0';
         div.style.right = '0';
-        div.style.top = (t / TIME_STEP * LINE_HEIGHT) + 'px';
-        div.innerHTML = '<span>' + esc(formatTime(t) + ' (' + (t / TIME_STEP * LINE_HEIGHT) + 'px)') + '</span>';
+        div.style.top = timeToY(t) + 'px';
+        div.innerHTML = '<span>' + esc(formatTime(t)) + '</span>';
         el.appendChild(div);
     }
 }
@@ -500,7 +519,7 @@ function renderEvents() {
 
     for (var i = 0; i < events.length; i++) {
         var ev = events[i];
-        var top = ev.time / TIME_STEP * LINE_HEIGHT;
+        var top = timeToY(ev.time);
 
         // ---- 事件节点 ----
         var node = document.createElement('div');
@@ -600,7 +619,7 @@ function renderAllSubBranches() {
     if (!switchEvent && events.length > 0) switchEvent = events[events.length - 1];
     if (!events.length) return;
 
-    var branchOriginTop = switchEvent ? (switchEvent.time / TIME_STEP * LINE_HEIGHT) : 0;
+    var branchOriginTop = switchEvent ? timeToY(switchEvent.time) : timeToY(0);
     // 主轴在 .phase-track 中居中 (100px 宽), 主轴线约在 45px 处
     var mainLineX = 45;
     var branches = phase.switch.branches;
@@ -1156,8 +1175,8 @@ function bindDragHandlers() {
         var rect = canvasEl.getBoundingClientRect();
         var scrollEl2 = canvasEl.querySelector('.timeline-scroll');
         var scrollTop = scrollEl2 ? scrollEl2.scrollTop : 0;
-        var rawTime = (e.clientY - rect.top + scrollTop) / LINE_HEIGHT * TIME_STEP;
-        var newTime = Math.max(0, Math.min(MAX_TIME, Math.round(rawTime / TIME_STEP) * TIME_STEP));
+        var rawTime = (e.clientY - rect.top + scrollTop) / LINE_HEIGHT * TIME_STEP + MIN_TIME;
+        var newTime = Math.max(MIN_TIME, Math.min(MAX_TIME, Math.round(rawTime / TIME_STEP) * TIME_STEP));
 
         // 解析事件并更新时间
         var ev = getEventByPath(srcPath);
@@ -1360,12 +1379,12 @@ document.addEventListener('DOMContentLoaded', function() {
             var rect = canvas.getBoundingClientRect();
             var scrollTop = scrollEl ? scrollEl.scrollTop : 0;
             var y = e.clientY - rect.top + scrollTop;
-            currentMouseTime = y / LINE_HEIGHT * TIME_STEP;
+            currentMouseTime = y / LINE_HEIGHT * TIME_STEP + MIN_TIME;
             currentMouseTime = Math.round(currentMouseTime * 10) / 10;
             // 正常追踪 或 冻结显示
             var displayTime = (frozenMarkerTime !== null) ? frozenMarkerTime : currentMouseTime;
             var displayY = (frozenMarkerTime !== null)
-                ? (frozenMarkerTime / TIME_STEP * LINE_HEIGHT - scrollTop)
+                ? timeToY(frozenMarkerTime) - scrollTop
                 : (e.clientY - rect.top);
             mouseMarker.classList.remove('hide');
             mouseMarker.style.top = displayY + 'px';

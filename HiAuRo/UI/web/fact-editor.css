@@ -4,30 +4,30 @@
 
 :root {
     /* 背景层级 */
-    --bg0: #080b12;
-    --bg1: #101622;
-    --bg2: #151b2b;
+    --bg0: #f0f2f5;
+    --bg1: #ffffff;
+    --bg2: #f5f6f8;
 
     /* 文字层级 */
-    --tx0: #e0e0e0;
-    --tx1: #a0aec0;
-    --tx2: #64748b;
+    --tx0: #1a1a2e;
+    --tx1: #555;
+    --tx2: #999;
 
     /* 强调色 */
-    --accent: #00d4ff;
-    --accent-dim: #0077aa;
-    --accent-bg: rgba(0, 212, 255, 0.08);
+    --accent: #0077cc;
+    --accent-dim: #005599;
+    --accent-bg: rgba(0, 119, 204, 0.06);
 
     /* 语义色 */
-    --red: #ff4477;
-    --green: #00f0a0;
-    --purple: #7e57c2;
-    --orange: #ff9f0a;
-    --yellow: #f0d000;
+    --red: #d63031;
+    --green: #00b894;
+    --purple: #6c5ce7;
+    --orange: #e17055;
+    --yellow: #fdcb6e;
 
     /* 边框 */
-    --border: #1e293b;
-    --border-light: rgba(255, 255, 255, 0.06);
+    --border: #ddd;
+    --border-light: rgba(0, 0, 0, 0.04);
 
     /* 字体 */
     --font: 'Segoe UI', -apple-system, sans-serif;
@@ -324,7 +324,7 @@ button.danger:hover,
     color: var(--tx2);
     font-variant-numeric: tabular-nums;
     overflow: visible;
-    border-top: 1px dashed rgba(255, 255, 255, 0.06);
+    border-top: 1px dashed rgba(0, 0, 0, 0.08);
 }
 
 /* 文字背景遮住虚线 */
@@ -336,6 +336,11 @@ button.danger:hover,
     line-height: 1.2;
 }
 
+/* 0s 刻度线特殊标记 */
+.time-line-zero { border-color: var(--accent) !important; }
+.time-line-zero span { color: var(--accent); font-weight: 600; }
+.time-line-zero::after { border-color: var(--accent) !important; }
+
 /* 虚线延伸到画布宽度 */
 .time-line::after {
     content: '';
@@ -344,7 +349,7 @@ button.danger:hover,
     top: -1px;
     width: 5000px;
     height: 0;
-    border-top: 1px dashed rgba(255, 255, 255, 0.06);
+    border-top: 1px dashed rgba(0, 0, 0, 0.08);
     pointer-events: none;
 }
 
@@ -355,7 +360,7 @@ button.danger:hover,
     left: 0;
     right: 0;
     top: 50%;
-    border-top: 1px dashed rgba(255, 255, 255, 0.06);
+    border-top: 1px dashed rgba(0, 0, 0, 0.08);
     pointer-events: none;
 }
 
@@ -375,7 +380,7 @@ button.danger:hover,
     top: -1px;
     width: 5000px;
     height: 0;
-    border-top: 1px dashed rgba(255, 255, 255, 0.06);
+    border-top: 1px dashed rgba(0, 0, 0, 0.08);
     pointer-events: none;
 }
 
@@ -559,7 +564,7 @@ button.danger:hover,
 
 .sub-branch-ruler .tick {
     height: 30px;
-    border-top: 1px solid rgba(255, 255, 255, 0.03);
+    border-top: 1px solid rgba(0, 0, 0, 0.06);
     display: flex;
     align-items: center;
     padding-left: 2px;
