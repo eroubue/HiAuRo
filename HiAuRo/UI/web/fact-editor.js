@@ -220,11 +220,13 @@ function renderPhaseList() {
 
         // 展开的子项
         html += '<div class="phase-children' + childClass + '" data-phase-idx="' + i + '">';
-        // 事件
+        // 事件 (按时间排序)
         if (ph.events && ph.events.length) {
-            for (var evIdx = 0; evIdx < ph.events.length; evIdx++) {
-                var ev = ph.events[evIdx];
-                var evPath = 'p' + i + '_ev' + evIdx;
+            var sortedEvents = ph.events.slice().sort(function(a, b) { return a.time - b.time; });
+            for (var se = 0; se < sortedEvents.length; se++) {
+                var ev = sortedEvents[se];
+                var origIdx = ph.events.indexOf(ev);
+                var evPath = 'p' + i + '_ev' + origIdx;
                 var evColor = getEventColor(ev);
                 var evActive = selectedEventPath === evPath ? ' active' : '';
                 html += '<div class="tree-event' + evActive + '" data-path="' + evPath + '" style="padding-left:24px">';
@@ -245,9 +247,11 @@ function renderPhaseList() {
                         html += '<span>' + esc(br.name) + '</span>';
                         html += '</div>';
                         if (!brCollapsed && br.events && br.events.length) {
-                            for (var brEvIdx = 0; brEvIdx < br.events.length; brEvIdx++) {
-                                var brEv = br.events[brEvIdx];
-                                var brEvPath = 'p' + i + '_switch_br' + brIdx + '_ev' + brEvIdx;
+                            var sortedBrEvents = br.events.slice().sort(function(a, b) { return a.time - b.time; });
+                            for (var sbe = 0; sbe < sortedBrEvents.length; sbe++) {
+                                var brEv = sortedBrEvents[sbe];
+                                var brOrigIdx = br.events.indexOf(brEv);
+                                var brEvPath = 'p' + i + '_switch_br' + brIdx + '_ev' + brOrigIdx;
                                 var brEvActive = selectedEventPath === brEvPath ? ' active' : '';
                                 html += '<div class="tree-event' + brEvActive + '" data-path="' + brEvPath + '" style="padding-left:56px">';
                                 html += '<span class="tree-dot" style="background:' + BRANCH_COLORS[brIdx % BRANCH_COLORS.length] + '"></span>';
@@ -337,6 +341,10 @@ function renderPhaseList() {
             if (!isNaN(idx)) deletePhase(idx);
         });
     });
+
+    // 添加阶段按钮
+    var addBtn = document.getElementById('btnAddPhase');
+    if (addBtn) addBtn.addEventListener('click', addPhase);
 }
 
 /** 渲染工具栏阶段选项卡 */
@@ -466,7 +474,7 @@ function renderPhaseTracks() {
     el.innerHTML = '';
     // 横向 flex 容器
     el.style.display = 'flex';
-    el.style.gap = '4px';
+    el.style.gap = '24px';
 
     for (var i = 0; i < timelineData.phases.length; i++) {
         var phase = timelineData.phases[i];
@@ -487,6 +495,21 @@ function renderPhaseTracks() {
             mainLine.style.background = getEventColor(phase.events[0]);
         } else {
             mainLine.style.background = 'var(--accent)';
+        }
+
+        // 检查是否有 switchPhase 事件，如果有则截断主线到此事件时间
+        if (phase.events && phase.events.length) {
+            for (var ei = 0; ei < phase.events.length; ei++) {
+                var evt = phase.events[ei];
+                if (evt.actions) {
+                    for (var ai = 0; ai < evt.actions.length; ai++) {
+                        if (evt.actions[ai].type === 'switchPhase') {
+                            mainLine.style.maxHeight = timeToY(evt.time) + 'px';
+                            break;
+                        }
+                    }
+                }
+            }
         }
 
         track.appendChild(label);
@@ -627,7 +650,7 @@ function renderAllSubBranches() {
     for (var brIdx = 0; brIdx < branches.length; brIdx++) {
         var branch = branches[brIdx];
         var brColor = BRANCH_COLORS[brIdx % BRANCH_COLORS.length];
-        var branchX = mainLineX + 18 + brIdx * 20; // 分支线在主轴线右侧
+        var branchX = mainLineX + 28 + brIdx * 28; // 分支线在主轴线右侧
 
         // ---- 分支容器 ----
         var container = document.createElement('div');
