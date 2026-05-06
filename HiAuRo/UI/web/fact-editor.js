@@ -205,7 +205,89 @@ function renderPhaseTracks() {
     }
 }
 
-function renderEvents() {}
+function renderEvents() {
+    // 找到当前阶段的轨道容器
+    var track = document.querySelector('.phase-track[data-phase-idx="' + currentPhaseIdx + '"]');
+    if (!track) return;
+
+    // 清除旧的事件节点和标签
+    var oldNodes = track.querySelectorAll('.event-node, .event-label, .event-label-alt');
+    for (var n = 0; n < oldNodes.length; n++) {
+        oldNodes[n].remove();
+    }
+
+    var phase = getPhase(currentPhaseIdx);
+    if (!phase || !phase.events || phase.events.length === 0) {
+        updateFooter();
+        return;
+    }
+
+    var events = phase.events;
+    var prevTop = -999;      // 上一个事件 top 位置
+    var prevSide = 'right';  // 上一个标签使用哪一侧
+
+    for (var i = 0; i < events.length; i++) {
+        var ev = events[i];
+        var top = ev.time / TIME_STEP * LINE_HEIGHT;
+
+        // ---- 事件节点 ----
+        var node = document.createElement('div');
+        node.className = 'event-node';
+        node.style.top = top + 'px';
+        node.dataset.path = 'p' + currentPhaseIdx + '_ev' + i;
+
+        var color = getEventColor(ev);
+        node.style.background = color;
+        node.style.boxShadow = '0 0 8px ' + color;
+
+        // 已选中的恢复高亮
+        if (selectedEventPath === node.dataset.path) {
+            node.classList.add('sel');
+        }
+
+        // 点击选中
+        (function(path, el) {
+            el.addEventListener('click', function(e) {
+                e.stopPropagation();
+                selectedEventPath = path;
+
+                // 清除所有节点的 .sel
+                var allNodes = track.querySelectorAll('.event-node');
+                for (var a = 0; a < allNodes.length; a++) {
+                    allNodes[a].classList.remove('sel');
+                }
+                el.classList.add('sel');
+
+                renderProps();
+            });
+        })(node.dataset.path, node);
+
+        // ---- 事件标签 ----
+        var label = document.createElement('span');
+        label.style.top = top + 'px';
+        label.textContent = formatTime(ev.time) + ' | ' + ev.name;
+
+        // 防重叠：与上一个标签垂直距离 < 30px 则交替换侧
+        var distance = Math.abs(top - prevTop);
+        if (distance < 30 && prevSide === 'right') {
+            label.className = 'event-label-alt';
+            prevSide = 'left';
+        } else if (distance < 30 && prevSide === 'left') {
+            label.className = 'event-label';
+            prevSide = 'right';
+        } else {
+            label.className = 'event-label';
+            prevSide = 'right';
+        }
+
+        prevTop = top;
+
+        track.appendChild(node);
+        track.appendChild(label);
+    }
+
+    updateFooter();
+}
 
 function renderProps() {}
 
