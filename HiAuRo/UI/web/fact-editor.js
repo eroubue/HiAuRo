@@ -181,10 +181,7 @@ function renderAll() { setCanvasHeight(); renderPhaseList(); renderPhaseTabs(); 
 
 /** 切换到指定阶段 */
 function switchPhase(idx) {
-    if (!timelineData || !timelineData.phases) return;
-    if (idx < 0 || idx >= timelineData.phases.length) return;
     currentPhaseIdx = idx;
-    selectedEventPath = null;
     renderAll();
 }
 
@@ -245,7 +242,7 @@ function renderPhaseList() {
                         var brToggle = brCollapsed ? '▶' : '▼';
                         html += '<div class="tree-branch-header" data-branch-key="' + brKey + '" style="padding-left:40px">';
                         html += '<span class="tree-branch-toggle">' + brToggle + '</span>';
-                        html += '<span>' + esc(br.name) + '</span>';
+                        html += '<span>分支' + (brIdx + 1) + '</span>';
                         html += '</div>';
                         if (!brCollapsed && br.events && br.events.length) {
                             var sortedBrEvents = br.events.slice().sort(function(a, b) { return a.time - b.time; });
@@ -333,13 +330,26 @@ function renderPhaseList() {
         });
     });
 
-    // 删除按钮
+    // 删除按钮（三击确认，1s内连续点击3次）
     el.querySelectorAll('.phase-del').forEach(function(btn) {
         btn.addEventListener('click', function(e) {
             e.stopPropagation();
-            if (!confirm('确定删除此阶段？')) return;
             var idx = parseInt(this.dataset.idx);
-            if (!isNaN(idx)) deletePhase(idx);
+            if (isNaN(idx)) return;
+            var now = Date.now();
+            var key = 'p' + idx;
+            var last = phaseDeleteClicks[key] || { count: 0, time: 0 };
+            if (now - last.time < 1000) {
+                last.count++;
+                last.time = now;
+            } else {
+                last = { count: 1, time: now };
+            }
+            phaseDeleteClicks[key] = last;
+            if (last.count >= 3) {
+                delete phaseDeleteClicks[key];
+                deletePhase(idx);
+            }
         });
     });
 
@@ -528,35 +538,34 @@ function renderPhaseTracks() {
 }
 
 function renderEvents() {
-    // 找到当前阶段的轨道容器
-    var track = document.querySelector('.phase-track[data-phase-idx="' + currentPhaseIdx + '"]');
-    if (!track) return;
-
-    // 清除旧的事件节点和标签
-    var oldNodes = track.querySelectorAll('.event-node, .event-label, .event-label-alt');
-    for (var n = 0; n < oldNodes.length; n++) {
-        oldNodes[n].remove();
+    var allTracks = document.querySelectorAll('.phase-track');
+    // 清除所有阶段的旧事件
+    for (var ti = 0; ti < allTracks.length; ti++) {
+        var oldNodes = allTracks[ti].querySelectorAll('.event-node, .event-label, .event-label-alt');
+        for (var n = 0; n < oldNodes.length; n++) oldNodes[n].remove();
     }
 
-    var phase = getPhase(currentPhaseIdx);
-    if (!phase || !phase.events || phase.events.length === 0) {
-        updateFooter();
-        return;
-    }
+    if (!timelineData || !timelineData.phases) { updateFooter(); return; }
 
-    var events = phase.events;
-    var lastRightTop = -9999; // 右侧最后一个可见标签的 top
-    var lastLeftTop = -9999;  // 左侧最后一个可见标签的 top
+    for (var pIdx = 0; pIdx < timelineData.phases.length; pIdx++) {
+        var track = document.querySelector('.phase-track[data-phase-idx="' + pIdx + '"]');
+        if (!track) continue;
+        var phase = timelineData.phases[pIdx];
+        if (!phase || !phase.events || phase.events.length === 0) continue;
 
-    for (var i = 0; i < events.length; i++) {
-        var ev = events[i];
-        var top = timeToY(ev.time);
+        var events = phase.events;
+        var lastRightTop = -9999;
+        var lastLeftTop = -9999;
+
+        for (var i = 0; i < events.length; i++) {
+            var ev = events[i];
+            var top = timeToY(ev.time);
 
         // ---- 事件节点 ----
         var node = document.createElement('div');
         node.className = 'event-node';
         node.style.top = top + 'px';
-        node.dataset.path = 'p' + currentPhaseIdx + '_ev' + i;
+        node.dataset.path = 'p' + pIdx + '_ev' + i;
         node.title = esc(ev.name) + ' (' + formatTime(ev.time) + ')';
 
         var color = getEventColor(ev);
@@ -626,17 +635,17 @@ function renderEvents() {
 
 // 渲染当前阶段的所有子分支
 function renderAllSubBranches() {
-    var track = document.querySelector('.phase-track[data-phase-idx="' + currentPhaseIdx + '"]');
-    if (!track) return;
+    // 清除所有阶段的旧子分支
+    var allBranches = document.querySelectorAll('.sub-branch');
+    for (var ab = 0; ab < allBranches.length; ab++) allBranches[ab].remove();
 
-    // 清除旧的子分支
-    var oldBranches = track.querySelectorAll('.sub-branch');
-    for (var b = 0; b < oldBranches.length; b++) {
-        oldBranches[b].remove();
-    }
+    if (!timelineData || !timelineData.phases) return;
 
-    var phase = getPhase(currentPhaseIdx);
-    if (!phase || !phase.switch || !phase.switch.branches || phase.switch.branches.length === 0) return;
+    for (var curIdx = 0; curIdx < timelineData.phases.length; curIdx++) {
+        var track = document.querySelector('.phase-track[data-phase-idx="' + curIdx + '"]');
+        if (!track) continue;
+        var phase = timelineData.phases[curIdx];
+        if (!phase || !phase.switch || !phase.switch.branches || phase.switch.branches.length === 0) continue;
 
     // 找到 switch 事件（action type 为 switchBranch），否则用最后一个事件
     var events = phase.events || [];
@@ -664,7 +673,7 @@ function renderAllSubBranches() {
         var container = document.createElement('div');
         container.className = 'sub-branch';
         container.setAttribute('data-branch-idx', brIdx);
-        container.setAttribute('data-phase-idx', currentPhaseIdx);
+        container.setAttribute('data-phase-idx', curIdx);
         container.style.top = branchOriginTop + 'px';
         container.style.left = branchX + 'px';
         // 容器宽度 = 其子元素最大宽度
@@ -680,12 +689,6 @@ function renderAllSubBranches() {
         hook.style.background = brColor;
         hook.style.boxShadow = '0 0 4px ' + brColor;
         container.appendChild(hook);
-
-        // ---- 分支标签 ----
-        var label = document.createElement('div');
-        label.className = 'sub-branch-label';
-        label.textContent = esc(branch.name);
-        container.appendChild(label);
 
         // ---- 分支轨道线 (从切换点向下延伸至时间轴底部) ----
         var trackLine = document.createElement('div');
@@ -719,7 +722,7 @@ function renderAllSubBranches() {
             var ev = branch.events[evIdx];
             // 绝对时间 → 容器内像素偏移
             var evTop = (ev.time - (switchEvent ? switchEvent.time : 0)) / TIME_STEP * LINE_HEIGHT;
-            var path = 'p' + currentPhaseIdx + '_switch_br' + brIdx + '_ev' + evIdx;
+            var path = 'p' + curIdx + '_switch_br' + brIdx + '_ev' + evIdx;
 
             var node = document.createElement('div');
             node.className = 'sub-branch-event';
@@ -962,10 +965,13 @@ function updateSyncProp(side, field, value) {
     markDirty();
 }
 
+var TYPE_NAMES = { demand:'需求', skillSuggestion:'技能建议', setVariable:'设置变量', toggleVariable:'切换变量', logMessage:'日志', switchPhase:'切换阶段', switchBranch:'切换分支' };
+
 function updateActionType(idx, newType) {
     var ev = getEventByPath(selectedEventPath);
     if (!ev || !ev.actions) return;
     ev.actions[idx] = JSON.parse(JSON.stringify(ACTION_TEMPLATES[newType]));
+    ev.name = TYPE_NAMES[newType] || '新事件';
     markDirty();
 }
 
@@ -1284,6 +1290,9 @@ function hideContextMenu() {
     menu.classList.add('hide');
 }
 
+var eventDeleteTimers = {};  // 删除事件双击计时
+var phaseDeleteClicks = {};  // 删除阶段三击计数
+
 /** 处理菜单动作分发 */
 function handleContextAction(action) {
     switch (action) {
@@ -1327,13 +1336,19 @@ function handleContextAction(action) {
             break;
         }
         case 'deleteEvent': {
-            // 删除事件（需要确认）
-            if (!confirm('确认删除此事件？')) break;
-            var info = getParentInfo(ctxMenuTargetPath);
-            if (!info) break;
-            info.container.splice(info.idx, 1);
-            selectedEventPath = null;
-            markDirty();
+            // 双击确认删除（1s 内连续点击两次删除）
+            var now = Date.now();
+            var last = eventDeleteTimers[ctxMenuTargetPath] || 0;
+            if (now - last < 1000) {
+                var info = getParentInfo(ctxMenuTargetPath);
+                if (!info) break;
+                info.container.splice(info.idx, 1);
+                selectedEventPath = null;
+                delete eventDeleteTimers[ctxMenuTargetPath];
+                markDirty();
+            } else {
+                eventDeleteTimers[ctxMenuTargetPath] = now;
+            }
             break;
         }
     }
