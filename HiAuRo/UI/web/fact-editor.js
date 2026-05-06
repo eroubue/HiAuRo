@@ -753,9 +753,11 @@ function renderProps() {
         } else if (a.type === 'switchPhase') {
             html += '<div class="prop-row"><span class="prop-label">目标阶段</span><input class="prop-input" type="text" value="' + esc(a.targetPhase || '') + '" onchange="updateActionProp(' + i + ', \'targetPhase\', this.value)"></div>';
             html += '<div class="prop-row"><span class="prop-label">标签</span><input class="prop-input" type="text" value="' + esc(a.label || '') + '" onchange="updateActionProp(' + i + ', \'label\', this.value)"></div>';
+            html += '<button class="btn" style="margin-top:2px;font-size:10px;padding:2px 8px" onclick="createPhaseForAction(' + i + ')">＋ 新建阶段并关联</button>';
         } else if (a.type === 'switchBranch') {
             html += '<div class="prop-row"><span class="prop-label">条件变量</span><input class="prop-input" type="text" value="' + esc(a.condition || '') + '" onchange="updateActionProp(' + i + ', \'condition\', this.value)"></div>';
             html += '<div class="prop-row"><span class="prop-label">目标分支</span><input class="prop-input" type="text" value="' + esc(a.targetBranch || '') + '" onchange="updateActionProp(' + i + ', \'targetBranch\', this.value)"></div>';
+            html += '<button class="btn" style="margin-top:2px;font-size:10px;padding:2px 8px" onclick="createBranchForAction(' + i + ')">＋ 新建分支并关联</button>';
         }
 
         // 删除按钮
@@ -842,6 +844,33 @@ function addAction() {
     if (!ev) return;
     if (!ev.actions) ev.actions = [];
     ev.actions.push(JSON.parse(JSON.stringify(ACTION_TEMPLATES.skillSuggestion)));
+    markDirty();
+}
+
+/** 为 switchPhase 动作新建阶段并关联 */
+function createPhaseForAction(actionIdx) {
+    if (!timelineData || !timelineData.phases) return;
+    if (timelineData.phases.length >= MAX_PHASES) { showError('已达阶段上限 (' + MAX_PHASES + ')'); return; }
+    var ev = getEventByPath(selectedEventPath);
+    if (!ev || !ev.actions || !ev.actions[actionIdx]) return;
+    var newPhase = { id: 'p' + (timelineData.phases.length + 1), name: '新阶段', events: [], switch: null };
+    timelineData.phases.push(newPhase);
+    ev.actions[actionIdx].targetPhase = newPhase.id;
+    markDirty();
+}
+
+/** 为 switchBranch 动作新建分支并关联 */
+function createBranchForAction(actionIdx) {
+    var phase = getPhase(currentPhaseIdx);
+    if (!phase) return;
+    if (!phase.switch) {
+        phase.switch = { sync: { type: 'startsUsing', abilityIds: [], entering: true }, branches: [] };
+    }
+    var ev = getEventByPath(selectedEventPath);
+    if (!ev || !ev.actions || !ev.actions[actionIdx]) return;
+    var newBranch = { name: '新分支', events: [] };
+    phase.switch.branches.push(newBranch);
+    ev.actions[actionIdx].targetBranch = newBranch.name;
     markDirty();
 }
 
@@ -1077,6 +1106,15 @@ function showContextMenu(x, y, items) {
     var menu = document.getElementById('ctxMenu');
     if (!menu) return;
 
+    // 锁定横向滚动，防止菜单与画布内容错位
+    var scrollEl = document.querySelector('.timeline-scroll');
+    if (scrollEl) {
+        if (scrollEl.dataset.savedScrollLeft === undefined) {
+            scrollEl.dataset.savedScrollLeft = scrollEl.scrollLeft;
+        }
+        scrollEl.style.overflowX = 'hidden';
+    }
+
     var html = '';
     for (var i = 0; i < items.length; i++) {
         var item = items[i];
@@ -1108,6 +1146,14 @@ function hideContextMenu() {
     if (!menu) return;
     menu.innerHTML = '';
     menu.classList.add('hide');
+
+    // 恢复横向滚动
+    var scrollEl = document.querySelector('.timeline-scroll');
+    if (scrollEl && scrollEl.dataset.savedScrollLeft !== undefined) {
+        scrollEl.style.overflowX = '';
+        scrollEl.scrollLeft = parseInt(scrollEl.dataset.savedScrollLeft);
+        delete scrollEl.dataset.savedScrollLeft;
+    }
 }
 
 /** 处理菜单动作分发 */
@@ -1125,6 +1171,7 @@ function handleContextAction(action) {
                 actions: []
             };
             phase.events.push(newEv);
+            selectedEventPath = 'p' + currentPhaseIdx + '_ev' + (phase.events.length - 1);
             markDirty();
             break;
         }
