@@ -75,8 +75,7 @@ jobs:
         with:
           name: HiAuRo-release
           path: |
-            HiAuRo/bin/Release/HiAuRo.dll
-            bin/Release/OmenTools.dll
+            HiAuRo/bin/Release/HiAuRo-*.zip
             nupkg/*.nupkg
 
       - name: Commit & Tag
@@ -96,8 +95,7 @@ jobs:
         with:
           tag_name: v${{ env.NEW_VERSION }}
           files: |
-            HiAuRo/bin/Release/HiAuRo.dll
-            bin/Release/OmenTools.dll
+            HiAuRo/bin/Release/HiAuRo-*.zip
             nupkg/*.nupkg
           generate_release_notes: true
 
@@ -133,7 +131,6 @@ jobs:
         uses: softprops/action-gh-release@v3
         with:
           files: |
-            HiAuRo.dll
-            OmenTools.dll
+            HiAuRo/bin/Release/HiAuRo-*.zip
             nupkg/*.nupkg
           generate_release_notes: true

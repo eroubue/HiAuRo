@@ -58,8 +58,7 @@
       <MainFiles Include="$(OutputPath)*.json" />
       <MainFiles Include="$(OutputPath)*.deps.json" />
       <WebFiles Include="$(OutputPath)UI\web\**\*" />
-      <OmenFiles Include="..\bin\$(Configuration)\OmenTools.dll" />
-      <OmenFiles Include="..\bin\$(Configuration)\OmenTools.deps.json" />
+      <OmenFiles Include="..\bin\$(Configuration)\**\*" Exclude="..\bin\$(Configuration)\**\*.pdb" />
     </ItemGroup>
 
     <Copy SourceFiles="@(MainFiles)" DestinationFolder="$(StagingDir)" />
