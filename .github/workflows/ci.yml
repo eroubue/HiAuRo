@@ -51,18 +51,7 @@ jobs:
           foreach ($dll in @("Dalamud.dll","Dalamud.Common.dll","Dalamud.Bindings.ImGui.dll","FFXIVClientStructs.dll","Lumina.dll","Lumina.Excel.dll","ImGuiScene.dll","TerraFX.Interop.Windows.dll","Newtonsoft.Json.dll","Serilog.dll","CheapLoc.dll")) {
             Copy-Item "dalamud\$dll" "sdk\lib\net10.0\" -ErrorAction SilentlyContinue
           }
-          @"
-<?xml version="1.0"?>
-<package>
-  <metadata>
-    <id>HiAuRo.Sdk</id>
-    <version>${{ github.ref_name }}</version>
-    <authors>嗨呀</authors>
-    <description>HiAuRo ACR 开发 SDK — 含框架接口、职业 Helper、OmenTools、Dalamud</description>
-    <dependencies><group targetFramework="net10.0" /></dependencies>
-  </metadata>
-</package>
-"@ | Out-File sdk\HiAuRo.Sdk.nuspec -Encoding utf8
+          Copy-Item HiAuRo.Sdk.nuspec sdk\
           Invoke-WebRequest https://dist.nuget.org/win-x86-commandline/latest/nuget.exe -OutFile nuget.exe
           .\nuget.exe pack sdk\HiAuRo.Sdk.nuspec -OutputDirectory nupkg -BasePath sdk
 
