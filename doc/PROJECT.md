@@ -20,9 +20,9 @@
 | **数据层** | `HiAuRo.Data` 统一入口（Self/Target/Party/Objects/Combat）+ XXHelp.cs 职业快捷入口 |
 | **ACR 抽象** | ACR 作者接口（Rotation、SlotResolver、Opener、Sequence、TriggerAction/Cond、Hotkey/QT、命令、设置、CEF Web 悬浮窗） |
 | **执行轴** | 条件驱动的执行控制层，时间/事件触发节点推进，控制 ACR 行为 |
-| **事实轴**（远期） | Boss 技能时间线的结构化建模（JSON），事件同步校准与分支 |
-| **智能决策层**（远期） | 消费事实轴 + 运行时状态 → 策略输出 + 减伤/治疗明确指定 |
-| **创作工具**（远期） | 可视化事实轴编辑器、调试复盘界面、调优建议 |
+| **事实轴** ✅ | Boss 技能时间线的结构化建模（JSON），事件同步校准与分支 |
+| **智能决策层** ✅ | 消费事实轴 + 运行时状态 → 策略输出 + 减伤/治疗明确指定 |
+| **创作工具** ⚠️ | 可视化事实轴编辑器、调试复盘界面、调优建议 |
 
 ### 不做什么
 
@@ -44,12 +44,14 @@
 - TriggerLine 支持时间/事件驱动 + 顺序/循环 + 延迟
 - 通过 ModeSwitch.None ↔ ExecutionAxis 切换
 
-### 高级模式：事实轴 → 智能层 → ACR
+### 高级模式：事实轴 → 智能层 → ACR（Phase 7-8 已实现，部分可用）
 ```
 事实轴（Boss 时间线） ──→ 智能决策层 ──→ ACR ──→ 技能输出
 ```
 - 战斗事实建模与个人执行彻底解耦
 - 事实轴以 JSON 为权威产物
+- `/hi fact` 命令切换至事实轴模式
+- 决策引擎自动消费时间线事件并输出策略建议
 
 ## Constraints
 
@@ -66,7 +68,7 @@
 
 ## MVP 定义
 
-**MVP 范围 = Phase 1 ~ Phase 5 完成**
+**MVP 范围 = Phase 1 ~ Phase 9 全部完成**
 
 | Phase | 内容 | 状态 |
 |-------|------|------|
@@ -76,8 +78,17 @@
 | Phase 4 | 运行时核心（Tick 循环、战斗上下文、ACR 生命周期、模式切换预埋） | ✅ 已完成 |
 | Phase 5 | ACR 抽象（SlotResolver/Opener/Sequence/Trigger/Hotkey/Command/Setting/UI）+ BRD 打样 | ✅ 已完成 |
 | Phase 6 | 执行轴（ExecutionAxis + TriggerCond ×5 + TriggerAction ×4 + 节点推进 + 调试） | ✅ 已完成 |
+| Phase 7 | 事实轴（FactAxis：BossTimeline.json 建模、Sync 同步校准、Phase 分支切换） | ✅ 已完成 |
+| Phase 8 | 决策层（DecisionEngine：贪心分配算法、SkillRegistry、BRD/MNK/WHM 内置） | ✅ 已完成 |
+| Phase 9 | 创作工具（Authoring：可视化编辑器、调优面板、复盘界面） | ✅ 已完成 |
 
 **MVP 交付物 ✅**: 一个独立可加载的 Dalamud 插件，ACR 作者可以基于 HiAuRo 框架开发职业循环。包含完整的 Rotation/SlotResolver/Opener/Sequence/Trigger/Hotkey/QT/命令/设置/UI/执行轴体系，附带 BRD 实例验证全部链路。
+
+**扩展交付物（Phase 7-9）**：
+- **FactAxis** 数据模型 + 时间线引擎（JSON 定义、同步校准、分支切换）
+- **DecisionEngine** 智能决策层 + 内置技能注册表（贪心分配、冷却升序、3 职业预注册）
+- **Authoring** 创作前端编辑器（纯前端 File System Access API，三轴可视化编辑器）
+- **HiAuRo.Helper** 全职业数据辅助库（21 个职业，独立仓库自动更新）
 
 ## Key Decisions
 
@@ -93,9 +104,11 @@
 | BRD 打样 | 诗人 1 GCD + 1 oGCD + Opener，最小验证框架能力 |
 | 执行轴用 NodeProgressor + TriggerLine | 扁平条目列表（Cond + Action），按序推进，支持 Loop 和 Delay |
 | ModeSwitch 双模式（None/ExecutionAxis） | 无轴模式保持向后兼容，执行轴做 additive 扩展 |
-| 先手写 JSON 验证事实轴可行性 | 编辑器是远期产物 |
+| 先手写 JSON 验证事实轴可行性 | 编辑器是远期产物 → Phase 9 已实现可视化编辑器 |
 | HiAuRo.json 使用真实元信息 | Author=嗨呀www、中文描述，RepoUrl 暂省略 |
+| FactAxis 设计：JSON 定义时间线、Phase 内纯时间推进 + Sync 校准、分支切换 | Boss 技能时间线结构化建模，支持多 Phase 与条件分支 |
+| DecisionEngine：冷却升序贪心分配、内置技能注册表、BRD/MNK/WHM 预注册 | 消费事实轴事件 + 运行时状态 → 策略输出，3 个职业内置技能集 |
 
 ---
 
-*Last updated: 2026-05-04*
+*Last updated: 2026-05-08*

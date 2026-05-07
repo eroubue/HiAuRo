@@ -2,7 +2,7 @@
 
 > 审计范围: `../HiAuRo/` 全部 `.cs` `.html` `.js` `.css` 文件  
 > 审计日期: 2026-05-03  
-> 修复日期: 2026-05-03  
+> 修复日期: 2026-05-08  
 > 项目: FFXIV Dalamud 战斗辅助框架 (.NET 10, Dalamud.CN.NET.Sdk 15.0.0)
 
 ---
@@ -11,8 +11,8 @@
 
 | 状态 | 数量 | 说明 |
 |------|------|------|
-| ✅ 已修复 | 17 | Critical 5 + High 5 + Medium 7 |
-| ⏸️ 推迟 | 24 | Low:20 + Medium:2 + High:2 (需游戏环境验证/非阻塞) |
+| ✅ 已修复 | 18 | Critical 5 + High 5 + Medium 8 |
+| ⏸️ 推迟 | 23 | Low:20 + Medium:2 + High:1 (需游戏环境验证/非阻塞) |
 
 ### 本次修复列表
 
@@ -33,6 +33,7 @@
 | 37 | Medium | SpellCategory 未映射 ActionType | SlotExecutor.SpellCategoryToActionType() |
 | 21 | Medium | Coroutine 精度 | 使用 Stopwatch.GetTimestamp |
 | 27 | Medium | app.js 消息格式不统一 | send() 统一为 {type, data} 格式 |
+| 19 | Medium | HotkeyHelper 竞态 | lock(_resolvers) 保护所有访问 |
 
 ---
 
@@ -220,9 +221,10 @@
 - **影响**: 极端情况下可能漏判 buff 来源。
 - **修复**: 增加常量定义和注释说明，或改用可空参数 `uint?`。
 
-### #19 | HotkeyHelper._resolvers 列表无并发保护
+### #19 | HotkeyHelper._resolvers 列表无并发保护 ✅
 - **文件**: `ACR/HotkeyHelper.cs:8-9`
 - **严重度**: **Medium**
+- **状态**: ✅ 已修复 — HotkeyHelper 的所有注册/注销/读取方法已添加 lock(_resolvers) 保护 — 竞态风险已消除（使用 lock 而非 ConcurrentDictionary）
 - **描述**: `_resolvers` 和 `_keyBindings` 是静态列表/字典，无锁保护。如果 UI 线程修改绑定同时 FrameworkManager 线程调用 `HandleKeyPress`，存在竞态。
 - **影响**: 当前因按键处理链路未接入（不存在跨线程调用场景），暂无实际影响。但 Phase 5.2 实现后可能出现竞态。
 - **修复**: 使用 `ConcurrentDictionary` 或加锁。
@@ -245,6 +247,8 @@
 ---
 
 ## 四、低危问题 (Low)
+
+> ⚠️ **说明**: Phase 6-9 重构已部分解决部分推迟项。例如 `IsHostile` 判定在部分代码路径中已添加 `IsActuallyFriendly` guard 检查。请在实现对应功能时优先处理这些项。
 
 ### #22 | Spell 类拼写错误: GetDynamicsTarget ✅
 - **文件**: `ACR/Spell.cs:29`

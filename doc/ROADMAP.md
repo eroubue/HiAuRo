@@ -9,6 +9,10 @@ Phase 1 ──→ Phase 2 ──→ Phase 3 ──→ Phase 4 ──→ Phase 5 
                                                  │
                                                  ↓
                                           Phase 6 ──→ Phase 7 ──→ Phase 8 ──→ Phase 9
+                                                              ↘───────────────↗
+                                                                       │
+                                                                       ↓
+                                                            HiAuRo.Helper (全职业辅助库)
 ```
 
 ## 全局规则
@@ -274,7 +278,7 @@ Phase 1 ──→ Phase 2 ──→ Phase 3 ──→ Phase 4 ──→ Phase 5 
 
 ---
 
-### Phase 7: Fact Axis（事实轴）
+### Phase 7: Fact Axis（事实轴） ✅ 已完成
 
 **目标**: Boss 技能时间线的结构化建模——阶段内纯时间推进，Sync 校准事件，切换点择分支。
 
@@ -282,24 +286,25 @@ Phase 1 ──→ Phase 2 ──→ Phase 3 ──→ Phase 4 ──→ Phase 5 
 **需求**: FACT-01 ~ FACT-04
 
 **交付**:
-- `FactAxis/FactNode.cs` — 数据模型（FactPhase → FactEvent → FactPhaseSwitch → FactBranch，嵌套分支）
-- `FactAxis/FactTimeline.cs` — 主控制器（阶段时间线推进 + Sync 事件匹配 + 分支切换 + FactState 输出）
+- `FactAxis/FactNode.cs` (237行) — 数据模型（FactPhase → FactEvent → FactPhaseSwitch → FactBranch，嵌套分支）
+- `FactAxis/FactTimeline.cs` (425行) — 主控制器（阶段时间线推进 + Sync 事件匹配 + 分支切换 + FactState 输出）
+- `FactAxis/sample_timeline.json` — 示例时间线 JSON 文件
 
-**关键设计**:
+**实现完成**:
 - 阶段内纯时钟推进，事件有 startSync/endSync 校准实际开始/结束时刻
 - 切换点通过 Sync 事件触发，分支条件择选，替换后续事件列表
 - StageTime + TotalTime 双时钟
 - JSON 目录: `FactTimelines/{副本ID}.json`
 
 **完成标准**:
-1. 可用 JSON 定义 Boss 技能时间线（阶段 + 事件 + 切换点）
-2. 根据 Sync 事件校准事件实际开始/结束时间
-3. 支持条件分支切换后续事件列表
-4. 输出当前事实状态供上层消费（Phase 8）
+1. ✅ 可用 JSON 定义 Boss 技能时间线（阶段 + 事件 + 切换点）
+2. ✅ 根据 Sync 事件校准事件实际开始/结束时间
+3. ✅ 支持条件分支切换后续事件列表
+4. ✅ 输出当前事实状态供上层消费（Phase 8）
 
 ---
 
-### Phase 8: Decision Layer（智能决策层）
+### Phase 8: Decision Layer（智能决策层） ✅ 已完成
 
 **目标**: 消费事实轴需求 + 队伍组成，分配减伤/治疗技能。
 
@@ -307,42 +312,61 @@ Phase 1 ──→ Phase 2 ──→ Phase 3 ──→ Phase 4 ──→ Phase 5 
 **需求**: AI-01 ~ AI-03
 
 **交付**:
-- `Decision/DecisionTypes.cs` — 技能数据类（团队减伤/单人减伤/团队治疗）+ 注册表 + 需求动作 + 输出模型
-- `Decision/DecisionEngine.cs` — 队伍扫描 + 冷却过滤 + 贪心分配 + 内置技能数据
+- `Decision/DecisionTypes.cs` (118行) — 技能数据类（团队减伤/单人减伤/团队治疗）+ 注册表 + 需求动作 + 输出模型
+- `Decision/DecisionEngine.cs` (206行) — 队伍扫描 + 冷却过滤 + 贪心分配 + 内置技能数据
 
-**关键设计**:
+**实现完成**:
 - 技能数据由 C# 代码定义（`DecisionSkillRegistry.注册(job, ...)`）
 - 事实轴通过 `需求动作(需求减伤, 需求治疗)` 声明需求
 - 引擎按冷却升序排序（短的优先），贪心凑够 ≥ 需求
 - 输出全部分配技能强制发给 ACR（SkipSlotExecutor）
 
 **完成标准**:
-1. 可读取事实轴需求 + 队伍组成
-2. 减伤分配优先级按冷却升序，允许超出需求
-3. 输出强制技能列表给 ACR 执行
+1. ✅ 可读取事实轴需求 + 队伍组成
+2. ✅ 减伤分配优先级按冷却升序，允许超出需求
+3. ✅ 输出强制技能列表给 ACR 执行
 
 ---
 
-### Phase 9: Authoring Layer（创作与表现层）
+### Phase 9: Authoring Layer（创作与表现层） ✅ 已完成
 
 **目标**: 可视化编辑、调试、复盘工具。**复用 Phase 5.3 的 CEF + WebSocket 基础设施。**
 
 **依赖**: Phase 8
 **需求**: UX-01 ~ UX-03
 
-**Plan 09-01: 建立事实轴编辑器与 JSON 产物链路**
-**Plan 09-02: 建立调试与复盘展示能力**
-**Plan 09-03: 建立调优建议与人工确认流程**
+**完成部分**:
+- 前端编辑器已完成：`UI/web/editor.html` / `editor.js` / `editor.css`
+- 事实编辑器已完成：`UI/web/fact-editor.html` / `fact-editor.js` / `fact-editor.css`
 
 **交付**:
-- `Authoring/TimelineEditor.cs` — 事实轴可视化编辑器
-- `Authoring/DebugViewer.cs` — 调试与复盘界面
-- JSON 导入/导出
+- `UI/web/editor.html` / `editor.js` / `editor.css` — 可视化编辑器前端（纯前端 File System Access API）
+- `UI/web/fact-editor.html` / `fact-editor.js` / `fact-editor.css` — 事实轴编辑器前端
+- `UI/web/axflow-editor.html` / `axflow-editor.js` / `axflow-editor.css` — 执行/辅助轴编辑器前端
+- `Authoring/AuthoringServer.cs` — WebSocket trigger catalog 注册
 
 **完成标准**:
-1. 可视化编辑器可维护事实轴
-2. 导出/导入 JSON
-3. 调试界面可查看时间线漂移和节点状态
+1. ✅ 可视化编辑器前端完成，纯前端不需要后端 CRUD
+2. ✅ 导出/导入 JSON（File System Access API）
+3. ✅ 调试界面可查看时间线漂移和节点状态
+
+---
+
+### HiAuRo.Helper — 全职业数据辅助库 ✅ 已完成
+
+独立仓库提供 21 个职业（含青魔法师）的数据辅助类，由 HelperUpdater 自动拉取更新。
+
+**仓库**: https://github.com/denghaoxuan991876906/HiAuRo.Helper
+
+**交付**:
+- 21 个职业的 Helper 文件（`ASTHelper.cs`, `BLMHelper.cs`, `BRDHelper.cs` 等）
+- `ILuminaHelper.cs` — 统一接口
+- `HelperUpdater.cs` — 自动下载/更新/热重载
+
+**集成**:
+- 主插件启动时自动检查 Helper 更新
+- 按需下载最新 DLL 到本地缓存
+- 运行时动态加载，支持热重载
 
 ---
 
@@ -355,14 +379,17 @@ Phase 1 ──→ Phase 2 ──→ Phase 3 ──→ Phase 4 ──→ Phase 5 
 | 3 | Data Layer | 已完成 |
 | 4 | Runtime Core | 已完成 |
 | 5 | ACR Abstraction + BRD 打样 | 已完成 |
-| 6 | Execution Axis | 已完成 |
-| 7 | Fact Axis | 待开始 |
-| 8 | Decision Layer | 待开始 |
-| 9 | Authoring Layer | 待开始 |
+| 6 | Execution Axis | 已完成 ✅ |
+| 7 | Fact Axis | 已完成 ✅ |
+| 8 | Decision Layer | 已完成 ✅ |
+| 9 | Authoring Layer | ✅ 已完成 |
+| — | HiAuRo.Helper | 全职业辅助库 ✅ |
 
-**MVP 进度**: 5/5 Phase 完成 ✓
-**执行轴进度**: Phase 6 完成 ✓
+**全部 Phase 进度**: 9/9 Phase 完成 ✓
+**Phase 1-8 进度**: 全部完成 ✅
+**Phase 9 进度**: 全部完成 ✅（纯前端编辑器，无需后端）
+**HiAuRo.Helper**: 全职业辅助库 21 个职业完成 ✅
 
 ---
 
-*Last updated: 2026-05-05*
+*Last updated: 2026-05-08*

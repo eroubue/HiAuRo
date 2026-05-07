@@ -247,6 +247,10 @@ OmenTools 不提供 ACR 框架。HiAuRo 自建：
 - `IRotationEntry`、`Rotation`、`SlotResolverData`、`SlotMode`
 - Slot Resolver 调度逻辑
 
+#### HiAuRo.Helper 辅助库
+
+HiAuRo.Helper 是独立仓库（21职业 Helper），同样遵循 OmenTools 直取模式，不做额外包装。HelperUpdater 从 GitHub Release 自动更新加载，编译时不依赖运行时。
+
 #### 执行轴 / 事实轴 / 智能层
 
 完全由 HiAuRo 实现，OmenTools 只提供底层数据和服务。
@@ -352,4 +356,4 @@ GlobalUsing 已自动 `global using OmenTools.ImGuiOm`，可直接使用。
 
 ---
 
-*Last updated: 2026-05-03*
+*Last updated: 2026-05-08*

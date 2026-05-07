@@ -14,19 +14,17 @@
 |----|------|----------|
 | Dalamud.NET.Sdk 15.0.0 | 插件构建、Dalamud API | Phase 1 |
 | OmenTools | DService 服务入口、ImGuiOm UI 组件、Managers 事件包装 | Phase 3 |
-| CefSharp.OffScreen.NETCore | CEF 浏览器（offscreen 渲染） | Phase 5.3 |
-| Microsoft.AspNetCore.App | Kestrel HTTP + WebSocket 服务器 | Phase 5.3 |
-| SharedMemory | IPC 环形缓冲（插件 ↔ CEF 渲染进程） | Phase 5.3 |
-| FlatSharp.Runtime | FlatBuffers 序列化（IPC 消息） | Phase 5.3 |
+| HttpListener (System.Net) | .NET 内置 HTTP + WebSocket 服务器 | Phase 5.3 |
+| Microsoft.CodeAnalysis.CSharp | Roslyn，执行轴 C# 脚本动态编译 | Phase 6 |
 | FFXIVClientStructs | 游戏数据结构（通过 OmenTools 间接引用） | Phase 3 |
 
-## CEF 使用边界
+## 悬浮窗渲染
 
-- **接入方式**: CEF 运行在独立外部进程（`HiAuRo.Renderer.exe`），不嵌入游戏进程
-- **渲染方式**: CEF offscreen → D3D11 共享纹理 → ImGui Image（复用 Browsingway 架构）
-- **IPC 通信**: SharedMemory + FlatBuffers（插件 ↔ 渲染进程）
-- **Web UI 开发**: 浏览器直接打开 `localhost:5678`，不依赖游戏
-- **CEF 打包**: CEF DLL 直接打包进插件（首次加载可用，离线无需下载）
+CEF 渲染由 [Browsingway](https://github.com/ProjectAliceDev/browsingway) 处理，HiAuRo 通过 localhost:5678 提供 Web 内容，Browsingway 渲染到游戏内 D3D11 共享纹理。
+
+- **方案**: Browsingway 外部进程 + D3D11 共享纹理
+- **开发**: 浏览器直接访问 localhost:5678，无需游戏环境
+- **原因**: 避免自建 CEF 的打包膨胀和进程不稳定
 
 ## OmenTools 使用边界
 
@@ -40,6 +38,12 @@
 | 包 | 用途 | 状态 |
 |----|------|------|
 | ImGui.NET | UI 渲染（浮窗控制面板） | Dalamud 内置（或通过 OmenTools ImGuiOm） |
+
+## HiAuRo.Helper
+
+- **HiAuRo.Helper**（独立仓库）— 21职业辅助库，HelperUpdater 自动从 GitHub Release 更新加载
+- **位置**: `HiAuRo/Runtime/HelperUpdater.cs`（插件内自动管理）
+- **仓库**: https://github.com/denghaoxuan991876906/HiAuRo.Helper
 
 ## 开发工具
 
@@ -82,4 +86,4 @@
 
 ---
 
-*Last updated: 2026-05-04*
+*Last updated: 2026-05-08*

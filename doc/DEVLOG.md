@@ -116,7 +116,6 @@
 - `Resolving` 事件桥接 HiAuRo/OmenTools/Dalamud → 宿主 ALC
 - **内置 BRD 移除**，移至 `example/BRD/` 作为 ACR 作者模板
 - `SettingMgr` 增加 ACR 设置：`GetAcrSetting(author, job)` / `SaveAcrSetting`
-- `SettingMgr` 增加 ACR 设置：`GetAcrSetting(author, job)` / `SaveAcrSetting`
 - 职业切换自动匹配 ACR
 
 #### UI 架构 ✅
@@ -271,4 +270,66 @@ HiAuRo.dll
 
 ---
 
-*Last updated: 2026-05-05*
+### 2026-05-05 Phase 7: 事实轴数据模型 + 时间线引擎 ✅
+
+- FactNode.cs: 完整数据模型 — FactTimelineData / FactPhase / FactEvent / FactPhaseSwitch / FactSwitchBranch (嵌套分支)
+- FactTimeline.cs: 阶段内纯时间推进 + Sync 事件校准(开始/结束) + 分支切换(evaluate condition → replace event list)
+- StageTime + TotalTime 双时钟
+- PushSyncEvent() Sync context matching for phase switches and event start/end
+- 5种FactAction: SetVariable, ToggleVariable, SkillSuggestion, LogMessage, 需求动作
+- sample_timeline.json: Suzaku副本示例
+- JSON目录: FactTimelines/{副本ID}.json → AutoLoadTimeline()
+
+---
+
+### 2026-05-05 Phase 8: 决策引擎 ✅
+
+- DecisionTypes.cs: 技能数据模型 — 团队减伤/单人减伤/团队治疗 + DecisionSkillRegistry(注册表) + DecisionOutput
+- DecisionEngine.cs: 队伍扫描 + 冷却升序排列 + 贪心分配算法
+- 内置技能数据: BRD(策动/行吟/光明神), MNK(牵制/内丹), WHM(节制/医济/全大赦)
+- AIRunner集成: UpdateDecisions()消费事实轴需求 → 计算() → 强制技能输出
+
+---
+
+### 2026-05-06 Phase 9: 编辑器前端 + 触发目录
+
+- AuthoringServer.cs: WebSocket handler注册, editorCatalog 读取 trigger-catalog.json
+- editor.html/js/css: 执行轴缩进树编辑器（11种节点类型, 拖拽排序, 属性面板, File System Access API）
+- fact-editor.html/js/css: 事实轴时间线编辑器（阶段轨道, 事件条, 拖拽调时, 分支可视化, 7种动作类型）
+- TriggerCatalog: 反射扫描程序集生成触发条件/动作元数据 → trigger-catalog.json
+- TriggerMetadata.cs: TriggerDisplay/TriggerTypeName/CloudSync attributes + TriggerCatalogBuilder
+- 编辑器为纯前端应用（File System Access API），无需后端 CRUD。AuthoringServer 仅提供 trigger catalog 注册。
+
+---
+
+### 2026-05-07 Phase 9: 辅助轴 + 模式切换 + HelperUpdater
+
+- ModeSwitch.cs 改进: /hi fact 命令, FactAxis模式切换, TryAutoSwitch
+- AssistAxis 集成: 始终运行, 独立于ModeSwitch
+- HelperUpdater.cs: 从GitHub Release自动下载/更新HiAuRo.Helper.dll, ALC隔离加载
+- HiAuRo.Helper: 独立仓库, 21职业全Helper覆盖 (AST/BLM/BRD/DNC/DRG/DRK/GNB/MCH/MNK/NIN/PCT/PLD/RDM/RPR/SAM/SCH/SGE/SMN/VPR/WAR/WHM)
+
+---
+
+### 当前架构总览
+
+```
+HiAuRo.dll
+├── FactAxis/    事实轴 (FactNode + FactTimeline + JSON)
+├── Decision/    决策层 (DecisionEngine + Registry)
+├── Authoring/   编辑器后端 (AuthoringServer)
+└── Execution/   执行轴 (AST + 18 Cond + 10 Action + ScriptCompiler)
+
+外置: HiAuRo.Helper (21职业) → HelperUpdater 自动加载
+```
+
+---
+
+### 后续计划
+
+- **P3 按需补齐**: TriggerCond 剩余 10 种、TriggerAction 剩余 4 种、AILoop_PVP
+- **FIXES.md 推迟项**: BRD 技能 ID 核实、RepUrl 填写、AuraHelper 哨兵值优化
+
+---
+
+*Last updated: 2026-05-08*

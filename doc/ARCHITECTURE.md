@@ -7,12 +7,12 @@
 │                     Dalamud Plugin Host              │
 │                  (HiAuRo.csproj / Plugin.cs)         │
 ├─────────────────────────────────────────────────────┤
-│  Phase 9  │  Authoring Layer   │  编辑器 / 调试 / 复盘  │
+│  Phase 9  │  Authoring Layer   │  编辑器 / 调试 / 复盘  │ ✓                      │
 │           │                     │  (复用 5.3 CEF + Web) │
 ├─────────────────────────────────────────────────────┤
-│  Phase 8  │  Decision Layer    │  策略输出 / 减伤控制   │
+│  Phase 8  │  Decision Layer    │  策略输出 / 减伤控制   │ ✓
 ├─────────────────────────────────────────────────────┤
-│  Phase 7  │  Fact Axis         │  Boss 时间线 JSON     │
+│  Phase 7  │  Fact Axis         │  Boss 时间线 JSON     │ ✓
 ├─────────────────────────────────────────────────────┤
 │  Phase 6  │  Execution Axis    │  条件驱动执行控制  ✓   │
 ├─────────────────────────────────────────────────────┤
@@ -30,7 +30,7 @@
 
 ## 双模式设计
 
-### 模式一：执行轴模式（默认模式，Phase 6+）
+### 模式一：执行轴模式（默认模式）
 
 ```
 ┌──────────────┐     ┌──────────────┐     ┌──────────────┐
@@ -55,7 +55,7 @@
 - 可指定特定技能强制 ACR 使用
 - 适合副本固定时间轴的场景
 
-### 模式二：事实轴模式（高级模式，Phase 8+）
+### 模式二：事实轴模式（高级模式）
 
 ```
 ┌──────────────┐     ┌──────────────┐     ┌──────────────┐     ┌──────────┐
@@ -364,6 +364,7 @@ HiAuRo.Execution/
 ├── ExecutionJson.cs              # AE 格式 JSON ↔ TriggerNode 反序列化 + 类型注册
 ├── ScriptCompiler.cs             # Roslyn C# 动态编译（TreeScriptNode 驱动）
 ├── AssistAxis.cs                 # 辅助轴（独立于执行轴/事实轴，.txt 加载）
+├── TriggerMetadata.cs            # 触发器元数据注册（类型/参数/文档）
 └── Triggers/
     ├── Cond/                     # 触发条件（18 种）
     └── Action/                   # 触发动作（10 种）
@@ -425,6 +426,21 @@ HiAuRo.Execution/
 
 ---
 
+## 事实轴 → 决策层 → ACR 数据流
+
+```
+FactTimeline (事件+需求) → DecisionEngine (分配减伤/治疗) → AIRunner (强制技能输出)
+```
+
+**执行流程**：
+1. **FactTimeline** 根据游戏事件（战斗开始、Boss读条、AOE预警）推进时间线
+2. 当遇到需要团队资源（减伤、治疗）的事件时，向 **DecisionEngine** 提出需求
+3. **DecisionEngine** 根据当前队伍状态（职业、CD、血量）进行贪心分配
+4. 分配结果通过 **ExecutionOutput** 传递给 **AIRunner**
+5. **AIRunner** 强制对应职业的 ACR 使用指定技能
+
+---
+
 ## 项目结构（MVP 完成后）
 
 ```
@@ -450,13 +466,14 @@ HiAuRo/
 │   ├── CombatContext.cs             # 战斗上下文状态机
 │   ├── ACRLifecycle.cs              # ACR 生命周期
 │   ├── ACRLoader.cs                 # 外部 ACR 动态加载器
-│   ├── ModeSwitch.cs                # 模式切换（None / ExecutionAxis / FactAxis[预埋]）
+│   ├── ModeSwitch.cs                # 模式切换（None / ExecutionAxis / FactAxis）
 │   ├── IAILoop.cs                   # AI 循环接口
 │   ├── AILoop_Normal.cs             # 普通 PVE AI 循环
 │   ├── SpellQueue.cs                # Slot 调度队列
 │   ├── AIRunner.cs                  # AI 主引擎（加载/调度/执行/执行轴协调）
 │   ├── SlotExecutor.cs              # Slot/SlotAction 执行引擎
-│   └── CountDownHandler.cs          # 倒计时管理器（Phase 6 接入）
+│   ├── CountDownHandler.cs          # 倒计时管理器
+│   └── HelperUpdater.cs             # HiAuRo.Helper.dll 自动更新 + ALC 隔离加载
 ├── ACR/
 │   ├── IRotationEntry.cs            # 职业执行器接口
 │   ├── Rotation.cs                  # Rotation 容器
@@ -504,11 +521,22 @@ HiAuRo/
 ├── Execution/                        # 执行轴（Phase 6）
 │   ├── ExecutionAxis.cs              # 执行轴主逻辑（TriggerLine 管理）
 │   ├── ExecutionNode.cs              # AST 节点定义 + ExecutionEntry
-│   ├── NodeProgressor.cs             # 节点推进器
-│   ├── ExecutionDebug.cs             # 调试诊断
+│   ├── ExecutionJson.cs              # JSON 反序列化 + 类型注册
+│   ├── ScriptCompiler.cs             # Roslyn C# 动态编译
+│   ├── AssistAxis.cs                 # 辅助轴（.txt 加载）
+│   ├── TriggerMetadata.cs            # 触发器元数据注册
 │   └── Triggers/
 │       ├── Cond/                     # 触发条件（18 种）
 │       └── Action/                   # 触发动作（10 种）
+├── FactAxis/                         # 事实轴（Phase 7）
+│   ├── FactNode.cs                   # 数据模型 (Phase → Event → PhaseSwitch → nested Branch)
+│   ├── FactTimeline.cs               # 时间线运行时 (双时钟, Sync校准, 分支切换)
+│   └── sample_timeline.json          # 示例时间线文件
+├── Decision/                         # 决策层（Phase 8）
+│   ├── DecisionTypes.cs              # 技能数据类 + 注册表 + 输出模型
+│   └── DecisionEngine.cs             # 贪心分配引擎 + 内置技能 (BRD/MNK/WHM)
+├── Authoring/                        # 编辑器后端（Phase 9）
+│   └── AuthoringServer.cs            # WebSocket trigger catalog 注册（纯前端编辑器无需 CRUD 后端）
 ├── Command/
 │   └── CommandMgr.cs                # /hi 命令系统
 ├── Setting/
@@ -542,4 +570,4 @@ Execution ──→ Runtime ──→ Data ──→ Infrastructure ──→ Pl
 
 ---
 
-*Last updated: 2026-05-05*
+*Last updated: 2026-05-08*

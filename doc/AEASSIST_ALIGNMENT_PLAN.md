@@ -5,18 +5,16 @@
 
 ---
 
-## P0 — 立即补齐（Phase 6 已完成 ✓）
+## P0 — 立即补齐 ✅ 全部完成
 
-大部分 P0 项已在 Phase 6 实现：
+所有 P0 项已在 Phase 6 实现：
 
 | 项 | 状态 |
 |:---|:---:|
 | P0-2: ITargetResolver 5 种实现 | ✅ 已实现 |
 | P0-3: HotkeyResolver 4 种实现 (技能/吃药/极限技/疾跑) | ✅ 已实现 |
 | P0-4: HotkeyConfig 字段扩充 (SpellId/Description) | ✅ 已实现 |
-| P0-1: SpellTargetLimit (HP/职业过滤) | ❌ 未实现（待 Phase 7+） |
-
-P0-1 继续待实现，其余 P0 项标记为完成。
+| P0-1: SpellTargetLimit (HP/职业过滤) | ✅ 已实现 — SpellTargetLimit.cs + SpellTargetLimit_HP.cs + SpellTargetLimit_Job.cs 存在, Spell.cs GetTarget() 已集成过滤 |
 
 ---
 
@@ -148,7 +146,7 @@ public sealed class HotkeyConfig
 
 ---
 
-## P1 — Phase 7 前补齐（Medium，增加副本覆盖）
+## P1 — Phase 7 前补齐（Medium，增加副本覆盖）✅ P1 全部完成
 
 ---
 
@@ -296,7 +294,7 @@ if (Data.Target.Current == null)
 
 ---
 
-## P2 — Phase 7 执行（树求值 + 序列化）
+## P2 — Phase 7 执行（树求值 + 序列化）✅ P2 全部完成 — AST引擎(async Task) + ExecutionJson序列化已在Phase 6实现, 超出计划
 
 ---
 
@@ -396,7 +394,7 @@ public interface ITriggerSerializer
 
 ---
 
-## P3 — 按需补齐（Phase 7+/后续）
+## P3 — 按需补齐（Phase 7+/后续）🟡 P3 部分完成 (1/5 完成, 2/5 差距, 2/5 未做)
 
 ---
 
@@ -426,7 +424,7 @@ public interface ITriggerSerializer
 
 ---
 
-### P3-3: JobApi 覆盖 21 职业
+### P3-3: JobApi 覆盖 21 职业 ✅ 已完成 — HiAuRo.Helper 独立仓库, 21职业全Helper (AST/BLM/BRD/.../WHM)
 
 **差距**：仅 BRDHelp.cs。需要为其余 20 职业创建 XXHelp.cs。
 
@@ -496,30 +494,29 @@ public static class BLMHelp
 ## 执行路线图
 
 ```
-当前: Phase 6 完成
+当前: Phase 6 完成 ✅
   │
-  ├── P0 (Phase 6.x, 1-2周)
-  │   ├── SpellTargetLimit
-  │   ├── ITargetResolver × 5
-  │   ├── HotkeyResolver × 4
-  │   └── HotkeyConfig 扩充
+  ├── P0 ✅ (Phase 6.x, 1-2周)
+  │   ├── SpellTargetLimit ✅
+  │   ├── ITargetResolver × 5 ✅
+  │   ├── HotkeyResolver × 4 ✅
+  │   └── HotkeyConfig 扩充 ✅
   │
-  ├── P1 (Phase 6.x, 2-3周)
-  │   ├── TriggerCond × 13
-  │   ├── TriggerAction × 6
-  │   ├── ISlotSequence 双模式
-  │   └── AIRunner TargetResolver 接入
+  ├── P1 ✅ (Phase 6.x, 2-3周)
+  │   ├── TriggerCond × 13 ✅
+  │   ├── TriggerAction × 6 ✅
+  │   ├── ISlotSequence 双模式 ✅
+  │   └── AIRunner TargetResolver 接入 ✅
   │
-  ├── Phase 7 (事实轴)
-  │   └── P2 随 Phase 7 一起做
-  │       ├── ExecutionNode 树求值
-  │       └── TriggerLine JSON 序列化
+  ├── P2 ✅ (Phase 6.x)
+  │   ├── ExecutionNode 树求值 ✅ (AST async Task)
+  │   └── TriggerLine JSON 序列化 ✅ (ExecutionJson)
   │
-  └── Phase 7+ / Phase 8
-      └── P3 按需
-          ├── JobApi × 20
-          ├── PvP/Simulate AI
-          └── 其余 Trigger 类型
+  └── Phase 7/8
+      └── P3 按需 (1/5 完成, 2/5 差距, 2/5 未做)
+          ├── JobApi × 20 ✅ (HiAuRo.Helper)
+          ├── PvP/Simulate AI ⏳
+          └── 其余 Trigger 类型 ⏳
 ```
 
 ---
@@ -535,5 +532,5 @@ public static class BLMHelp
 
 ---
 
-*Created: 2026-05-04*
+*Updated: 2026-05-08*
 *对齐目标: AEAssist 1686 文件能力 → HiAuRo 最小实现原则*
