@@ -6,6 +6,9 @@ on:
     tags: ['v*']
   workflow_dispatch:
 
+permissions:
+  contents: write
+
 jobs:
   build:
     runs-on: windows-latest
@@ -29,18 +32,24 @@ jobs:
         env:
           DALAMUD_HOME: ${{ github.workspace }}\dalamud
 
+      - name: Collect artifacts
+        shell: pwsh
+        run: |
+          Copy-Item HiAuRo\bin\Release\HiAuRo.dll release\
+          Copy-Item OmenTools\bin\Release\OmenTools.dll release\
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: HiAuRo-release
-          path: |
-            HiAuRo/bin/Release/HiAuRo.dll
-            OmenTools/bin/Release/OmenTools.dll
+          path: release/
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: build
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/download-artifact@v4
         with:
