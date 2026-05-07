@@ -14,11 +14,6 @@
     <ProjectReference Include="../OmenTools/OmenTools.csproj">
       <Private>False</Private>
     </ProjectReference>
-    <ProjectReference Include="..\HiAuRo.Helper\HiAuRo.Helper.csproj" Condition="Exists('..\HiAuRo.Helper\HiAuRo.Helper.csproj')" />
-    <Reference Include="HiAuRo.Helper" Condition="!Exists('..\HiAuRo.Helper\HiAuRo.Helper.csproj')">
-      <HintPath>..\HiAuRo.Helper.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
   </ItemGroup>
 
   <ItemGroup>
@@ -63,8 +58,8 @@
       <MainFiles Include="$(OutputPath)*.json" />
       <MainFiles Include="$(OutputPath)*.deps.json" />
       <WebFiles Include="$(OutputPath)UI\web\**\*" />
-      <OmenFiles Include="..\OmenTools\bin\$(Configuration)\OmenTools.dll" />
-      <OmenFiles Include="..\OmenTools\bin\$(Configuration)\OmenTools.deps.json" />
+      <OmenFiles Include="..\bin\$(Configuration)\OmenTools.dll" />
+      <OmenFiles Include="..\bin\$(Configuration)\OmenTools.deps.json" />
     </ItemGroup>
 
     <Copy SourceFiles="@(MainFiles)" DestinationFolder="$(StagingDir)" />

@@ -1,4 +1,4 @@
-<Project>
+﻿<Project>
   <PropertyGroup>
     <!-- WSL/Linux 下编译 Windows 目标项目时需要启用 -->
     <EnableWindowsTargeting>true</EnableWindowsTargeting>
@@ -8,9 +8,9 @@
   </PropertyGroup>
 
   <!-- 构建前验证 DALAMUD_HOME 是否有效 -->
-  <Target Name="ValidateDalamudHome" BeforeTargets="BeforeBuild">
+<!--  <Target Name="ValidateDalamudHome" BeforeTargets="BeforeBuild">
     <Error
       Condition="'$(DALAMUD_HOME)' == ''"
       Text="DALAMUD_HOME 未设置。请设置环境变量 DALAMUD_HOME 指向 Dalamud dev 目录。&#xA;  PowerShell: $env:DALAMUD_HOME = 'C:\Users\...\AppData\Roaming\XIVLauncherCN\addon\Hooks\dev'&#xA;  WSL: export DALAMUD_HOME=/mnt/c/Users/.../AppData/Roaming/XIVLauncherCN/addon/Hooks/dev" />
-  </Target>
+  </Target>-->
 </Project>
