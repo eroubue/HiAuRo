@@ -35,6 +35,21 @@ jobs:
           Invoke-WebRequest https://goatcorp.github.io/dalamud-distrib/latest.zip -OutFile dalamud.zip
           Expand-Archive dalamud.zip -DestinationPath dalamud
 
+      - name: Bump version
+        if: github.ref == 'refs/heads/master'
+        shell: pwsh
+        run: |
+          $csproj = "HiAuRo/HiAuRo.csproj"
+          $nuspec = "HiAuRo.Sdk.nuspec"
+          $m = Select-String -Path $csproj -Pattern '<Version>(.*?)</Version>'
+          $cur = $m.Matches[0].Groups[1].Value
+          $p = $cur.Split('.')
+          $new = "$([int]$p[0]).$([int]$p[1]).$([int]$p[2] + 1)"
+          Write-Host "Bump: $cur → $new"
+          (Get-Content $csproj) -replace "<Version>$cur</Version>", "<Version>$new</Version>" | Set-Content $csproj
+          (Get-Content $nuspec) -replace "<version>$cur</version>", "<version>$new</version>" | Set-Content $nuspec
+          "NEW_VERSION=$new" >> $env:GITHUB_ENV
+
       - name: Build
         run: dotnet build HiAuRo.slnx -c Release
         env:
@@ -63,6 +78,28 @@ jobs:
             HiAuRo/bin/Release/HiAuRo.dll
             bin/Release/OmenTools.dll
             nupkg/*.nupkg
+
+      - name: Commit & Tag
+        if: github.ref == 'refs/heads/master'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add HiAuRo/HiAuRo.csproj HiAuRo.Sdk.nuspec
+          git commit -m "chore: bump version to v${{ env.NEW_VERSION }} [skip ci]"
+          git tag "v${{ env.NEW_VERSION }}"
+          git push origin master
+          git push origin "v${{ env.NEW_VERSION }}"
+
+      - name: Create Release
+        if: github.ref == 'refs/heads/master'
+        uses: softprops/action-gh-release@v3
+        with:
+          tag_name: v${{ env.NEW_VERSION }}
+          files: |
+            HiAuRo/bin/Release/HiAuRo.dll
+            bin/Release/OmenTools.dll
+            nupkg/*.nupkg
+          generate_release_notes: true
 
   publish-nuget:
     needs: build
