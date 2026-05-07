@@ -105,21 +105,33 @@ git submodule update --init
 
 ```
 .
-├── HiAuRo/              # 插件主项目
-│   ├── ACR/             # ACR 抽象层（Rotation/SlotResolver/Target/Spell）
-│   ├── Command/         # /hi 命令系统
-│   ├── Data/            # 游戏数据层（Self/Target/Party/Objects/Combat）
-│   ├── Execution/       # 执行轴（TriggerLine/NodeProgressor）
-│   ├── Infrastructure/  # 配置、日志
-│   ├── Runtime/         # 运行时核心（Tick/AIRunner/ACRLifecycle）
-│   ├── Setting/         # 设置管理
-│   └── UI/              # Web UI + WebSocket + ImGui 主窗口
-├── Browsingway/         # CEF 游戏内浏览器渲染（external）
-├── OmenTools/           # Dalamud 服务封装（git submodule）
-├── example/BRD/         # 诗人 ACR 打样实例
-├── doc/                 # 设计文档
-└── Directory.Build.props # 全局 MSBuild 配置
+├── HiAuRo/                # 插件主项目
+│   ├── ACR/               # ACR 抽象层（Rotation/SlotResolver/Target/Spell）
+│   ├── Command/           # /hi 命令系统
+│   ├── Data/              # 游戏数据层（Self/Target/Party/Objects）+ HelperContext
+│   ├── Execution/         # 执行轴（TriggerLine/NodeProgressor）
+│   ├── Infrastructure/    # 配置、日志
+│   ├── Runtime/           # 运行时核心（Tick/AIRunner/ACRLifecycle）+ HelperUpdater
+│   ├── Setting/           # 设置管理
+│   └── UI/                # Web UI + WebSocket + ImGui 主窗口
+├── HiAuRo.Helper/         # 职业数据辅助库（独立公开 repo）
+├── Browsingway/           # CEF 游戏内浏览器渲染（external）
+├── OmenTools/             # Dalamud 服务封装（git submodule）
+├── example/BRD/           # 诗人 ACR 打样实例
+├── doc/                   # 设计文档
+└── Directory.Build.props  # 全局 MSBuild 配置
 ```
+
+## HiAuRo.Sdk NuGet 包
+
+ACR 开发者无需配置开发环境，一个包搞定全部依赖。
+
+```bash
+dotnet nuget add source "https://nuget.pkg.github.com/denghaoxuan991876906/index.json" -n github
+dotnet add package HiAuRo.Sdk
+```
+
+包含：HiAuRo.dll + HiAuRo.Helper.dll + OmenTools.dll + 11 个 Dalamud 运行时 DLL。
 
 ## 开发
 
