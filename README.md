@@ -8,8 +8,6 @@ FFXIV Dalamud 战斗辅助框架（.NET 10，Dalamud.CN.NET.Sdk 15.0.0）。
 
 ## ACR 开发者 — 一键开始
 
-零配置，一个 NuGet 包搞定全部依赖：
-
 ```bash
 dotnet nuget add source "https://nuget.pkg.github.com/denghaoxuan991876906/index.json" -n github
 dotnet add package HiAuRo.Sdk
@@ -19,10 +17,10 @@ dotnet add package HiAuRo.Sdk
 using HiAuRo.ACR;
 using HiAuRo.Helper;
 
-public class MyBrdAcr : IRotationEntry
+public class MyAcr : IRotationEntry
 {
     public IEnumerable<Jobs> TargetJobs => [Jobs.BRD];
-    public Rotation? Build(string settingFolder) { /* ... */ return new Rotation(); }
+    public Rotation? Build(string settingFolder) { return new Rotation(); }
 }
 ```
 
@@ -35,6 +33,8 @@ export DALAMUD_HOME=/path/to/XIVLauncherCN/addon/Hooks/dev
 dotnet build HiAuRo/HiAuRo.csproj
 ```
 
+> HiAuRo.Helper 是独立仓库，编译时不依赖。运行时通过 HelperUpdater 自动拉取最新 DLL。
+
 ## 项目结构
 
 ```
@@ -42,17 +42,15 @@ HiAuRo/              ← 主插件
 ├── ACR/             ← 接口 + Helper + 类型
 ├── Command/         ← /hi 命令
 ├── Data/            ← 游戏数据层
-├── Execution/       ← 执行轴 + 触发器
+├── Execution/       ← 执行轴 + 触发器元数据
 ├── Runtime/         ← 运行时 + HelperUpdater
 ├── UI/              ← Web UI + ImGui
 ├── Authoring/       ← 编辑器后端
 ├── FactAxis/        ← 事实轴
 └── Decision/        ← 决策层
 
-HiAuRo.Helper/       ← 职业数据辅助库（独立 repo）
-Browsingway/         ← CEF 渲染
 OmenTools/           ← Dalamud 服务封装（submodule）
-example/BRD/         ← ACR 打样
+Browsingway/         ← CEF 渲染
 ```
 
 ## 命令
