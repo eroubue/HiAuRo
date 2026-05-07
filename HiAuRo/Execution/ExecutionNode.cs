@@ -129,6 +129,7 @@ public sealed class TreeLoop : TriggerCompositeNode
 
 /// <summary>
 /// 脚本节点 — C# 动态编译执行，对齐 AE TreeScriptNode
+/// Check() 返回 false = 继续等待，true = 节点完成（对齐 AE 统一挂起模型）
 /// </summary>
 public sealed class TreeScriptNode : TriggerLeafNode
 {
@@ -137,32 +138,44 @@ public sealed class TreeScriptNode : TriggerLeafNode
 
     private ITriggerScript? _compiled;
 
-    protected override Task<bool> OnExecute(EvalContext ctx)
+    protected override async Task<bool> OnExecute(EvalContext ctx)
     {
-        if (string.IsNullOrWhiteSpace(Script)) return Task.FromResult(true);
+        if (string.IsNullOrWhiteSpace(Script)) return true;
+        _compiled ??= ScriptCompiler.Compile(Script);
+        if (_compiled == null) return true;
 
-        try
+        if (OnlyCheck)
         {
-            _compiled ??= ScriptCompiler.Compile(Script);
-            if (_compiled == null) return Task.FromResult(true);
-
-            if (OnlyCheck)
+            try { return _compiled.Check(null); }
+            catch (Exception ex)
             {
-                // 仅检查：脚本返回的 bool 即条件结果
-                return Task.FromResult(_compiled.Check(null));
-            }
-            else
-            {
-                // 执行：不计返回值，总是成功
-                _compiled.Check(null);
-                return Task.FromResult(true);
+                DService.Instance().Log.Error($"[TreeScriptNode] 脚本执行异常: {ex.Message}");
+                return false;
             }
         }
+
+        try { _compiled.Check(null); }
         catch (Exception ex)
         {
             DService.Instance().Log.Error($"[TreeScriptNode] 脚本执行异常: {ex.Message}");
-            return Task.FromResult(true);
         }
+        return await ExecutionAxis.Instance.WaitCond(this);
+    }
+
+    /// <summary>每帧轮询：Check() 返回 false = 继续等，true = 节点完成</summary>
+    public bool EvaluateConds()
+    {
+        if (_compiled == null) return true;
+        try { return _compiled.Check(null); }
+        catch { return false; }
+    }
+
+    /// <summary>事件驱动：传入 ITriggerCondParams，返回 false = 继续等，true = 节点完成</summary>
+    public bool EvaluateForEvent(ITriggerCondParams condParams)
+    {
+        if (_compiled == null) return true;
+        try { return _compiled.Check(condParams); }
+        catch { return false; }
     }
 }
 
@@ -205,6 +218,19 @@ public sealed class TreeCondNode : TriggerLeafNode
         bool met = CondLogicType == CondLogicType.And
             ? TriggerConds.All(c => { try { return c.Handle(); } catch { return false; } })
             : TriggerConds.Any(c => { try { return c.Handle(); } catch { return false; } });
+
+        if (ReverseResult) met = !met;
+        return met;
+    }
+
+    /// <summary>事件驱动求值（带 condParams 上下文）</summary>
+    public bool EvaluateForEvent(ITriggerCondParams condParams)
+    {
+        if (TriggerConds.Count == 0) return true;
+
+        bool met = CondLogicType == CondLogicType.And
+            ? TriggerConds.All(c => { try { return c.Handle(condParams); } catch { return false; } })
+            : TriggerConds.Any(c => { try { return c.Handle(condParams); } catch { return false; } });
 
         if (ReverseResult) met = !met;
         return met;

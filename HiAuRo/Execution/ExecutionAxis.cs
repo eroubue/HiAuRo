@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using HiAuRo.ACR;
 
 namespace HiAuRo.Execution;
@@ -19,13 +20,16 @@ public sealed class ExecutionAxis
     public ExecutionDebug Debug { get; } = new();
     public int BattleTimeMs => Context.BattleTimeMs;
 
+    /// <summary>自动攻击开关（由 TriggerActionSwitchPull 控制）</summary>
+    public bool IsPullEnabled { get; set; } = true;
+
     internal Spell? _forceSpell;
     private bool _paused;
     private uint _previousTerritoryId;
     private CancellationTokenSource? _cts;
 
     /// <summary>WaitCond 注册表（对齐 AE ActiveActionBase2TCS）</summary>
-    private readonly Dictionary<TreeCondNode, TaskCompletionSource<bool>> _waitingConds = [];
+    private readonly ConcurrentDictionary<TriggerLeafNode, TaskCompletionSource<bool>> _waitingConds = new();
 
     private ExecutionAxis() { }
 
@@ -35,17 +39,24 @@ public sealed class ExecutionAxis
     {
         if (Initialized) return;
         Initialized = true;
+        Events.GameEventHook.Instance.OnEventFired += OnEventFired;
         AutoLoadTimeline();
     }
 
     public void Shutdown()
     {
+        Events.GameEventHook.Instance.OnEventFired -= OnEventFired;
         Stop();
         Root = null;
         Initialized = false;
         TimelineName = "";
         TerritoryId = 0;
         _waitingConds.Clear();
+    }
+
+    private void OnEventFired(ITriggerCondParams condParams)
+    {
+        UseCondParams(condParams);
     }
 
     /// <summary>战斗开始 — 启动触发树（async void，对齐 AE）</summary>
@@ -97,9 +108,9 @@ public sealed class ExecutionAxis
     #region WaitCond — 事件驱动的条件等待（对齐 AE）
 
     /// <summary>
-    /// 条件节点挂起等待。注册 TCS，由 CheckWaitingConds 每帧检查唤醒。
+    /// 条件节点挂起等待。注册 TCS，由 CheckWaitingConds 或 UseCondParams 唤醒。
     /// </summary>
-    internal Task<bool> WaitCond(TreeCondNode node)
+    internal Task<bool> WaitCond(TriggerLeafNode node)
     {
         var tcs = new TaskCompletionSource<bool>();
         _waitingConds[node] = tcs;
@@ -109,12 +120,72 @@ public sealed class ExecutionAxis
     /// <summary>每帧检查所有挂起条件（由 AIRunner 调用）</summary>
     private void CheckWaitingConds()
     {
+        if (_waitingConds.IsEmpty) return;
+
+        var toWake = new List<TriggerLeafNode>();
+        foreach (var (node, _) in _waitingConds)
+        {
+            try
+            {
+                bool met = node switch
+                {
+                    TreeCondNode condNode => condNode.EvaluateConds(),
+                    TreeScriptNode scriptNode => scriptNode.EvaluateConds(),
+                    _ => false
+                };
+                if (met) toWake.Add(node);
+            }
+            catch { }
+        }
+
+        foreach (var node in toWake)
+        {
+            if (_waitingConds.TryRemove(node, out var tcs))
+                tcs.TrySetResult(true);
+        }
+    }
+
+    public void UseCondParams(ITriggerCondParams condParams)
+    {
+        if (_waitingConds.IsEmpty) return;
+
+        var toWake = new List<TriggerLeafNode>();
+        foreach (var (node, _) in _waitingConds)
+        {
+            try
+            {
+                if (node.EvaluateForEvent(condParams))
+                    toWake.Add(node);
+            }
+            catch { }
+        }
+
+        foreach (var node in toWake)
+        {
+            if (_waitingConds.TryRemove(node, out var tcs))
+                tcs.TrySetResult(true);
+        }
+    }
+
+        foreach (var node in toWake)
+        {
+            if (_waitingConds.TryGetValue(node, out var tcs))
+            {
+                tcs.TrySetResult(true);
+                _waitingConds.Remove(node);
+            }
+        }
+    }
+
+    /// <summary>事件驱动分发 — 由 GameEventHook 或其它事件源调用</summary>
+    public void UseCondParams(ITriggerCondParams condParams)
+    {
         if (_waitingConds.Count == 0) return;
 
-        var toWake = new List<TreeCondNode>();
-        foreach (var (node, tcs) in _waitingConds)
+        var toWake = new List<TriggerLeafNode>();
+        foreach (var (node, _) in _waitingConds)
         {
-            if (node.EvaluateConds())
+            if (node.EvaluateForEvent(condParams))
                 toWake.Add(node);
         }
 
