@@ -1,0 +1,489 @@
+using HiAuRo.ACR;
+using HiAuRo.Data;
+using Dalamud.Hooking;
+using OmenTools.Dalamud.Services.ObjectTable.Abstractions.ObjectKinds;
+using OmenTools.OmenService;
+using IFramework = Dalamud.Plugin.Services.IFramework;
+
+namespace HiAuRo.Execution.Events;
+
+public sealed class GameEventHook
+{
+    public static GameEventHook Instance { get; } = new();
+    public event Action<ITriggerCondParams>? OnEventFired;
+
+    private bool _initialized;
+
+    private delegate void ActionEffectDelegate(
+        uint sourceId, nint sourceCharacter, nint pos,
+        nint effectHeader, nint effectArray, nint effectTail);
+    private Hook<ActionEffectDelegate>? _actionEffectHook;
+
+    public void Init()
+    {
+        if (_initialized) return;
+        _initialized = true;
+
+        var csm = CharacterStatusManager.Instance();
+        csm.RegGain(OnGainStatus);
+        csm.RegLose(OnLoseStatus);
+
+        var gpm = GamePacketManager.Instance();
+        gpm.RegPostReceivePacket(OnReceivePacket);
+
+        var cm = ChatManager.Instance();
+        cm.RegPostProcessChatBoxEntry(OnChatMessage);
+
+        FrameworkManager.Instance().Reg(OnFrameworkUpdate);
+
+        var sigScanner = DService.Instance().PI.TargetModuleScanner;
+        var actionEffectAddr = sigScanner.ScanText("40 55 56 57 41 54 41 55 41 56 41 57 48 8D AC 24");
+        if (actionEffectAddr != nint.Zero)
+        {
+            _actionEffectHook = DService.Instance().PI.GameInteropProvider.HookFromAddress<ActionEffectDelegate>(
+                actionEffectAddr, OnActionEffect);
+            _actionEffectHook.Enable();
+        }
+    }
+
+    public void Shutdown()
+    {
+        if (!_initialized) return;
+        _initialized = false;
+
+        FrameworkManager.Instance().Unreg(OnFrameworkUpdate);
+
+        _actionEffectHook?.Disable();
+        _actionEffectHook?.Dispose();
+        _actionEffectHook = null;
+
+        var csm = CharacterStatusManager.Instance();
+        csm.Unreg(OnGainStatus);
+        csm.Unreg(OnLoseStatus);
+
+        var gpm = GamePacketManager.Instance();
+        gpm.Unreg(OnReceivePacket);
+
+        var cm = ChatManager.Instance();
+        cm.Unreg(OnChatMessage);
+    }
+
+    private void OnGainStatus(IBattleChara player, ushort id, ushort param, ushort stackCount, TimeSpan remainingTime, ulong sourceID)
+    {
+        OnEventFired?.Invoke(new BuffGainParams
+        {
+            SourceID = player.EntityID,
+            StatusID = id,
+            StackCount = stackCount
+        });
+    }
+
+    private void OnLoseStatus(IBattleChara player, ushort id, ushort param, ushort stackCount, ulong sourceID)
+    {
+        OnEventFired?.Invoke(new BuffRemoveParams
+        {
+            SourceID = player.EntityID,
+            StatusID = id
+        });
+    }
+
+    private void OnReceivePacket(int opcode, nint packet)
+    {
+        if (packet == nint.Zero) return;
+        var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+        switch (opcode)
+        {
+            case 0x01F8:
+            {
+                unsafe
+                {
+                    var tether = System.Runtime.InteropServices.Marshal.PtrToStructure<TetherRaw>(packet);
+                    if (tether.TargetOID == 0xE0000000)
+                    {
+                        BattleData.RecentTethers.RemoveAll(e => e.TetherId == tether.TetherID && e.SourceId == tether.SourceID);
+                        OnEventFired?.Invoke(new TetherRemoveParams
+                        {
+                            SourceID = tether.SourceID,
+                            Param2 = tether.A2, Param3 = tether.A3, Param5 = tether.A5
+                        });
+                    }
+                    else
+                    {
+                        BattleData.OnTetherAdded(tether.TetherID, tether.SourceID, (uint)tether.TargetOID, now);
+                        OnEventFired?.Invoke(new TetherCreateParams
+                        {
+                            TetherID = tether.TetherID,
+                            SourceID = tether.SourceID,
+                            TargetOID = (uint)tether.TargetOID,
+                            Param2 = tether.A2, Param3 = tether.A3, Param5 = tether.A5
+                        });
+                    }
+                }
+                break;
+            }
+            case 0x02B6:
+            {
+                unsafe
+                {
+                    var me = System.Runtime.InteropServices.Marshal.PtrToStructure<MapEffectRaw>(packet);
+                    BattleData.OnMapEffect(me.PositionIndex, new System.Numerics.Vector3(), now);
+                    OnEventFired?.Invoke(new MapEffectParams
+                    {
+                        PositionIndex = me.PositionIndex,
+                        Param1 = me.Param1,
+                        Param2 = me.Param2
+                    });
+                }
+                break;
+            }
+            case 0x0228:
+            {
+                unsafe
+                {
+                    var ac = System.Runtime.InteropServices.Marshal.PtrToStructure<ActorControlRaw>(packet);
+                    OnActorControl(ac);
+                }
+                break;
+            }
+            case 0x039A:
+            {
+                unsafe
+                {
+                    var cast = System.Runtime.InteropServices.Marshal.PtrToStructure<ActorCastRaw>(packet);
+                    OnEventFired?.Invoke(new ActorCastParams
+                    {
+                        ActionID = cast.ActionID,
+                        CastTime = cast.CastTime,
+                        TargetID = cast.TargetID,
+                        SourceID = cast.SourceID,
+                        PosX = cast.PosX,
+                        PosY = cast.PosY,
+                        PosZ = cast.PosZ
+                    });
+                }
+                break;
+            }
+            case 0x01C2:
+            {
+                unsafe
+                {
+                    var yell = System.Runtime.InteropServices.Marshal.PtrToStructure<NpcYellRaw>(packet);
+                    var name = System.Runtime.InteropServices.Marshal.PtrToStringUTF8((nint)yell.SourceNamePtr, 32) ?? "";
+                    var msg = System.Runtime.InteropServices.Marshal.PtrToStringUTF8((nint)yell.YellMsgPtr, 128) ?? "";
+                    OnEventFired?.Invoke(new NpcYellParams
+                    {
+                        SourceID = yell.SourceID,
+                        SourceName = name,
+                        YellID = yell.YellID,
+                        YellMsg = msg
+                    });
+                }
+                break;
+            }
+            case 0x01F4:
+            {
+                unsafe
+                {
+                    var env = System.Runtime.InteropServices.Marshal.PtrToStructure<EnvControlRaw>(packet);
+                    OnEventFired?.Invoke(new EnvControlParams
+                    {
+                        Index = env.Index,
+                        Flag = env.Flag
+                    });
+                }
+                break;
+            }
+        }
+    }
+
+    private void OnChatMessage(byte[] message, bool saveToHistory)
+    {
+        var text = System.Text.Encoding.UTF8.GetString(message);
+        OnEventFired?.Invoke(new ChatMessageParams { Message = text });
+    }
+
+    private void OnActorControl(ActorControlRaw ac)
+    {
+        var raw = new ActorControlParams
+        {
+            SourceID = ac.SourceID,
+            Command = ac.Command,
+            P1 = ac.P1, P2 = ac.P2, P3 = ac.P3,
+            P4 = ac.P4, P5 = ac.P5, P6 = ac.P6,
+            TargetID = ac.TargetID
+        };
+        OnEventFired?.Invoke(raw);
+
+        switch (ac.Command)
+        {
+            case 2 when ac.P3 == 2:
+                OnEventFired?.Invoke(new ActorControlDeathParams
+                {
+                    SourceID = ac.SourceID,
+                    TargetID = ac.TargetID
+                });
+                break;
+            case 34:
+                OnEventFired?.Invoke(new ActorControlTargetIconParams
+                {
+                    SourceID = ac.SourceID,
+                    TargetID = ac.TargetID,
+                    IconID = ac.P1
+                });
+                break;
+            case 54:
+                OnEventFired?.Invoke(new ActorControlTargetableParams
+                {
+                    SourceID = ac.SourceID,
+                    TargetID = ac.TargetID,
+                    IsTargetable = ac.P3 != 0
+                });
+                break;
+            case 109:
+                // CombatStateParams already dispatched by CombatContext (authoritative source)
+                break;
+            case 407:
+                OnEventFired?.Invoke(new ActorControlTimelineParams
+                {
+                    SourceID = ac.SourceID,
+                    TimelineID = ac.P2
+                });
+                break;
+        }
+    }
+
+    #region 轮询事件 (Unit创建/消失, 天气变化)
+
+    private readonly Dictionary<uint, (uint DataId, string Name)> _knownEntities = [];
+    private int _lastWeatherId;
+    private long _nextPollAt;
+
+    private void OnFrameworkUpdate(IFramework _)
+    {
+        var now = Environment.TickCount64;
+        if (now < _nextPollAt) return;
+        _nextPollAt = now + 500;
+
+        var objectTable = DService.Instance().ObjectTable;
+        if (objectTable == null) return;
+
+        var currentIds = new HashSet<uint>();
+        foreach (var obj in objectTable)
+        {
+            if (obj == null || obj.EntityID == 0) continue;
+            currentIds.Add(obj.EntityID);
+
+            if (_knownEntities.Count > 0 && !_knownEntities.ContainsKey(obj.EntityID))
+            {
+                var bn = obj as IBattleNPC;
+                OnEventFired?.Invoke(new UnitCreateParams
+                {
+                    EntityId = obj.EntityID,
+                    DataId = bn?.DataID ?? 0,
+                    Name = obj.Name.ToString()
+                });
+            }
+        }
+
+        if (_knownEntities.Count > 0)
+        {
+            foreach (var (id, info) in _knownEntities)
+            {
+                if (!currentIds.Contains(id))
+                {
+                    OnEventFired?.Invoke(new UnitDeleteParams
+                    {
+                        EntityId = id,
+                        DataId = info.DataId,
+                        Name = info.Name
+                    });
+                }
+            }
+        }
+
+        var oldSnapshot = new Dictionary<uint, (uint, string)>(_knownEntities);
+        _knownEntities.Clear();
+        foreach (var id in currentIds)
+        {
+            if (oldSnapshot.TryGetValue(id, out var cached))
+                _knownEntities[id] = cached;
+            else
+                _knownEntities[id] = (((objectTable.SearchById(id) as IBattleNPC)?.DataID ?? 0,
+                    objectTable.SearchById(id)?.Name.ToString() ?? ""));
+        }
+
+        var currentWeather = OmenTools.OmenService.GameState.Weather;
+        if (_lastWeatherId != 0 && currentWeather != _lastWeatherId)
+        {
+            OnEventFired?.Invoke(new WeatherChangedParams
+            {
+                NewWeatherId = currentWeather
+            });
+        }
+        _lastWeatherId = currentWeather;
+    }
+
+    #endregion
+
+    #region ActionEffect Hook
+
+    private void OnActionEffect(
+        uint sourceId, nint sourceCharacter, nint pos,
+        nint effectHeader, nint effectArray, nint effectTail)
+    {
+        _actionEffectHook!.Original(sourceId, sourceCharacter, pos, effectHeader, effectArray, effectTail);
+
+        if (effectHeader == nint.Zero || effectArray == nint.Zero) return;
+
+        unsafe
+        {
+            var header = (EffectHeader*)effectHeader;
+            var actionId = header->ActionID;
+            var animationId = header->AnimationId;
+            var targetCount = header->TargetCount;
+            if (targetCount == 0) return;
+
+            var entries = (EffectEntry*)effectArray;
+            for (byte i = 0; i < targetCount; i++)
+            {
+                var entry = entries[i * 8];
+                if (entry.Type == 0) continue; // Nothing/NoEffect
+
+                var targetOid = i == 0 ? header->AnimationTargetId 
+                    : (effectTail != nint.Zero ? *(ulong*)(effectTail + i * 8) : 0xE0000000);
+
+                OnEventFired?.Invoke(new ActionEffectParams
+                {
+                    ActionID = actionId,
+                    SourceID = sourceId,
+                    TargetOID = (uint)(targetOid & 0xFFFFFFFF),
+                    AnimationID = animationId,
+                    EffectType = entry.Type
+                });
+
+                if (targetOid == 0xE0000000)
+                {
+                    var p = pos != nint.Zero ? (Vector3Raw*)pos : null;
+                    OnEventFired?.Invoke(new NoTargetAbilityEffectParams
+                    {
+                        SourceID = sourceId,
+                        ActionID = actionId,
+                        PosX = p?.X ?? 0,
+                        PosY = p?.Y ?? 0,
+                        PosZ = p?.Z ?? 0
+                    });
+                }
+            }
+        }
+    }
+
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Explicit)]
+    private struct EffectHeader
+    {
+        [System.Runtime.InteropServices.FieldOffset(0)]  public ulong AnimationTargetId;
+        [System.Runtime.InteropServices.FieldOffset(8)]  public uint ActionID;
+        [System.Runtime.InteropServices.FieldOffset(12)] public uint GlobalEffectCounter;
+        [System.Runtime.InteropServices.FieldOffset(16)] public float AnimationLockTime;
+        [System.Runtime.InteropServices.FieldOffset(20)] public uint SomeTargetID;
+        [System.Runtime.InteropServices.FieldOffset(24)] public ushort SourceSequence;
+        [System.Runtime.InteropServices.FieldOffset(26)] public ushort Rotation;
+        [System.Runtime.InteropServices.FieldOffset(28)] public ushort AnimationId;
+        [System.Runtime.InteropServices.FieldOffset(30)] public byte Variation;
+        [System.Runtime.InteropServices.FieldOffset(31)] public byte ActionType;
+        [System.Runtime.InteropServices.FieldOffset(32)] public byte TargetCount;
+    }
+
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential, Size = 8)]
+    private struct EffectEntry
+    {
+        public byte Type;
+        public byte Param1;
+        public byte Param2;
+        public byte Param3;
+        public uint Value;
+    }
+
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential)]
+    private struct Vector3Raw
+    {
+        public float X;
+        public float Y;
+        public float Z;
+    }
+
+    #endregion
+
+    #region raw packet structs
+
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential, Pack = 1)]
+    private struct TetherRaw
+    {
+        public uint SourceID;
+        public byte A2;
+        public ushort TetherID;
+        public byte A5;
+        public ulong TargetOID;
+        public byte A3;
+    }
+
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential, Pack = 1)]
+    private struct MapEffectRaw
+    {
+        public ushort PositionIndex;
+        public ushort Param1;
+        public ushort Param2;
+    }
+
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential, Pack = 1)]
+    private struct ActorControlRaw
+    {
+        public ushort Command;
+        public uint P1;
+        public uint P2;
+        public uint P3;
+        public uint P4;
+        public uint P5;
+        public uint P6;
+        public uint SourceID;
+        public uint TargetID;
+    }
+
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential, Pack = 1)]
+    private struct ActorCastRaw
+    {
+        public ushort ActionID;
+        public byte SkillType;
+        public uint Unk;
+        public float CastTime;
+        public uint TargetID;
+        public float Rotation;
+        public float PosX;
+        public float PosY;
+        public float PosZ;
+        public uint SourceID;
+    }
+
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential, Pack = 1)]
+    private unsafe struct NpcYellRaw
+    {
+        public uint SourceID;
+        public byte* SourceNamePtr;
+        public ushort YellID;
+        public byte* YellMsgPtr;
+    }
+
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Sequential, Pack = 1)]
+    private struct EnvControlRaw
+    {
+        public uint Index;
+        public uint Flag;
+    }
+
+    #endregion
+}
+
+public sealed class ChatMessageParams : ITriggerCondParams
+{
+    public string Message = "";
+}
