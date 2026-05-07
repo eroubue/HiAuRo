@@ -100,8 +100,12 @@ public sealed class TriggerCatalog
     [JsonPropertyName("actions")]
     public List<TriggerInfo> Actions { get; init; } = [];
 
+    [JsonPropertyName("scripts")]
+    public List<TriggerInfo> Scripts { get; init; } = [];
+
     public void AddCondition(TriggerInfo info) => Conditions.Add(info);
     public void AddAction(TriggerInfo info) => Actions.Add(info);
+    public void AddScript(TriggerInfo info) => Scripts.Add(info);
 }
 
 /// <summary>
@@ -117,23 +121,28 @@ public static class TriggerCatalogBuilder
         var catalog = new TriggerCatalog();
 
         var triggerTypes = assembly.GetTypes().Where(t => t is { IsAbstract: false, IsInterface: false }
-                                                          && (typeof(ITriggerAction).IsAssignableFrom(t)
-                                                              || typeof(ITriggerCond).IsAssignableFrom(t)));
+                                                          && typeof(ITriggerBase).IsAssignableFrom(t));
 
         foreach (var type in triggerTypes)
         {
             var info = BuildTriggerInfo(type, category);
             if (typeof(ITriggerCond).IsAssignableFrom(type))
-            {
                 catalog.AddCondition(info);
-            }
             else if (typeof(ITriggerAction).IsAssignableFrom(type))
-            {
                 catalog.AddAction(info);
-            }
+            else if (typeof(ITriggerScript).IsAssignableFrom(type))
+                catalog.AddScript(info);
         }
 
         return catalog;
+    }
+
+    /// <summary>合并目录（所有列表直接追加，不处理去重）</summary>
+    public static void MergeInto(TriggerCatalog target, TriggerCatalog source)
+    {
+        target.Conditions.AddRange(source.Conditions);
+        target.Actions.AddRange(source.Actions);
+        target.Scripts.AddRange(source.Scripts);
     }
 
     /// <summary>
