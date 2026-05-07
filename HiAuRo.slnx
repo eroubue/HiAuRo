@@ -1,0 +1,8 @@
+<Solution>
+  <Folder Name="/Browsingway/">
+    <Project Path="Browsingway/Browsingway.Common/Browsingway.Common.csproj" />
+    <Project Path="Browsingway/Browsingway/Browsingway.csproj" />
+  </Folder>
+  <Project Path="HiAuRo/HiAuRo.csproj" />
+  <Project Path="OmenTools/OmenTools.csproj" />
+</Solution>

@@ -1,6 +1,6 @@
 # HiAuRo 代码审计报告
 
-> 审计范围: `/mnt/d/HiAuRo/HiAuRo/` 全部 `.cs` `.html` `.js` `.css` 文件  
+> 审计范围: `../HiAuRo/` 全部 `.cs` `.html` `.js` `.css` 文件  
 > 审计日期: 2026-05-03  
 > 修复日期: 2026-05-03  
 > 项目: FFXIV Dalamud 战斗辅助框架 (.NET 10, Dalamud.CN.NET.Sdk 15.0.0)
@@ -330,7 +330,7 @@
   - `OmenTools.Global.Globals` (静态导入)
   - `OmenTools.Info.Game.Data.Addons` (静态导入)
 - **影响**: 如果 OmenTools 版本更新改变了命名空间，编译将失败。
-- **修复**: 验证 OmenTools 源码 (`/home/ooooozzooo/OmenTools/`) 确认这些路径在当前版本中存在。
+- **修复**: 验证 OmenTools 源码 (`../OmenTools/`) 确认这些路径在当前版本中存在。
 
 ---
 

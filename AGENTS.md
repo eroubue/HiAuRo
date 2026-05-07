@@ -31,7 +31,7 @@ No `.sln` — single project. CEF renderer (`HiAuRo.Renderer`) is a separate `.c
 ## Project Layout
 
 ```
-/mnt/d/HiAuRo/          ← git repo root
+.                       ← git repo root
 ├── doc/                ← all planning docs (READ BEFORE CODING)
 │   ├── PROJECT.md      ← charter, constraints, key decisions
 │   ├── REQUIREMENTS.md ← 46 requirement IDs with traceability
@@ -48,10 +48,10 @@ No `.sln` — single project. CEF renderer (`HiAuRo.Renderer`) is a separate `.c
 
 | Path | What |
 |------|------|
-| `/mnt/d/ACR/HiAuRo/HiAuRo/资料/AEAssist/` | AEAssist decompiled source (host framework reference) |
-| `/mnt/d/ACR/Oblivion/` | BLM ACR example (AE-style IRotationEntry usage) |
-| `/home/ooooozzooo/OmenTools/` | OmenTools source (DService, OmenService managers) |
-| `/home/ooooozzooo/Browsingway/` | CEF rendering reference (D3D11 texture sharing) |
+| `../资料/AEAssist/` (外部，不在仓库内) | AEAssist decompiled source (host framework reference) |
+| `../Oblivion/` (外部，不在仓库内) | BLM ACR example (AE-style IRotationEntry usage) |
+| `OmenTools/` | OmenTools source (DService, OmenService managers) |
+| `Browsingway/` | CEF rendering reference (D3D11 texture sharing) |
 
 ## Phase Development Order
 

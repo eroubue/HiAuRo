@@ -346,8 +346,8 @@ GlobalUsing 已自动 `global using OmenTools.ImGuiOm`，可直接使用。
 ## 8. 参考路径
 
 ```
-/mnt/d/ACR/HiAuRo/HiAuRo/资料/           — 参考资料目录
-/home/ooooozzooo/OmenTools/              — OmenTools 本地克隆 (git clone 到此处)
+../资料/           — 参考资料目录 (外部，不在仓库内)
+../OmenTools/      — OmenTools 本地克隆
 ```
 
 ---
