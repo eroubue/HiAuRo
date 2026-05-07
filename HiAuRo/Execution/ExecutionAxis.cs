@@ -167,38 +167,6 @@ public sealed class ExecutionAxis
         }
     }
 
-        foreach (var node in toWake)
-        {
-            if (_waitingConds.TryGetValue(node, out var tcs))
-            {
-                tcs.TrySetResult(true);
-                _waitingConds.Remove(node);
-            }
-        }
-    }
-
-    /// <summary>事件驱动分发 — 由 GameEventHook 或其它事件源调用</summary>
-    public void UseCondParams(ITriggerCondParams condParams)
-    {
-        if (_waitingConds.Count == 0) return;
-
-        var toWake = new List<TriggerLeafNode>();
-        foreach (var (node, _) in _waitingConds)
-        {
-            if (node.EvaluateForEvent(condParams))
-                toWake.Add(node);
-        }
-
-        foreach (var node in toWake)
-        {
-            if (_waitingConds.TryGetValue(node, out var tcs))
-            {
-                tcs.TrySetResult(true);
-                _waitingConds.Remove(node);
-            }
-        }
-    }
-
     #endregion
 
     #region 加载
