@@ -1,4 +1,5 @@
 using HiAuRo.ACR;
+using HiAuRo.Data;
 
 namespace HiAuRo.Execution.Triggers.Cond;
 
@@ -22,6 +23,6 @@ public sealed class TriggerCond_Omega循环 : ITriggerCond
     {
         var self = Data.Me.Object;
         if (self == null) return false;
-        return AuraHelper.HasStatus(self, _auraId, 0xE0000000);
+        return AuraHelper.HasAura(self, _auraId);
     }
 }

@@ -124,7 +124,7 @@ public partial class Plugin : IDalamudPlugin
         }
 
         var json = await File.ReadAllTextAsync(catalogPath);
-        var result = await Events.CatalogSync.UploadToGitHubAsync(
+        var result = await CatalogSync.UploadToGitHubAsync(
             json, config.CatalogRepo, config.CatalogBranch, config.GitHubToken, onlyCloudSync: true);
 
         DService.Instance().Chat.Print(result.Success

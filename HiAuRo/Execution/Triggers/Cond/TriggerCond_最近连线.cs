@@ -22,7 +22,7 @@ public sealed class TriggerCond_最近连线 : ITriggerCond
 
     public bool Handle(ITriggerCondParams? condParams = null)
     {
-        var selfId = Me.Object?.EntityId ?? 0;
+        var selfId = Me.Object?.EntityID ?? 0;
         if (selfId == 0) return false;
 
         var nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();

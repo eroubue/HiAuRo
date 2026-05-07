@@ -1,6 +1,7 @@
 using HiAuRo.ACR;
 using HiAuRo.Data;
 using Dalamud.Hooking;
+using Dalamud.Game.Text.SeStringHandling;
 using OmenTools.Dalamud.Services.ObjectTable.Abstractions.ObjectKinds;
 using OmenTools.OmenService;
 using IFramework = Dalamud.Plugin.Services.IFramework;
@@ -36,11 +37,11 @@ public sealed class GameEventHook
 
         FrameworkManager.Instance().Reg(OnFrameworkUpdate);
 
-        var sigScanner = DService.Instance().PI.TargetModuleScanner;
+        var sigScanner = DService.Instance().SigScanner;
         var actionEffectAddr = sigScanner.ScanText("40 55 56 57 41 54 41 55 41 56 41 57 48 8D AC 24");
         if (actionEffectAddr != nint.Zero)
         {
-            _actionEffectHook = DService.Instance().PI.GameInteropProvider.HookFromAddress<ActionEffectDelegate>(
+            _actionEffectHook = DService.Instance().Hook.HookFromAddress<ActionEffectDelegate>(
                 actionEffectAddr, OnActionEffect);
             _actionEffectHook.Enable();
         }
@@ -197,9 +198,9 @@ public sealed class GameEventHook
         }
     }
 
-    private void OnChatMessage(byte[] message, bool saveToHistory)
+    private void OnChatMessage(ReadOnlySeString message, bool saveToHistory)
     {
-        var text = System.Text.Encoding.UTF8.GetString(message);
+        var text = message.ToString();
         OnEventFired?.Invoke(new ChatMessageParams { Message = text });
     }
 
@@ -256,7 +257,7 @@ public sealed class GameEventHook
     #region 轮询事件 (Unit创建/消失, 天气变化)
 
     private readonly Dictionary<uint, (uint DataId, string Name)> _knownEntities = [];
-    private int _lastWeatherId;
+    private uint _lastWeatherId;
     private long _nextPollAt;
 
     private void OnFrameworkUpdate(IFramework _)
@@ -309,8 +310,8 @@ public sealed class GameEventHook
             if (oldSnapshot.TryGetValue(id, out var cached))
                 _knownEntities[id] = cached;
             else
-                _knownEntities[id] = (((objectTable.SearchById(id) as IBattleNPC)?.DataID ?? 0,
-                    objectTable.SearchById(id)?.Name.ToString() ?? ""));
+                _knownEntities[id] = (((objectTable.SearchByID(id) as IBattleNPC)?.DataID ?? 0,
+                    objectTable.SearchByID(id)?.Name.ToString() ?? ""));
         }
 
         var currentWeather = OmenTools.OmenService.GameState.Weather;
@@ -318,7 +319,7 @@ public sealed class GameEventHook
         {
             OnEventFired?.Invoke(new WeatherChangedParams
             {
-                NewWeatherId = currentWeather
+                NewWeatherId = (int)currentWeather
             });
         }
         _lastWeatherId = currentWeather;
@@ -369,9 +370,9 @@ public sealed class GameEventHook
                     {
                         SourceID = sourceId,
                         ActionID = actionId,
-                        PosX = p?.X ?? 0,
-                        PosY = p?.Y ?? 0,
-                        PosZ = p?.Z ?? 0
+                        PosX = p != null ? p->X : 0,
+                        PosY = p != null ? p->Y : 0,
+                        PosZ = p != null ? p->Z : 0
                     });
                 }
             }

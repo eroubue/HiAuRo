@@ -154,8 +154,13 @@ public sealed class ExecutionAxis
         {
             try
             {
-                if (node.EvaluateForEvent(condParams))
-                    toWake.Add(node);
+                bool met = node switch
+                {
+                    TreeCondNode condNode => condNode.EvaluateForEvent(condParams),
+                    TreeScriptNode scriptNode => scriptNode.EvaluateForEvent(condParams),
+                    _ => false
+                };
+                if (met) toWake.Add(node);
             }
             catch { }
         }

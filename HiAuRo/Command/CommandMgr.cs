@@ -82,7 +82,7 @@ public static class CommandMgr
                         break;
                     }
                     var json = File.ReadAllText(catalogPath);
-                    ImGuiNET.ImGui.SetClipboardText(json);
+                    ImGui.SetClipboardText(json);
                     DService.Instance().Chat.Print($"[HiAuRo] 触发器目录已复制到剪贴板 ({json.Length} 字节)");
                 }
                 break;

@@ -1,4 +1,5 @@
 using HiAuRo.ACR;
+using HiAuRo.Runtime;
 
 namespace HiAuRo.Execution.Triggers.Action;
 
@@ -14,7 +15,7 @@ public sealed class TriggerAction_重新起手 : ITriggerAction
     {
         try
         {
-            HiAuRo.Runtime.AIRunner.Instance?.OpenerMgr?.Reset();
+            HiAuRo.Runtime.ACRLifecycle.Runner?.OpenerMgr?.Reset();
             return true;
         }
         catch
