@@ -27,6 +27,7 @@ appsettings.local.json
 
 # Session artifacts
 .sisyphus/
+.playwright-mcp/
 
 # External dependencies (cloned locally)
 /OmenTools/
