@@ -18,6 +18,13 @@ jobs:
         with:
           submodules: recursive
 
+      - name: Download Helper DLL
+        shell: pwsh
+        run: |
+          $rel = Invoke-RestMethod "https://api.github.com/repos/denghaoxuan991876906/HiAuRo.Helper/releases/latest"
+          $asset = $rel.assets | Where-Object { $_.name -eq "HiAuRo.Helper.dll" } | Select-Object -First 1
+          if ($asset) { Invoke-WebRequest $asset.browser_download_url -OutFile HiAuRo.Helper.dll }
+
       - name: Clone Helper
         run: git clone https://github.com/denghaoxuan991876906/HiAuRo.Helper.git HiAuRo.Helper --depth 1
 
@@ -35,13 +42,6 @@ jobs:
         run: dotnet build HiAuRo/HiAuRo.csproj -c Release
         env:
           DALAMUD_HOME: ${{ github.workspace }}\dalamud
-
-      - name: Download Helper DLL
-        shell: pwsh
-        run: |
-          $rel = Invoke-RestMethod "https://api.github.com/repos/denghaoxuan991876906/HiAuRo.Helper/releases/latest"
-          $asset = $rel.assets | Where-Object { $_.name -eq "HiAuRo.Helper.dll" } | Select-Object -First 1
-          if ($asset) { Invoke-WebRequest $asset.browser_download_url -OutFile HiAuRo.Helper.dll }
 
       - name: Pack NuGet
         shell: pwsh
