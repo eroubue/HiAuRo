@@ -1,7 +1,6 @@
 using HiAuRo.ACR;
 using HiAuRo.Data;
 using Dalamud.Hooking;
-using Dalamud.Game.Text.SeStringHandling;
 using OmenTools.Dalamud.Services.ObjectTable.Abstractions.ObjectKinds;
 using OmenTools.OmenService;
 using IFramework = Dalamud.Plugin.Services.IFramework;
@@ -33,7 +32,7 @@ public sealed class GameEventHook
         gpm.RegPostReceivePacket(OnReceivePacket);
 
         var cm = ChatManager.Instance();
-        cm.RegPostProcessChatBoxEntry(OnChatMessage);
+        cm.RegPostProcessChatBoxEntry((msg, save) => OnChatMessage(msg.ToString(), save));
 
         FrameworkManager.Instance().Reg(OnFrameworkUpdate);
 
@@ -198,9 +197,8 @@ public sealed class GameEventHook
         }
     }
 
-    private void OnChatMessage(ReadOnlySeString message, bool saveToHistory)
+    private void OnChatMessage(string text, bool saveToHistory)
     {
-        var text = message.ToString();
         OnEventFired?.Invoke(new ChatMessageParams { Message = text });
     }
 
