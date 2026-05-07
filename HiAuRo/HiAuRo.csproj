@@ -14,6 +14,7 @@
     <ProjectReference Include="../OmenTools/OmenTools.csproj">
       <Private>False</Private>
     </ProjectReference>
+    <ProjectReference Include="..\HiAuRo.Helper\HiAuRo.Helper.csproj" />
   </ItemGroup>
 
   <ItemGroup>
@@ -58,8 +59,8 @@
       <MainFiles Include="$(OutputPath)*.json" />
       <MainFiles Include="$(OutputPath)*.deps.json" />
       <WebFiles Include="$(OutputPath)UI\web\**\*" />
-      <OmenFiles Include="..\OmenTools\bin\Debug\OmenTools.dll" />
-      <OmenFiles Include="..\OmenTools\bin\Debug\OmenTools.deps.json" />
+      <OmenFiles Include="..\OmenTools\bin\$(Configuration)\OmenTools.dll" />
+      <OmenFiles Include="..\OmenTools\bin\$(Configuration)\OmenTools.deps.json" />
     </ItemGroup>
 
     <Copy SourceFiles="@(MainFiles)" DestinationFolder="$(StagingDir)" />
