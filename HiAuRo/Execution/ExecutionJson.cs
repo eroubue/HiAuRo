@@ -302,13 +302,65 @@ internal static class TriggerConverter
             case "TriggerCondAfterBattleStart":
                 return new Triggers.Cond.TriggerCond_经过时间(extra.TryGetValue("TimeMs", out var t) ? t.GetInt32() : 0);
             case "TriggerCondWaitTarget":
-                return new TriggerCond_AlwaysTrue();
+                {
+                    var dataId = extra.TryGetValue("DataId", out var d) ? d.GetUInt32() : 0u;
+                    return new Triggers.Cond.TriggerCond_等待目标(dataId);
+                }
             case "TriggerCondCheckPartyRole":
-                return new TriggerCond_AlwaysTrue();
+                {
+                    var role = extra.TryGetValue("PartyRole", out var p) ? p.GetString() ?? "" : "";
+                    var category = role switch
+                    {
+                        "Tank" => JobsCategory.Tank,
+                        "Healer" => JobsCategory.Healer,
+                        "DPS" or "Melee" => JobsCategory.Melee,
+                        "Ranged" => JobsCategory.Ranged,
+                        "Caster" => JobsCategory.Caster,
+                        _ => JobsCategory.Caster
+                    };
+                    return new Triggers.Cond.TriggerCond_检查职能(category);
+                }
             case "TriggerCondActorDeath":
                 {
                     var dataId = extra.TryGetValue("DataId", out var d) ? d.GetUInt32() : 0u;
                     return new Triggers.Cond.TriggerCond_Actor死亡(dataId);
+                }
+            case "TriggerCond_CheckCharacterType":
+                {
+                    var role = extra.TryGetValue("CategoryType", out var ct) ? ct.GetString() ?? "" : "";
+                    var category = role switch
+                    {
+                        "Tank" => JobsCategory.Tank,
+                        "Healer" => JobsCategory.Healer,
+                        "DPS" or "Melee" => JobsCategory.Melee,
+                        "Ranged" => JobsCategory.Ranged,
+                        "Caster" => JobsCategory.Caster,
+                        _ => JobsCategory.Caster
+                    };
+                    return new Triggers.Cond.TriggerCond_角色类型(category);
+                }
+            case "TriggerCondCheckOmegaLoop":
+                {
+                    var auraId = extra.TryGetValue("AuraId", out var a) ? a.GetUInt32() : 0u;
+                    return new Triggers.Cond.TriggerCond_Omega循环(auraId);
+                }
+            case "TriggerCondCheckRecentlyTether":
+                {
+                    var tetherId = extra.TryGetValue("TetherId", out var ti) ? ti.GetUInt32() : 0u;
+                    var checkTime = extra.TryGetValue("CheckTime", out var ct2) ? ct2.GetSingle() : 3f;
+                    return new Triggers.Cond.TriggerCond_最近连线(tetherId, checkTime);
+                }
+            case "TriggerCondCheckAbilityEffect":
+                {
+                    var actionId = TryGetSpellId(extra);
+                    var checkTime = extra.TryGetValue("CheckTime", out var cta) ? cta.GetSingle() : 3f;
+                    return new Triggers.Cond.TriggerCond_收到技能效果自身(actionId, checkTime);
+                }
+            case "TriggerCondReceviceNoTargetAbilityEffect":
+                {
+                    var actionId = TryGetSpellId(extra);
+                    var checkTime = extra.TryGetValue("CheckTime", out var ctnt) ? ctnt.GetSingle() : 3f;
+                    return new Triggers.Cond.TriggerCond_无目标技能效果(actionId, checkTime);
                 }
             default:
                 return null;
@@ -371,6 +423,27 @@ internal static class TriggerConverter
                 }
             case "TriggerActionSetRotation":
                 return new Triggers.Action.TriggerAction_设置Rotation(0);
+            case "TriggerActionSwitchPull":
+                {
+                    var enable = extra.TryGetValue("Pull", out var p) ? p.GetBoolean() : true;
+                    return new Triggers.Action.TriggerAction_切换自动攻击(enable);
+                }
+            case "TriggerActionReplayOpener":
+                return new Triggers.Action.TriggerAction_重新起手();
+            case "TriggerAction_MoveTo":
+                {
+                    var x = extra.TryGetValue("X", out var ex) ? ex.GetSingle() : 0f;
+                    var y = extra.TryGetValue("Y", out var ey) ? ey.GetSingle() : 0f;
+                    var z = extra.TryGetValue("Z", out var ez) ? ez.GetSingle() : 0f;
+                    return new Triggers.Action.TriggerAction_移动到(x, y, z);
+                }
+            case "TriggerAction_SimpleTP":
+                return new Triggers.Action.TriggerAction_TP();
+            case "TriggerAction_OnCastingTP":
+                {
+                    var waitTill = extra.TryGetValue("WaitTillTime", out var wt) ? wt.GetInt32() : 0;
+                    return new Triggers.Action.TriggerAction_滑步TP(waitTill);
+                }
             default:
                 return null;
         }
