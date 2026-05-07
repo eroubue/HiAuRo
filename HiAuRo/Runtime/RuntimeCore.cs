@@ -31,6 +31,7 @@ public static class RuntimeCore
 
     private static void OnTick(Dalamud.Plugin.Services.IFramework _)
     {
+        if (!IsRunning) return;
         try
         {
             if (!HiAuRo.Data.Data.IsReady)

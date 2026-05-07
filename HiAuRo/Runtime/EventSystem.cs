@@ -1,6 +1,8 @@
 using OmenTools.Dalamud.Services.ObjectTable.Abstractions.ObjectKinds;
 using OmenTools.OmenService;
 using FFXIVClientStructs.FFXIV.Client.Game;
+using HiAuRo.Execution;
+using HiAuRo.Execution.Events;
 
 namespace HiAuRo.Runtime;
 
@@ -34,14 +36,14 @@ public static class EventSystem
 
     public static void Shutdown()
     {
-        _initialized = false;
-
         UseActionManager.Instance().Unreg(OnPreUseAction);
         UseActionManager.Instance().Unreg(OnPostUseAction);
 
         _onActionUsedHandlers.Clear();
         _onActionCompletedHandlers.Clear();
         _onTargetChangedHandlers.Clear();
+
+        _initialized = false;
     }
 
     public static void CheckTargetChanged()
@@ -98,6 +100,17 @@ public static class EventSystem
             {
                 try { handler(actionId); }
                 catch (Exception ex) { DService.Instance().Log.Error($"[EventSystem] OnActionCompleted handler 异常: {ex}"); }
+            }
+
+            // 通知执行轴：技能执行成功事件
+            try
+            {
+                ExecutionAxis.Instance.UseCondParams(
+                    new AfterSpellParams { SpellID = actionId });
+            }
+            catch (Exception ex)
+            {
+                DService.Instance().Log.Error($"[EventSystem] UseCondParams 异常: {ex}");
             }
         }
 

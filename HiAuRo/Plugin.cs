@@ -3,6 +3,7 @@ using Dalamud.Plugin;
 using HiAuRo.Authoring;
 using HiAuRo.Command;
 using HiAuRo.Execution;
+using HiAuRo.Execution.Events;
 using HiAuRo.Infrastructure;
 using HiAuRo.Runtime;
 using HiAuRo.Setting;
@@ -45,15 +46,13 @@ public partial class Plugin : IDalamudPlugin
         SettingMgr.Init(_pluginInterface.ConfigDirectory.FullName);
         CommandMgr.Init();
         EventSystem.Init();
+        GameEventHook.Instance.Init();
+        ExecutionAxis.Instance.Init();
         RuntimeCore.Start();
         DecisionEngine.Instance.Init();
         AssistAxis.Instance.Init();
         ModeSwitch.TryAutoSwitchToExecutionAxis();
-        CombatContext.StateChanged += (_, newState) =>
-        {
-            if (newState is CombatContext.State.OutOfCombat or CombatContext.State.InCombat)
-                ModeSwitch.TryAutoSwitchToExecutionAxis();
-        };
+        CombatContext.StateChanged += OnCombatStateChanged;
 
         _uiBridge = new WebUiBridge();
         RegisterUiHandlers(_uiBridge);
@@ -77,13 +76,21 @@ public partial class Plugin : IDalamudPlugin
 
         try
         {
-            var builtinCatalog = TriggerCatalogBuilder.BuildFromAssembly(
-                typeof(Execution.Triggers.Cond.TriggerCond_敌人读条).Assembly, "builtin");
+            var merged = new TriggerCatalog();
+            TriggerCatalogBuilder.MergeInto(merged,
+                TriggerCatalogBuilder.BuildFromAssembly(typeof(Execution.Triggers.Cond.TriggerCond_敌人读条).Assembly, "builtin"));
+
+            foreach (var acrAsm in ACRLoader.LoadedAcrAssemblies)
+            {
+                var acrCatalog = TriggerCatalogBuilder.BuildFromAssembly(acrAsm, "acr");
+                TriggerCatalogBuilder.MergeInto(merged, acrCatalog);
+            }
+
             var catalogPath = Path.Combine(_pluginInterface.ConfigDirectory.FullName, "trigger-catalog.json");
-            var catalogJson = System.Text.Json.JsonSerializer.Serialize(builtinCatalog,
+            var catalogJson = System.Text.Json.JsonSerializer.Serialize(merged,
                 new System.Text.Json.JsonSerializerOptions { WriteIndented = true, PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase });
             File.WriteAllText(catalogPath, catalogJson);
-            DService.Instance().Log.Information($"[TriggerCatalog] 已生成 trigger-catalog.json ({builtinCatalog.Conditions.Count} 条件, {builtinCatalog.Actions.Count} 动作)");
+            DService.Instance().Log.Information($"[TriggerCatalog] 已生成 ({merged.Conditions.Count}C {merged.Actions.Count}A {merged.Scripts.Count}S)");
         }
         catch (Exception ex)
         {
@@ -94,15 +101,50 @@ public partial class Plugin : IDalamudPlugin
         DService.Instance().Log.Information($"[Lifecycle] HiAuRo 宿主已加载。版本: {_config.LastSeenPluginVersion}");
     }
 
+    private static void OnCombatStateChanged(CombatContext.State oldState, CombatContext.State newState)
+    {
+        if (newState is CombatContext.State.OutOfCombat or CombatContext.State.InCombat)
+            ModeSwitch.TryAutoSwitchToExecutionAxis();
+    }
+
+    internal async Task UploadCatalogAsync()
+    {
+        var config = _config;
+        if (string.IsNullOrWhiteSpace(config.GitHubToken))
+        {
+            DService.Instance().Chat.Print("[HiAuRo] 请先在设置中配置 GitHubToken");
+            return;
+        }
+
+        var catalogPath = Path.Combine(_pluginInterface.ConfigDirectory.FullName, "trigger-catalog.json");
+        if (!File.Exists(catalogPath))
+        {
+            DService.Instance().Chat.Print("[HiAuRo] 目录未生成");
+            return;
+        }
+
+        var json = await File.ReadAllTextAsync(catalogPath);
+        var result = await Events.CatalogSync.UploadToGitHubAsync(
+            json, config.CatalogRepo, config.CatalogBranch, config.GitHubToken, onlyCloudSync: true);
+
+        DService.Instance().Chat.Print(result.Success
+            ? $"[HiAuRo] 目录已上传 → {result.CommitUrl}"
+            : $"[HiAuRo] 上传失败: {result.Message}");
+    }
+
     public void Dispose()
     {
+        CombatContext.StateChanged -= OnCombatStateChanged;
         ACR.HotkeyHelper.OnExecuted -= OnHotkeyExecuted;
         ACR.QTHelper.OnChanged -= OnQtChanged;
 
         Instance = null!;
 
         RuntimeCore.Shutdown();
+        CombatContext.Reset();
+        ExecutionAxis.Instance.Shutdown();
         AssistAxis.Instance.Shutdown();
+        GameEventHook.Instance.Shutdown();
         EventSystem.Shutdown();
         CommandMgr.Shutdown();
 

@@ -73,8 +73,24 @@ public static class CommandMgr
                 AssistAxis.Instance.UnloadAssistTimeline();
                 DService.Instance().Chat.Print("[HiAuRo] 辅助轴已卸载");
                 break;
+            case "catalog export":
+                {
+                    var catalogPath = Path.Combine(DService.Instance().PI.ConfigDirectory.FullName, "trigger-catalog.json");
+                    if (!File.Exists(catalogPath))
+                    {
+                        DService.Instance().Chat.Print("[HiAuRo] 目录未生成，请先加载 ACR");
+                        break;
+                    }
+                    var json = File.ReadAllText(catalogPath);
+                    ImGuiNET.ImGui.SetClipboardText(json);
+                    DService.Instance().Chat.Print($"[HiAuRo] 触发器目录已复制到剪贴板 ({json.Length} 字节)");
+                }
+                break;
+            case "catalog upload":
+                _ = Plugin.Instance.UploadCatalogAsync();
+                break;
             default:
-                DService.Instance().Chat.Print("[HiAuRo] 用法: /hi on|off|toggle|status|panel|reload|fact|assist [load|unload]");
+                DService.Instance().Chat.Print("[HiAuRo] 用法: /hi on|off|toggle|status|panel|reload|fact|assist [load|unload]|catalog [export|upload]");
                 break;
         }
     }

@@ -132,6 +132,10 @@ public static class ACRLifecycle
         Runner.Load(entry, settingFolder);
         CurrentEntry = entry;
 
+        // 注册 ACR 自定义触发类型
+        if (Runner.CurrentRotation != null)
+            HiAuRo.Execution.ExecutionJsonLoader.RegisterFromRotation(Runner.CurrentRotation);
+
         // 恢复 UI 设置
         ACR.UiSettingsStore.Init(settingFolder);
         var settings = ACR.UiSettingsStore.Load();

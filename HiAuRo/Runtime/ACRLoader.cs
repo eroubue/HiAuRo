@@ -10,7 +10,10 @@ namespace HiAuRo.Runtime;
 public static class ACRLoader
 {
     private static readonly Dictionary<string, AssemblyLoadContext> _authorContexts = [];
+    private static readonly List<Assembly> _loadedAcrAssemblies = [];
     private static readonly HashSet<string> _hostPrefixes = ["HiAuRo", "OmenTools", "Dalamud", "FFXIVClientStructs", "Lumina", "ImGuiNET", "TerraFX", "System.", "Microsoft."];
+
+    public static IReadOnlyList<Assembly> LoadedAcrAssemblies => _loadedAcrAssemblies.AsReadOnly();
 
     /// <summary>扫描并加载所有外部 ACR，注册到 ACRLifecycle</summary>
     public static void LoadAll(string pluginDir)
@@ -32,6 +35,7 @@ public static class ACRLoader
                 try
                 {
                     var asm = alc.LoadFromAssemblyPath(dllPath);
+                    _loadedAcrAssemblies.Add(asm);
                     foreach (var type in asm.GetExportedTypes())
                     {
                         if (type is { IsAbstract: false, IsInterface: false } &&

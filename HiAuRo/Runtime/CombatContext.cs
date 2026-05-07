@@ -1,5 +1,7 @@
 using OmenTools.OmenService;
 using HiAuRo.Data;
+using HiAuRo.Execution;
+using HiAuRo.Execution.Events;
 
 namespace HiAuRo.Runtime;
 
@@ -84,5 +86,13 @@ public static class CombatContext
         CurrentState = newState;
 
         StateChanged?.Invoke(oldState, newState);
+
+        // 通知执行轴：战斗状态变化事件
+        if (newState == State.InCombat)
+            ExecutionAxis.Instance.UseCondParams(
+                new CombatStateParams { IsEntering = true });
+        else if (newState == State.OutOfCombat)
+            ExecutionAxis.Instance.UseCondParams(
+                new CombatStateParams { IsEntering = false });
     }
 }
