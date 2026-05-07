@@ -35,6 +35,7 @@ jobs:
       - name: Collect artifacts
         shell: pwsh
         run: |
+          New-Item -ItemType Directory -Force release | Out-Null
           Copy-Item HiAuRo\bin\Release\HiAuRo.dll release\
           Copy-Item OmenTools\bin\Release\OmenTools.dll release\
 
