@@ -25,6 +25,9 @@ Thumbs.db
 *.secret.json
 appsettings.local.json
 
+# Session artifacts
+.sisyphus/
+
 # External dependencies (cloned locally)
 /OmenTools/
 
