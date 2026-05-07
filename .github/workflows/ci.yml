@@ -25,9 +25,6 @@ jobs:
           $asset = $rel.assets | Where-Object { $_.name -eq "HiAuRo.Helper.dll" } | Select-Object -First 1
           if ($asset) { Invoke-WebRequest $asset.browser_download_url -OutFile HiAuRo.Helper.dll }
 
-      - name: Clone Helper
-        run: git clone https://github.com/denghaoxuan991876906/HiAuRo.Helper.git HiAuRo.Helper --depth 1
-
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
