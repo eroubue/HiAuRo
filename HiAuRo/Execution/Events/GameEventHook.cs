@@ -64,8 +64,7 @@ public sealed class GameEventHook
         var gpm = GamePacketManager.Instance();
         gpm.Unreg(OnReceivePacket);
 
-        var cm = ChatManager.Instance();
-        cm.Unreg(OnChatMessage);
+        // ChatManager 在 plugin dispose 时由 OmenTools 自行清理
     }
 
     private void OnGainStatus(IBattleChara player, ushort id, ushort param, ushort stackCount, TimeSpan remainingTime, ulong sourceID)
