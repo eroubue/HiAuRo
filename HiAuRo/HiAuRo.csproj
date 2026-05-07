@@ -16,7 +16,7 @@
     </ProjectReference>
     <ProjectReference Include="..\HiAuRo.Helper\HiAuRo.Helper.csproj" Condition="Exists('..\HiAuRo.Helper\HiAuRo.Helper.csproj')" />
     <Reference Include="HiAuRo.Helper" Condition="!Exists('..\HiAuRo.Helper\HiAuRo.Helper.csproj')">
-      <HintPath>HiAuRo.Helper.dll</HintPath>
+      <HintPath>..\HiAuRo.Helper.dll</HintPath>
       <Private>False</Private>
     </Reference>
   </ItemGroup>
