@@ -33,6 +33,8 @@ public partial class Plugin : IDalamudPlugin
         _config = LoadConfig();
         BrowsingwayPluginInit(pluginInterface);
 
+        _ = HelperUpdater.CheckAndUpdateAsync();
+
         var webRoot = Path.Combine(_pluginInterface.ConfigDirectory.FullName, "web");
         var sourceWebRoot = Path.Combine(_pluginInterface.AssemblyLocation.Directory?.FullName ?? ".", "UI", "web");
 
@@ -46,6 +48,12 @@ public partial class Plugin : IDalamudPlugin
         RuntimeCore.Start();
         DecisionEngine.Instance.Init();
         AssistAxis.Instance.Init();
+        ModeSwitch.TryAutoSwitchToExecutionAxis();
+        CombatContext.StateChanged += (_, newState) =>
+        {
+            if (newState is CombatContext.State.OutOfCombat or CombatContext.State.InCombat)
+                ModeSwitch.TryAutoSwitchToExecutionAxis();
+        };
 
         _uiBridge = new WebUiBridge();
         RegisterUiHandlers(_uiBridge);
@@ -66,6 +74,21 @@ public partial class Plugin : IDalamudPlugin
         // 加载外部 ACR
         ACRLifecycle.Init(_pluginInterface.ConfigDirectory.FullName);
         ACRLoader.LoadAll(_pluginInterface.AssemblyLocation.Directory?.FullName ?? ".");
+
+        try
+        {
+            var builtinCatalog = TriggerCatalogBuilder.BuildFromAssembly(
+                typeof(Execution.Triggers.Cond.TriggerCond_敌人读条).Assembly, "builtin");
+            var catalogPath = Path.Combine(_pluginInterface.ConfigDirectory.FullName, "trigger-catalog.json");
+            var catalogJson = System.Text.Json.JsonSerializer.Serialize(builtinCatalog,
+                new System.Text.Json.JsonSerializerOptions { WriteIndented = true, PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase });
+            File.WriteAllText(catalogPath, catalogJson);
+            DService.Instance().Log.Information($"[TriggerCatalog] 已生成 trigger-catalog.json ({builtinCatalog.Conditions.Count} 条件, {builtinCatalog.Actions.Count} 动作)");
+        }
+        catch (Exception ex)
+        {
+            DService.Instance().Log.Warning($"[TriggerCatalog] 生成失败: {ex.Message}");
+        }
 
         DService.Instance().Chat.Print("[HiAuRo] /hi on|off|toggle|status|panel|reload  悬浮窗: localhost:5678/jobview.html");
         DService.Instance().Log.Information($"[Lifecycle] HiAuRo 宿主已加载。版本: {_config.LastSeenPluginVersion}");

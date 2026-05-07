@@ -3,6 +3,8 @@ using FFXIVClientStructs.FFXIV.Client.Game;
 
 namespace HiAuRo.Execution.Triggers.Action;
 
+[TriggerDisplay("吃药", "使用指定物品")]
+[TriggerTypeName("TriggerActionUsePotion")]
 /// <summary>
 /// 使用消耗品（爆发药/回复药）
 /// </summary>

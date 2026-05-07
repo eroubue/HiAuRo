@@ -1,31 +1,19 @@
 using HiAuRo.Execution;
 using HiAuRo.FactAxis;
+using OmenTools;
 
 namespace HiAuRo.Runtime;
 
-/// <summary>
-/// 模式切换骨架
-/// </summary>
 public static class ModeSwitch
 {
-    public enum Mode
-    {
-        /// <summary>无轴模式（MVP 默认）</summary>
-        None,
-        /// <summary>执行轴模式（Phase 6）</summary>
-        ExecutionAxis,
-        /// <summary>事实轴模式（Phase 7）</summary>
-        FactAxis
-    }
+    public enum Mode { None, ExecutionAxis, FactAxis }
 
     public static Mode CurrentMode { get; private set; } = Mode.None;
 
-    /// <summary>切换模式（先清理旧模式状态）</summary>
     public static void SetMode(Mode newMode)
     {
         if (CurrentMode == newMode) return;
 
-        // 清理旧模式状态
         switch (CurrentMode)
         {
             case Mode.ExecutionAxis:
@@ -38,7 +26,6 @@ public static class ModeSwitch
 
         CurrentMode = newMode;
 
-        // 初始化新模式状态
         switch (newMode)
         {
             case Mode.None:
@@ -54,4 +41,37 @@ public static class ModeSwitch
     }
 
     public static Mode GetMode() => CurrentMode;
+
+    public static void ToggleFactAxis()
+    {
+        if (CurrentMode == Mode.FactAxis)
+        {
+            SetMode(Mode.None);
+            DService.Instance().Chat.Print("[HiAuRo] 事实轴已关闭");
+        }
+        else
+        {
+            SetMode(Mode.FactAxis);
+            DService.Instance().Chat.Print("[HiAuRo] 事实轴已启用");
+        }
+    }
+
+    public static void TryAutoSwitchToExecutionAxis()
+    {
+        if (CurrentMode != Mode.None) return;
+
+        var territoryId = OmenTools.OmenService.GameState.TerritoryType;
+        if (territoryId == 0) return;
+
+        var path = System.IO.Path.Combine(
+            DService.Instance().PI.ConfigDirectory.FullName,
+            "ExecutionTimelines",
+            $"{territoryId}.json");
+
+        if (System.IO.File.Exists(path))
+        {
+            SetMode(Mode.ExecutionAxis);
+            DService.Instance().Log.Information($"[ModeSwitch] 自动切换执行轴: territoryId={territoryId}");
+        }
+    }
 }

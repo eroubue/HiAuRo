@@ -2,6 +2,8 @@ using HiAuRo.ACR;
 
 namespace HiAuRo.Execution.Triggers.Action;
 
+[TriggerDisplay("锁定技能", "锁定/解锁指定技能")]
+[TriggerTypeName("TriggerActionLockSpell")]
 /// <summary>
 /// 锁定/解锁指定技能的使用（Phase 6+ 暂存 force spell 优先级的扩展点）
 /// 当前实现：锁定=设置 ExecutionAxis 的 ForceSpell 为 Idle 空转技能

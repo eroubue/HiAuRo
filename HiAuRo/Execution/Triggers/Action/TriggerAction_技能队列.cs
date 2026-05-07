@@ -2,6 +2,8 @@ using HiAuRo.ACR;
 
 namespace HiAuRo.Execution.Triggers.Action;
 
+[TriggerDisplay("技能队列", "将技能加入执行队列")]
+[TriggerTypeName("TriggerActionSpellQueue")]
 /// <summary>
 /// 将指定技能加入法术队列，在下一个 GCD 窗口插入执行
 /// </summary>

@@ -73,6 +73,13 @@
           "SharedMemory": "[2.3.2, )"
         }
       },
+      "hiauro.helper": {
+        "type": "Project",
+        "dependencies": {
+          "DalamudPackager": "[15.0.0, )",
+          "OmenTools": "[1.0.0, )"
+        }
+      },
       "omentools": {
         "type": "Project",
         "dependencies": {

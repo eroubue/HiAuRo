@@ -15,6 +15,9 @@ public sealed class TriggerCondParams_倒计时 : ITriggerCondParams
 /// 检测副本战斗倒计时是否达到指定剩余秒数
 /// 通过 Dalamud CountdownTimer IPC 接口读取当前倒计时
 /// </summary>
+[TriggerDisplay("倒计时", "检测副本战斗倒计时剩余秒数")]
+[TriggerTypeName("HiAuRo.Execution.Triggers.Cond.TriggerCond_倒计时, HiAuRo")]
+
 public sealed class TriggerCond_倒计时 : ITriggerCond
 {
     private readonly int _timeLeftSec;

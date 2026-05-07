@@ -14,6 +14,9 @@ public sealed class TriggerCondParams_连线 : ITriggerCondParams
 /// <summary>
 /// 检测是否有指定连线生效（暂存，等待 Tether 内存读取基础设施）
 /// </summary>
+[TriggerDisplay("连线", "检测是否存在指定连线")]
+[TriggerTypeName("HiAuRo.Execution.Triggers.Cond.TriggerCond_连线, HiAuRo")]
+
 public sealed class TriggerCond_连线 : ITriggerCond
 {
     private readonly uint _tetherId;

@@ -4,6 +4,8 @@ using OmenTools.OmenService;
 
 namespace HiAuRo.Execution.Triggers.Action;
 
+[TriggerDisplay("切换目标", "切换当前目标到指定敌人")]
+[TriggerTypeName("TriggerActionSelectenemy")]
 /// <summary>
 /// 切换目标的配置
 /// </summary>

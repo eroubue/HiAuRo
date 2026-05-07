@@ -49,6 +49,19 @@ var currentPhaseIdx = 0;       // 当前编辑的阶段索引
 var collapsedPhases = {};      // 左侧面板阶段折叠状态
 var collapsedBranches = {};    // 左侧面板分支折叠状态
 
+function setStatus(msg, type) {
+    var el = document.getElementById('footer');
+    if (!el) return;
+    el.textContent = msg;
+    if (type === 'error') {
+        el.style.color = 'var(--red)';
+        setTimeout(function() { el.style.color = ''; updateFooter(); }, 3000);
+    } else if (type === 'success') {
+        el.style.color = '#30d158';
+        setTimeout(function() { el.style.color = ''; updateFooter(); }, 2000);
+    }
+}
+
 // ==================== 右键菜单状态 ====================
 
 var ctxMenuClickTime = 0;     // 画布右键点击计算的时间位置

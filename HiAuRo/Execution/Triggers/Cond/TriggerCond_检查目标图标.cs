@@ -15,6 +15,9 @@ public sealed class TriggerCondParams_检查目标图标 : ITriggerCondParams
 /// <summary>
 /// 检测指定目标（或任意敌人）身上是否有特定图标
 /// </summary>
+[TriggerDisplay("检查目标图标", "检测目标是否有指定图标")]
+[TriggerTypeName("HiAuRo.Execution.Triggers.Cond.TriggerCond_检查目标图标, HiAuRo")]
+
 public sealed class TriggerCond_检查目标图标 : ITriggerCond
 {
     private readonly uint _iconId;

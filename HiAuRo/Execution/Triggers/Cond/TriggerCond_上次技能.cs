@@ -12,6 +12,9 @@ public sealed class TriggerCondParams_上次技能 : ITriggerCondParams
     public uint SpellId;
 }
 
+[TriggerDisplay("上次技能", "检测上次使用的技能是否为指定技能")]
+[TriggerTypeName("TriggerCondCheckLastSpell")]
+
 /// <summary>
 /// 检测最近一次成功执行的技能
 /// </summary>

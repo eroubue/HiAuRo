@@ -28,6 +28,11 @@ var NODE_STYLES = {
 
 var ADD_TYPES = ['treeSequence','treeParallel','treeSelect','treeLoop','treeCondNode','treeActionNode','treeDelayNode','treeScriptNode','treePrintNode','treeClearWait'];
 
+var localTriggers = { conditions: [], actions: [] };  // 本地导入的触发器
+
+function getAllConditions() { return localTriggers.conditions || []; }
+function getAllActions() { return localTriggers.actions || []; }
+
 var dirHandle = null;
 var fileEntries = [];
 
@@ -76,6 +81,43 @@ document.addEventListener('DOMContentLoaded', function() {
             document.querySelectorAll('.cust-select.open').forEach(function(w) { w.classList.remove('open'); });
         }
     });
+    // 恢复本地触发器
+    try {
+        var saved = localStorage.getItem('hiAutoLocalTriggers');
+        if (saved) localTriggers = JSON.parse(saved);
+    } catch(e) { localTriggers = { conditions: [], actions: [] }; }
+
+    // 导入本地触发器
+    var btnImport = document.getElementById('btnImportTrigger');
+    if (btnImport) {
+        btnImport.addEventListener('click', function() {
+            var json = prompt('粘贴触发器 JSON 定义（单条或数组）：\n格式：{ "typeName":"...", "aeTypeName":"...", "displayName":"触发名", "description":"描述", "parameters":[{ "name":"spellId", "type":"number", "defaultValue":0 }] }');
+            if (!json) return;
+            try {
+                var items = JSON.parse(json);
+                if (!Array.isArray(items)) items = [items];
+                items.forEach(function(item) {
+                    if (!item.typeName || !item.displayName) { setStatus('跳过无效项: 缺少 typeName 或 displayName', 'error'); return; }
+                    item.category = 'local';
+                    item.cloudSync = false;
+                    var isCond = item.typeName.toLowerCase().indexOf('cond') >= 0;
+                    var list = isCond ? localTriggers.conditions : localTriggers.actions;
+                    var exists = list.some(function(t) { return t.typeName === item.typeName; });
+                    if (!exists) list.push(item);
+                });
+                localStorage.setItem('hiAutoLocalTriggers', JSON.stringify(localTriggers));
+                renderProps();
+                setStatus('已导入 ' + items.length + ' 个触发器', 'success');
+            } catch(e) {
+                setStatus('JSON 解析失败: ' + e.message, 'error');
+            }
+        });
+    }
+
+    // 从文件加载触发器目录
+    var btnLoadCatalog = document.getElementById('btnLoadCatalog');
+    if (btnLoadCatalog) btnLoadCatalog.addEventListener('click', loadCatalogFile);
+
     updateFooter();
 });
 
@@ -121,7 +163,19 @@ function detectType(node) {
 }
 
 function typeToFull(type) {
-    var map = { treeRoot:'AEAssist.Trigger.TriggerNode.TreeRoot, AEAssist', treeSequence:'AEAssist.Trigger.TriggerNode.TreeSequence, AEAssist', treeParallel:'AEAssist.Trigger.TriggerNode.TreeParallel, AEAssist', treeSelect:'AEAssist.Trigger.TriggerNode.TreeSelect, AEAssist', treeLoop:'AEAssist.Trigger.TriggerNode.TreeLoop, AEAssist', treeCondNode:'AEAssist.Trigger.TriggerNode.TreeCondNode, AEAssist', treeActionNode:'AEAssist.Trigger.TriggerNode.TreeActionNode, AEAssist', treeDelayNode:'AEAssist.Trigger.TriggerNode.TreeDelayNode, AEAssist', treeScriptNode:'AEAssist.Trigger.TriggerNode.TreeScriptNode, AEAssist', treePrintNode:'AEAssist.Trigger.TriggerNode.TreePrintDebugInfoNode, AEAssist', treeClearWait:'AEAssist.Trigger.TriggerNode.TreeClearWaitNode, AEAssist' };
+    var map = {
+        treeRoot: 'HiAuRo.Execution.TreeRoot, HiAuRo',
+        treeSequence: 'HiAuRo.Execution.TreeSequence, HiAuRo',
+        treeParallel: 'HiAuRo.Execution.TreeParallel, HiAuRo',
+        treeSelect: 'HiAuRo.Execution.TreeSelect, HiAuRo',
+        treeLoop: 'HiAuRo.Execution.TreeLoop, HiAuRo',
+        treeCondNode: 'HiAuRo.Execution.TreeCondNode, HiAuRo',
+        treeActionNode: 'HiAuRo.Execution.TreeActionNode, HiAuRo',
+        treeDelayNode: 'HiAuRo.Execution.TreeDelayNode, HiAuRo',
+        treeScriptNode: 'HiAuRo.Execution.TreeScriptNode, HiAuRo',
+        treePrintNode: 'HiAuRo.Execution.TreePrintDebugInfoNode, HiAuRo',
+        treeClearWait: 'HiAuRo.Execution.TreeClearWaitNode, HiAuRo'
+    };
     return map[type] || type;
 }
 
@@ -509,12 +563,40 @@ function renderProps() {
             h += '<div class="ed-prop-section"><div class="ed-prop-head">条件</div>';
             h += prop('检查一次', 'checkbox', node, 'CheckOnce');
             h += prop('结果取反', 'checkbox', node, 'ReverseResult');
-            h += '<div class="ed-prop-sub">条件列表: ' + ((node.TriggerConds||node.triggerConds||[]).length) + ' 项</div>';
+            h += '<div class="prop-group">';
+            h += '<label>条件列表 (' + (node.TriggerConds||[]).length + ' 项)</label>';
+            var conds = getAllConditions();
+            if (conds.length > 0) {
+                var condOpts = conds.map(function(c) { return { value: c.aeTypeName || c.typeName, label: (c.displayName || c.aeTypeName) + ' [' + (c.category||'') + ']' }; });
+                h += iosSelect([{value:'',label:'+ 添加条件...'}].concat(condOpts), '',
+                    'addTriggerCond(\'' + selectedNodePath + '\', this.options[this.selectedIndex].value)');
+            } else {
+                h += '<div class="prop-hint">无可用条件（请导入或连接插件）</div>';
+            }
+            (node.TriggerConds||[]).forEach(function(cond, idx) {
+                var ct = cond['$type'] || cond.aeTypeName || '';
+                h += '<div class="prop-sub-item">' + esc(ct) + ' <button onclick="removeTriggerCond(\'' + selectedNodePath + '\',' + idx + ')" style="font-size:10px">✕</button></div>';
+            });
+            h += '</div>';
             h += '</div>';
         }
         if (type === 'treeActionNode') {
             h += '<div class="ed-prop-section"><div class="ed-prop-head">动作</div>';
-            h += '<div class="ed-prop-sub">动作列表: ' + ((node.TriggerActions||node.triggerActions||[]).length) + ' 项</div>';
+            h += '<div class="prop-group">';
+            h += '<label>动作列表 (' + (node.TriggerActions||[]).length + ' 项)</label>';
+            var actions = getAllActions();
+            if (actions.length > 0) {
+                var actOpts = actions.map(function(a) { return { value: a.aeTypeName || a.typeName, label: (a.displayName || a.aeTypeName) + ' [' + (a.category||'') + ']' }; });
+                h += iosSelect([{value:'',label:'+ 添加动作...'}].concat(actOpts), '',
+                    'addTriggerAction(\'' + selectedNodePath + '\', this.options[this.selectedIndex].value)');
+            } else {
+                h += '<div class="prop-hint">无可用动作</div>';
+            }
+            (node.TriggerActions||[]).forEach(function(act, idx) {
+                var at = act['$type'] || act.aeTypeName || '';
+                h += '<div class="prop-sub-item">' + esc(at) + ' <button onclick="removeTriggerAction(\'' + selectedNodePath + '\',' + idx + ')" style="font-size:10px">✕</button></div>';
+            });
+            h += '</div>';
             h += '</div>';
         }
         if (type === 'treeDelayNode') { h += '<div class="ed-prop-section"><div class="ed-prop-head">延迟</div>'; h += prop('秒数', 'number', node, 'Delay'); h += '</div>'; }
@@ -617,7 +699,7 @@ async function openFromDir(fileName) {
 
 function newFile() {
     if (isDirty && !confirm('当前有未保存的修改，是否放弃？')) return;
-    timelineData = { Name:'新执行轴', TerritoryTypeId:0, Note:'', ExposedVars:[], TreeRoot:{ '$type':'AEAssist.Trigger.TriggerNode.TreeRoot, AEAssist', DisplayName:'Root', Id:1, Enable:true, Remark:'', Tag:'', Childs:[] } };
+    timelineData = { Name:'新执行轴', TerritoryTypeId:0, Note:'', ExposedVars:[], TreeRoot:{ '$type':'HiAuRo.Execution.TreeRoot, HiAuRo', DisplayName:'Root', Id:1, Enable:true, Remark:'', Tag:'', Childs:[] } };
     currentFile=''; fileHandle=null; isDirty=true; selectedNodePath=null;
     switchAxis(); setStatus('已新建');
 }
@@ -646,6 +728,87 @@ async function saveFileAs() {
 }
 function exportFile() { if (!timelineData) { setStatus('无内容','error'); return; } downloadJson(JSON.stringify(timelineData,null,2), currentFile||'export.json'); setStatus('已导出'); }
 function downloadJson(json, name) { var b=new Blob([json],{type:'application/json'}); var u=URL.createObjectURL(b); var a=document.createElement('a'); a.href=u; a.download=name; a.click(); URL.revokeObjectURL(u); }
+// ==================== 目录文件加载 ====================
+
+function loadCatalogFile() {
+    var input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = function() {
+        var file = this.files[0];
+        if (!file) return;
+        var reader = new FileReader();
+        reader.onload = function() {
+            try {
+                var catalog = JSON.parse(reader.result);
+                var conds = catalog.conditions || [];
+                var acts = catalog.actions || [];
+                conds.forEach(function(c) { c.category = 'catalog'; });
+                acts.forEach(function(a) { a.category = 'catalog'; });
+                localTriggers.conditions = conds.concat(localTriggers.conditions || []);
+                localTriggers.actions = acts.concat(localTriggers.actions || []);
+                localStorage.setItem('hiAutoLocalTriggers', JSON.stringify(localTriggers));
+                setStatus('已加载目录: ' + conds.length + ' 条件, ' + acts.length + ' 动作', 'success');
+                renderProps();
+            } catch(e) { setStatus('JSON解析失败: ' + e.message, 'error'); }
+        };
+        reader.readAsText(file);
+    };
+    input.click();
+}
+
+// ==================== 触发器增删 ====================
+
+function addTriggerCond(nodePath, aeTypeName) {
+    if (!aeTypeName) return;
+    var node = getNodeByPath(nodePath);
+    if (!node) return;
+    if (!node.TriggerConds) node.TriggerConds = [];
+    var info = getAllConditions().find(function(c) { return (c.aeTypeName || c.typeName) === aeTypeName; });
+    var newCond = { '$type': aeTypeName };
+    if (info && info.parameters) {
+        info.parameters.forEach(function(p) {
+            if (p.defaultValue !== undefined && p.defaultValue !== null) {
+                newCond[p.name] = p.defaultValue;
+            }
+        });
+    }
+    node.TriggerConds.push(newCond);
+    markDirty();
+}
+
+function removeTriggerCond(nodePath, idx) {
+    var node = getNodeByPath(nodePath);
+    if (!node || !node.TriggerConds) return;
+    node.TriggerConds.splice(idx, 1);
+    markDirty();
+}
+
+function addTriggerAction(nodePath, aeTypeName) {
+    if (!aeTypeName) return;
+    var node = getNodeByPath(nodePath);
+    if (!node) return;
+    if (!node.TriggerActions) node.TriggerActions = [];
+    var info = getAllActions().find(function(a) { return (a.aeTypeName || a.typeName) === aeTypeName; });
+    var newAct = { '$type': aeTypeName };
+    if (info && info.parameters) {
+        info.parameters.forEach(function(p) {
+            if (p.defaultValue !== undefined && p.defaultValue !== null) {
+                newAct[p.name] = p.defaultValue;
+            }
+        });
+    }
+    node.TriggerActions.push(newAct);
+    markDirty();
+}
+
+function removeTriggerAction(nodePath, idx) {
+    var node = getNodeByPath(nodePath);
+    if (!node || !node.TriggerActions) return;
+    node.TriggerActions.splice(idx, 1);
+    markDirty();
+}
+
 // ==================== 工具 ====================
 
 function markDirty() { isDirty = true; renderTree(); renderProps(); updateFooter(); }

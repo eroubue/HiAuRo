@@ -14,6 +14,9 @@ public sealed class TriggerCondParams_游戏日志 : ITriggerCondParams
 /// <summary>
 /// 检测游戏聊天日志中是否出现指定消息（暂存，等待 ChatLog Hook 基础设施）
 /// </summary>
+[TriggerDisplay("游戏日志", "检测游戏日志消息匹配")]
+[TriggerTypeName("HiAuRo.Execution.Triggers.Cond.TriggerCond_游戏日志, HiAuRo")]
+
 public sealed class TriggerCond_游戏日志 : ITriggerCond
 {
     private readonly string _messagePattern;

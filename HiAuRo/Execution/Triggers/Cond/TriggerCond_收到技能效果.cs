@@ -11,6 +11,9 @@ public sealed class TriggerCondParams_收到技能效果 : ITriggerCondParams
     public uint SpellId;
 }
 
+[TriggerDisplay("收到技能效果", "检测是否收到指定技能效果")]
+[TriggerTypeName("TriggerCondReceviceAbilityEffect")]
+
 /// <summary>
 /// 检测是否收到特定的技能效果（暂存，等待 ActionEffect Hook 基础设施）
 /// </summary>

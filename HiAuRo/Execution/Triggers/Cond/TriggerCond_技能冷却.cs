@@ -13,6 +13,9 @@ public sealed class TriggerCondParams_技能冷却 : ITriggerCondParams
     public int RemainingMs;
 }
 
+[TriggerDisplay("技能冷却", "检测技能冷却剩余时间")]
+[TriggerTypeName("TriggerCondCheckSpellCd")]
+
 /// <summary>
 /// 检测指定技能的冷却剩余是否在阈值内
 /// </summary>

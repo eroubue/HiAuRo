@@ -4,6 +4,8 @@ using HiAuRo.Runtime;
 
 namespace HiAuRo.Execution.Triggers.Action;
 
+[TriggerDisplay("发送命令", "发送聊天命令")]
+[TriggerTypeName("TriggerAction_SendCommand")]
 /// <summary>
 /// 发送游戏聊天命令（/echo 或 /p 等）
 /// </summary>

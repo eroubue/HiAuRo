@@ -2,6 +2,8 @@ using HiAuRo.ACR;
 
 namespace HiAuRo.Execution.Triggers.Action;
 
+[TriggerDisplay("发送按键", "模拟按键操作")]
+[TriggerTypeName("TriggerAction_SendKey")]
 /// <summary>
 /// 模拟发送按键输入
 /// </summary>

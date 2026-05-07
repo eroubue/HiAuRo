@@ -12,6 +12,9 @@ public sealed class TriggerCondParams_Actor死亡 : ITriggerCondParams
     public uint DataId;
 }
 
+[TriggerDisplay("Actor死亡", "检测指定DataId的Actor死亡")]
+[TriggerTypeName("TriggerCondActorDeath")]
+
 /// <summary>
 /// 检测指定 DataId 的敌人是否已死亡（从对象表中消失或标记为死）
 /// </summary>

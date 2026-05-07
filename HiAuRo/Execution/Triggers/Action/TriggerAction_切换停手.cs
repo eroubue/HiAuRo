@@ -2,6 +2,8 @@ using HiAuRo.ACR;
 
 namespace HiAuRo.Execution.Triggers.Action;
 
+[TriggerDisplay("切换停手", "切换ACR停手状态")]
+[TriggerTypeName("TriggerActionSwitchStop")]
 /// <summary>
 /// 控制 ACR 停手 / 恢复
 /// </summary>

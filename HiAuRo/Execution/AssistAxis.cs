@@ -20,6 +20,7 @@ public sealed class AssistAxis
 
     internal Spell? _forceSpell;
     private bool _paused;
+    private bool _autoLoadDisabled;
     private uint _previousTerritoryId;
     private CancellationTokenSource? _cts;
     private readonly Dictionary<TreeCondNode, TaskCompletionSource<bool>> _waitingConds = [];
@@ -120,11 +121,26 @@ public sealed class AssistAxis
 
     public void AutoLoadTimeline()
     {
+        if (_autoLoadDisabled) return;
         var territoryId = OmenTools.OmenService.GameState.TerritoryType;
         if (territoryId == 0) return;
         var dir = Path.Combine(DService.Instance().PI.ConfigDirectory.FullName, "AssistTimelines");
         var filePath = Path.Combine(dir, $"{territoryId}.txt");
         if (File.Exists(filePath)) LoadFromFile(filePath);
+    }
+
+    public void LoadAssistTimeline()
+    {
+        _autoLoadDisabled = false;
+        AutoLoadTimeline();
+    }
+
+    public void UnloadAssistTimeline()
+    {
+        _autoLoadDisabled = true;
+        Stop();
+        Root = null;
+        TimelineName = "";
     }
 
     #endregion

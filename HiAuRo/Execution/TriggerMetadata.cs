@@ -1,0 +1,318 @@
+using System.Reflection;
+using HiAuRo.ACR;
+using System.Text.Json.Serialization;
+
+namespace HiAuRo.Execution;
+
+/// <summary>
+/// 触发器显示属性 - 用于指定中文名称和描述
+/// </summary>
+[AttributeUsage(AttributeTargets.Class, Inherited = false)]
+public sealed class TriggerDisplayAttribute : Attribute
+{
+    public string DisplayName { get; }
+    public string Description { get; }
+
+    public TriggerDisplayAttribute(string displayName, string description = "")
+    {
+        DisplayName = displayName;
+        Description = description;
+    }
+}
+
+/// 触发器类型鉴别符 - JSON $type 字段值
+[AttributeUsage(AttributeTargets.Class, Inherited = false)]
+public sealed class TriggerTypeNameAttribute(string typeDiscriminator) : Attribute
+{
+    public string TypeDiscriminator { get; } = typeDiscriminator;
+}
+
+/// <summary>
+/// 云同步属性 - 标记触发器是否同步到GitHub云端
+/// </summary>
+[AttributeUsage(AttributeTargets.Class, Inherited = false)]
+public sealed class CloudSyncAttribute : Attribute
+{
+    public bool CloudSync { get; }
+
+    public CloudSyncAttribute(bool cloudSync = true)
+    {
+        CloudSync = cloudSync;
+    }
+}
+
+/// <summary>
+/// 触发器参数信息
+/// </summary>
+public sealed class ParameterInfo
+{
+    [JsonPropertyName("name")]
+    public string Name { get; init; } = string.Empty;
+
+    [JsonPropertyName("type")]
+    public string Type { get; init; } = string.Empty;  // "number"|"text"|"checkbox"|"select"
+
+    [JsonPropertyName("description")]
+    public string? Description { get; init; }
+
+    [JsonPropertyName("defaultValue")]
+    public object? DefaultValue { get; init; }
+
+    [JsonPropertyName("enumValues")]
+    public List<string>? EnumValues { get; init; }
+}
+
+/// <summary>
+/// 触发器信息
+/// </summary>
+public sealed class TriggerInfo
+{
+    [JsonPropertyName("typeName")]
+    public string TypeName { get; init; } = string.Empty;  // C# FullName
+
+    [JsonPropertyName("typeDiscriminator")]
+    public string TypeDiscriminator { get; init; } = string.Empty;  // JSON $type 字段值
+
+    [JsonPropertyName("displayName")]
+    public string DisplayName { get; init; } = string.Empty;  // Chinese name
+
+    [JsonPropertyName("description")]
+    public string? Description { get; init; }
+
+    [JsonPropertyName("category")]
+    public string Category { get; init; } = string.Empty;  // "builtin"|"acr"|"local"
+
+    [JsonPropertyName("cloudSync")]
+    public bool CloudSync { get; init; }
+
+    [JsonPropertyName("parameters")]
+    public List<ParameterInfo> Parameters { get; init; } = [];
+}
+
+/// <summary>
+/// 触发器目录 - 包含条件和动作两类触发器
+/// </summary>
+public sealed class TriggerCatalog
+{
+    [JsonPropertyName("conditions")]
+    public List<TriggerInfo> Conditions { get; init; } = [];
+
+    [JsonPropertyName("actions")]
+    public List<TriggerInfo> Actions { get; init; } = [];
+
+    public void AddCondition(TriggerInfo info) => Conditions.Add(info);
+    public void AddAction(TriggerInfo info) => Actions.Add(info);
+}
+
+/// <summary>
+/// 触发器目录构建器 - 通过反射扫描程序集生成触发器元数据
+/// </summary>
+public static class TriggerCatalogBuilder
+{
+    /// <summary>
+    /// 从程序集构建触发器目录
+    /// </summary>
+    public static TriggerCatalog BuildFromAssembly(Assembly assembly, string category)
+    {
+        var catalog = new TriggerCatalog();
+
+        var triggerTypes = assembly.GetTypes().Where(t => t is { IsAbstract: false, IsInterface: false }
+                                                          && (typeof(ITriggerAction).IsAssignableFrom(t)
+                                                              || typeof(ITriggerCond).IsAssignableFrom(t)));
+
+        foreach (var type in triggerTypes)
+        {
+            var info = BuildTriggerInfo(type, category);
+            if (typeof(ITriggerCond).IsAssignableFrom(type))
+            {
+                catalog.AddCondition(info);
+            }
+            else if (typeof(ITriggerAction).IsAssignableFrom(type))
+            {
+                catalog.AddAction(info);
+            }
+        }
+
+        return catalog;
+    }
+
+    /// <summary>
+    /// 从显式提供的类型列表构建触发器目录
+    /// </summary>
+    public static TriggerCatalog BuildFromTypes(
+        IEnumerable<Type> condTypes,
+        IEnumerable<Type> actionTypes,
+        string category)
+    {
+        var catalog = new TriggerCatalog();
+
+        foreach (var type in condTypes)
+        {
+            if (type is { IsAbstract: false, IsInterface: false }
+                && typeof(ITriggerCond).IsAssignableFrom(type))
+            {
+                catalog.AddCondition(BuildTriggerInfo(type, category));
+            }
+        }
+
+        foreach (var type in actionTypes)
+        {
+            if (type is { IsAbstract: false, IsInterface: false }
+                && typeof(ITriggerAction).IsAssignableFrom(type))
+            {
+                catalog.AddAction(BuildTriggerInfo(type, category));
+            }
+        }
+
+        return catalog;
+    }
+
+    /// <summary>
+    /// 从类型构建触发器信息
+    /// </summary>
+    private static TriggerInfo BuildTriggerInfo(Type type, string category)
+    {
+        var typeNameAttr = type.GetCustomAttribute<TriggerTypeNameAttribute>();
+        var typeDiscriminator = typeNameAttr?.TypeDiscriminator
+                          ?? $"{type.FullName}, {type.Assembly.GetName().Name}";
+
+        var displayAttr = type.GetCustomAttribute<TriggerDisplayAttribute>();
+        string displayName;
+        string? description;
+
+        if (displayAttr != null)
+        {
+            displayName = displayAttr.DisplayName;
+            description = displayAttr.Description;
+        }
+        else
+        {
+            // 从类名派生显示名称
+            displayName = DeriveDisplayNameFromClassName(type.Name);
+            description = null;
+        }
+
+        // 获取云同步设置
+        var cloudSyncAttr = type.GetCustomAttribute<CloudSyncAttribute>();
+        var cloudSync = cloudSyncAttr?.CloudSync ?? true;
+
+        // 反射构造函数参数
+        var parameters = ExtractParameters(type);
+
+        return new TriggerInfo
+        {
+            TypeName = type.FullName ?? type.Name,
+            TypeDiscriminator = typeDiscriminator,
+            DisplayName = displayName,
+            Description = description,
+            Category = category,
+            CloudSync = cloudSync,
+            Parameters = parameters
+        };
+    }
+
+    /// <summary>
+    /// 从类名派生显示名称
+    /// </summary>
+    private static string DeriveDisplayNameFromClassName(string className)
+    {
+        // 移除常见前缀
+        var prefixes = new[] { "TriggerCond_", "TriggerAction_", "TriggerCond", "TriggerAction" };
+
+        foreach (var prefix in prefixes)
+        {
+            if (className.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+            {
+                return className.Substring(prefix.Length);
+            }
+        }
+
+        return className;
+    }
+
+    /// <summary>
+    /// 提取类型的构造函数参数信息
+    /// </summary>
+    private static List<ParameterInfo> ExtractParameters(Type type)
+    {
+        var parameters = new List<ParameterInfo>();
+
+        var constructors = type.GetConstructors();
+        if (constructors.Length == 0)
+        {
+            return parameters;
+        }
+
+        // 使用第一个构造函数
+        var constructor = constructors[0];
+        var ctorParams = constructor.GetParameters();
+
+        foreach (var param in ctorParams)
+        {
+            var paramType = param.ParameterType;
+            var paramInfo = new ParameterInfo
+            {
+                Name = param.Name!,
+                Type = MapParameterType(paramType),
+                Description = null,
+                DefaultValue = param.HasDefaultValue ? param.DefaultValue : null,
+                EnumValues = paramType.IsEnum ? Enum.GetNames(paramType).ToList() : null
+            };
+
+            parameters.Add(paramInfo);
+        }
+
+        return parameters;
+    }
+
+    /// <summary>
+    /// 将CLR类型映射为参数类型字符串
+    /// </summary>
+    private static string MapParameterType(Type type)
+    {
+        // 处理Nullable类型
+        var underlyingType = Nullable.GetUnderlyingType(type);
+        if (underlyingType != null)
+        {
+            // Nullable<T> - 使用底层类型映射
+            type = underlyingType;
+        }
+
+        // 枚举类型
+        if (type.IsEnum)
+        {
+            return "select";
+        }
+
+        // 数字类型
+        if (type == typeof(uint)
+            || type == typeof(int)
+            || type == typeof(byte)
+            || type == typeof(long)
+            || type == typeof(short)
+            || type == typeof(float)
+            || type == typeof(double)
+            || type == typeof(decimal)
+            || type == typeof(sbyte)
+            || type == typeof(ushort)
+            || type == typeof(ulong))
+        {
+            return "number";
+        }
+
+        // 字符串类型
+        if (type == typeof(string))
+        {
+            return "text";
+        }
+
+        // 布尔类型
+        if (type == typeof(bool))
+        {
+            return "checkbox";
+        }
+
+        // 默认返回text
+        return "text";
+    }
+}

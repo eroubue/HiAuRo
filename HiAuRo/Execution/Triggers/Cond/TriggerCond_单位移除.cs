@@ -15,6 +15,9 @@ public sealed class TriggerCondParams_单位移除 : ITriggerCondParams
 /// <summary>
 /// 检测指定 DataId 的敌人是否已从对象表中移除（消失或死亡）
 /// </summary>
+[TriggerDisplay("单位移除", "检测指定DataId的单位是否移除")]
+[TriggerTypeName("HiAuRo.Execution.Triggers.Cond.TriggerCond_单位移除, HiAuRo")]
+
 public sealed class TriggerCond_单位移除 : ITriggerCond
 {
     private readonly uint _dataId;

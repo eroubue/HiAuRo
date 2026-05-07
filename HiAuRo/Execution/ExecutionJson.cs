@@ -381,6 +381,9 @@ internal static class TriggerConverter
 
 #region 内置适配条件/动作
 
+[TriggerDisplay("变量条件", "检查上下文变量值")]
+[TriggerTypeName("TriggerCondVariable")]
+
 internal sealed class TriggerCond_Variable : ITriggerCond
 {
     private readonly string _name;
@@ -390,10 +393,17 @@ internal sealed class TriggerCond_Variable : ITriggerCond
         ExecutionAxis.Instance.Context.GetVariable(_name) == _expectedValue;
 }
 
+[TriggerDisplay("总是真", "始终返回true（调试用）")]
+[TriggerTypeName("TriggerCondAlwaysTrue")]
+[CloudSync(false)]
+
 internal sealed class TriggerCond_AlwaysTrue : ITriggerCond
 {
     public bool Handle(ITriggerCondParams? condParams = null) => true;
 }
+
+[TriggerDisplay("设置变量", "设置上下文变量值")]
+[TriggerTypeName("TriggerActionAddVariable")]
 
 internal sealed class TriggerAction_SetVariable : ITriggerAction
 {

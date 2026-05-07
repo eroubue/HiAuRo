@@ -1,4 +1,6 @@
 using Dalamud.Game.Command;
+using HiAuRo.Execution;
+using HiAuRo.Runtime;
 
 namespace HiAuRo.Command;
 
@@ -13,7 +15,7 @@ public static class CommandMgr
     {
         DService.Instance().Command.AddHandler(MainCommand, new CommandInfo(OnCommand)
         {
-            HelpMessage = "HiAuRo 控制: /hi on|off|toggle|status|panel|reload"
+            HelpMessage = "HiAuRo: /hi on|off|toggle|status|panel|reload|fact|assist"
         });
     }
 
@@ -59,8 +61,20 @@ public static class CommandMgr
                 Runtime.ACRLifecycle.Reload();
                 DService.Instance().Chat.Print("[HiAuRo] ACR 已重新扫描");
                 break;
+            case "fact":
+                ModeSwitch.ToggleFactAxis();
+                break;
+            case "assist":
+            case "assist load":
+                AssistAxis.Instance.LoadAssistTimeline();
+                DService.Instance().Chat.Print("[HiAuRo] 辅助轴已加载");
+                break;
+            case "assist unload":
+                AssistAxis.Instance.UnloadAssistTimeline();
+                DService.Instance().Chat.Print("[HiAuRo] 辅助轴已卸载");
+                break;
             default:
-                DService.Instance().Chat.Print("[HiAuRo] 用法: /hi on|off|toggle|status|panel|reload");
+                DService.Instance().Chat.Print("[HiAuRo] 用法: /hi on|off|toggle|status|panel|reload|fact|assist [load|unload]");
                 break;
         }
     }

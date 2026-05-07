@@ -11,6 +11,9 @@ public sealed class TriggerCondParams_地图特效 : ITriggerCondParams
     public uint EffectId;
 }
 
+[TriggerDisplay("地图特效", "检测地图特效触发")]
+[TriggerTypeName("TriggerCondMapEffect")]
+
 /// <summary>
 /// 检测是否出现指定的地图特效（暂存，等待 MapEffect Hook 基础设施）
 /// </summary>

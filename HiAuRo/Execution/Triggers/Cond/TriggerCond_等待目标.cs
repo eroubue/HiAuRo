@@ -12,6 +12,9 @@ public sealed class TriggerCondParams_等待目标 : ITriggerCondParams
     public uint DataId;
 }
 
+[TriggerDisplay("等待目标", "等待指定DataId的目标出现")]
+[TriggerTypeName("TriggerCondWaitTarget")]
+
 /// <summary>
 /// 等待指定 DataId 的单位在对象表中出现（可选中 + 未死亡）
 /// </summary>

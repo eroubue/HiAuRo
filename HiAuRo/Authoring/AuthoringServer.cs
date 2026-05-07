@@ -24,149 +24,21 @@ public sealed class AuthoringServer
 
     public void Register(WebUiBridge bridge)
     {
-        bridge.On("editorList", data =>
+        bridge.On("editorCatalog", _data =>
         {
-            if (data == null) return;
-            var axis = GetProp(data.Value, "axis") ?? "execution";
-            var dir = GetTimelineDir(axis);
-            var files = Directory.Exists(dir)
-                ? Directory.GetFiles(dir, "*.*")
-                    .Select(f => new
-                    {
-                        name = Path.GetFileName(f),
-                        path = f,
-                        size = new FileInfo(f).Length,
-                        modified = File.GetLastWriteTime(f).ToString("yyyy-MM-dd HH:mm:ss")
-                    }).ToList<object>()
-                : new List<object>();
-
-            _ = bridge.SendAsync(new { type = "editorListResult", data = new { axis, files } });
-        });
-
-        bridge.On("editorLoad", data =>
-        {
-            if (data == null) return;
-            var axis = GetProp(data.Value, "axis") ?? "execution";
-            var fileName = GetProp(data.Value, "fileName") ?? "";
-            var path = Path.Combine(GetTimelineDir(axis), fileName);
-
-            string? content = null;
+            var catalogPath = Path.Combine(ConfigDir, "trigger-catalog.json");
+            string? json = null;
             string? error = null;
-            if (File.Exists(path))
-            {
-                content = File.ReadAllText(path);
-            }
-            else
-            {
-                error = $"文件不存在: {fileName}";
-            }
-
-            _ = bridge.SendAsync(new { type = "editorLoadResult", data = new { axis, fileName, content, error } });
-        });
-
-        bridge.On("editorSave", data =>
-        {
-            if (data == null) return;
-            var axis = GetProp(data.Value, "axis") ?? "execution";
-            var fileName = GetProp(data.Value, "fileName") ?? "untitled.json";
-            var content = GetProp(data.Value, "content") ?? "";
-            var dir = GetTimelineDir(axis);
-            Directory.CreateDirectory(dir);
-            var path = Path.Combine(dir, fileName);
-
-            var success = false;
-            var error = (string?)null;
             try
             {
-                File.WriteAllText(path, content);
-                success = true;
-            }
-            catch (Exception ex)
-            {
-                error = ex.Message;
-            }
-
-            _ = bridge.SendAsync(new { type = "editorSaveResult", data = new { axis, fileName, success, error } });
-        });
-
-        bridge.On("editorDelete", data =>
-        {
-            if (data == null) return;
-            var axis = GetProp(data.Value, "axis") ?? "execution";
-            var fileName = GetProp(data.Value, "fileName") ?? "";
-            var path = Path.Combine(GetTimelineDir(axis), fileName);
-
-            var success = false;
-            var error = (string?)null;
-            try
-            {
-                if (File.Exists(path))
-                {
-                    File.Delete(path);
-                    success = true;
-                }
-                else error = "文件不存在";
+                if (File.Exists(catalogPath))
+                    json = File.ReadAllText(catalogPath);
+                else
+                    error = "trigger-catalog.json 未生成 — 请先启动 HiAuRo";
             }
             catch (Exception ex) { error = ex.Message; }
 
-            _ = bridge.SendAsync(new { type = "editorDeleteResult", data = new { axis, fileName, success, error } });
-        });
-
-        bridge.On("editorNew", data =>
-        {
-            if (data == null) return;
-            var axis = GetProp(data.Value, "axis") ?? "execution";
-            var fileName = GetProp(data.Value, "fileName") ?? "new.json";
-            var dir = GetTimelineDir(axis);
-            Directory.CreateDirectory(dir);
-            var path = Path.Combine(dir, fileName);
-
-            string? error = null;
-            var success = false;
-            try
-            {
-                if (File.Exists(path))
-                {
-                    error = "文件已存在";
-                }
-                else
-                {
-                    var template = GetDefaultTemplate(axis);
-                    File.WriteAllText(path, JsonSerializer.Serialize(template, _jsonOptions));
-                    success = true;
-                }
-            }
-            catch (Exception ex) { error = ex.Message; }
-
-            _ = bridge.SendAsync(new { type = "editorNewResult", data = new { axis, fileName, success, error } });
-        });
-
-        bridge.On("editorValidate", data =>
-        {
-            if (data == null) return;
-            var axis = GetProp(data.Value, "axis") ?? "execution";
-            var content = GetProp(data.Value, "content") ?? "";
-
-            string? error = null;
-            try
-            {
-                using var doc = JsonDocument.Parse(content);
-                var root = doc.RootElement;
-
-                if (axis == "fact")
-                {
-                    if (!root.TryGetProperty("phases", out _))
-                        error = "缺少 'phases' 字段";
-                }
-                else
-                {
-                    if (!root.TryGetProperty("TreeRoot", out _))
-                        error = "缺少 'TreeRoot' 字段";
-                }
-            }
-            catch (Exception ex) { error = $"JSON 解析失败: {ex.Message}"; }
-
-            _ = bridge.SendAsync(new { type = "editorValidateResult", data = new { axis, valid = error == null, error } });
+            _ = bridge.SendAsync(new { type = "editorCatalogResult", data = new { json, error } });
         });
     }
 
@@ -197,7 +69,7 @@ public sealed class AuthoringServer
             ExposedVars = Array.Empty<string>(),
             TreeRoot = new
             {
-                TypeName = "AEAssist.Trigger.TriggerNode.TreeRoot, AEAssist",
+                TypeName = "HiAuRo.Execution.TreeRoot, HiAuRo",
                 DisplayName = "Root",
                 Id = 1,
                 Enable = true,

@@ -3,6 +3,8 @@ using FFXIVClientStructs.FFXIV.Client.Game;
 
 namespace HiAuRo.Execution.Triggers.Action;
 
+[TriggerDisplay("释放技能", "强制释放指定技能")]
+[TriggerTypeName("TriggerActionCastSpell")]
 /// <summary>
 /// 强制释放指定技能 —— 将技能高优先级插入执行队列
 /// </summary>

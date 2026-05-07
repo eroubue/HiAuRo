@@ -12,6 +12,9 @@ public sealed class TriggerCondParams_技能后 : ITriggerCondParams
     public uint SpellId;
 }
 
+[TriggerDisplay("技能后", "检测指定技能使用后")]
+[TriggerTypeName("TriggerCondAfterSpell")]
+
 /// <summary>
 /// 检测自己是否刚用过指定技能（最近一次 Completed 技能）
 /// </summary>

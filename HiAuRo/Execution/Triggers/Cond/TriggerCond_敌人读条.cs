@@ -14,6 +14,9 @@ public sealed class TriggerCondParams_敌人读条 : ITriggerCondParams
     public uint? EnemyDataId;
 }
 
+[TriggerDisplay("敌人读条", "检测指定敌人是否在读指定技能")]
+[TriggerTypeName("TriggerCondEnemyCastSpell")]
+
 /// <summary>
 /// 检测敌人是否在读指定技能
 /// </summary>

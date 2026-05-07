@@ -15,6 +15,9 @@ public sealed class TriggerCondParams_单位可选中 : ITriggerCondParams
 /// <summary>
 /// 检测指定 DataId 的敌人在当前对象表中是否可选中
 /// </summary>
+[TriggerDisplay("单位可选中", "检测指定DataId的单位是否可选中")]
+[TriggerTypeName("HiAuRo.Execution.Triggers.Cond.TriggerCond_单位可选中, HiAuRo")]
+
 public sealed class TriggerCond_单位可选中 : ITriggerCond
 {
     private readonly uint _dataId;

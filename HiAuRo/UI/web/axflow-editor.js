@@ -17,15 +17,15 @@ var NODE_DEFS = [
 ];
 
 var TYPE_FULL = {
-    treeRoot:       'AEAssist.Trigger.TriggerNode.TreeRoot, AEAssist',
-    treeSequence:   'AEAssist.Trigger.TriggerNode.TreeSequence, AEAssist',
-    treeParallel:   'AEAssist.Trigger.TriggerNode.TreeParallel, AEAssist',
-    treeSelect:     'AEAssist.Trigger.TriggerNode.TreeSelect, AEAssist',
-    treeLoop:       'AEAssist.Trigger.TriggerNode.TreeLoop, AEAssist',
-    treeCondNode:   'AEAssist.Trigger.TriggerNode.TreeCondNode, AEAssist',
-    treeActionNode: 'AEAssist.Trigger.TriggerNode.TreeActionNode, AEAssist',
-    treeDelayNode:  'AEAssist.Trigger.TriggerNode.TreeDelayNode, AEAssist',
-    treeScriptNode: 'AEAssist.Trigger.TriggerNode.TreeScriptNode, AEAssist'
+    treeRoot:       'HiAuRo.Execution.TreeRoot, HiAuRo',
+    treeSequence:   'HiAuRo.Execution.TreeSequence, HiAuRo',
+    treeParallel:   'HiAuRo.Execution.TreeParallel, HiAuRo',
+    treeSelect:     'HiAuRo.Execution.TreeSelect, HiAuRo',
+    treeLoop:       'HiAuRo.Execution.TreeLoop, HiAuRo',
+    treeCondNode:   'HiAuRo.Execution.TreeCondNode, HiAuRo',
+    treeActionNode: 'HiAuRo.Execution.TreeActionNode, HiAuRo',
+    treeDelayNode:  'HiAuRo.Execution.TreeDelayNode, HiAuRo',
+    treeScriptNode: 'HiAuRo.Execution.TreeScriptNode, HiAuRo'
 };
 
 // ====== Part 2: State ======
@@ -43,6 +43,8 @@ var dirHandle = null;
 var fileEntries = [];
 var autoIdCounter = 100;
 
+
+
 // ====== Part 3: Init ======
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -52,6 +54,7 @@ document.addEventListener('DOMContentLoaded', function() {
     initCanvasBtns();
     initKeyboard();
     updateInfo();
+
 });
 
 function initToolbar() {
