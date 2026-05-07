@@ -29,6 +29,5 @@ appsettings.local.json
 .sisyphus/
 .playwright-mcp/
 
-# External dependencies (cloned locally)
-/OmenTools/
+# External dependencies (managed as git submodules)
 
