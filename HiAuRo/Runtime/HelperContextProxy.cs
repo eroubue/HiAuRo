@@ -1,15 +1,14 @@
 using System.Reflection;
+using System.Reflection.Emit;
 using System.Runtime.Loader;
-using Microsoft.CodeAnalysis;
-using Microsoft.CodeAnalysis.CSharp;
 using OmenTools.OmenService;
 
 namespace HiAuRo.Runtime;
 
 /// <summary>
 /// HelperRuntime 上下文实现 —— 通过 DService 提供 HasStatus/HasStatusOnTarget/GetGauge
-/// 通过 Roslyn 在 Helper 的 ALC 中编译一个实现 IHelperContext 的适配类，
-/// 避免 DispatchProxy 跨 ALC 类型等效性问题
+/// 在 Helper 的 ALC 内用 Reflection.Emit 生成名为 "HiAuRo" 的程序集实现 IHelperContext，
+/// 利用 InternalsVisibleTo("HiAuRo") 授权访问 internal 接口
 /// </summary>
 sealed class HiAuRoContextImpl
 {
@@ -45,89 +44,89 @@ sealed class HiAuRoContextImpl
 }
 
 /// <summary>
-/// Roslyn 编译适配器 —— 在 Helper ALC 中编译一个普通 C# 类实现 IHelperContext，
-/// 通过静态委托字段桥接 HiAuRoContextImpl（跨 ALC 安全）
+/// Reflection.Emit 适配器 —— 在 Helper ALC 内生成程序集（名称 "HiAuRo"），
+/// 匹配 Helper 的 InternalsVisibleTo，实现 IHelperContext 并委托到 HiAuRoContextImpl
 /// </summary>
-static class RoslynCompiledProxy
+static class EmitProxy
 {
-    private const string AdapterSource = @"
-using System.Runtime.CompilerServices;
-using HiAuRo.Helper;
-using System;
-
-[assembly: IgnoresAccessChecksTo(""HiAuRo.Helper"")]
-
-public sealed class HelperContextAdapter : IHelperContext
-{
-    public static Func<uint, bool> OnHasStatus = null!;
-    public static Func<uint, bool> OnHasStatusOnTarget = null!;
-    public static Func<Type, object?> OnGetGauge = null!;
-
-    public bool HasStatus(uint statusId) => OnHasStatus(statusId);
-    public bool HasStatusOnTarget(uint statusId) => OnHasStatusOnTarget(statusId);
-    public T? GetGauge<T>() where T : class => (T?)OnGetGauge(typeof(T));
-}
-";
-
-    private static readonly CSharpCompilationOptions _compileOptions = new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
-        .WithOptimizationLevel(OptimizationLevel.Release);
-
-    private static List<MetadataReference>? _refCache;
-    private static readonly object _refLock = new();
-
-    /// <summary>收集编译引用（首次运行时收集，后续复用缓存）</summary>
-    private static List<MetadataReference> GetReferences(string helperDllPath)
-    {
-        lock (_refLock)
-        {
-            if (_refCache != null) return _refCache;
-
-            _refCache = [];
-            foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
-            {
-                if (asm.IsDynamic || string.IsNullOrEmpty(asm.Location)) continue;
-                try { _refCache.Add(MetadataReference.CreateFromFile(asm.Location)); }
-                catch { }
-            }
-            // 确保 Helper DLL 引用存在
-            try { _refCache.Add(MetadataReference.CreateFromFile(helperDllPath)); }
-            catch { }
-            return _refCache;
-        }
-    }
-
     /// <summary>创建 Helper ALC 内的 IHelperContext 实现实例</summary>
-    public static object Create(HiAuRoContextImpl impl, string dllPath, AssemblyLoadContext helperAlc)
+    public static object Create(HiAuRoContextImpl impl, Assembly helperAsm, AssemblyLoadContext helperAlc)
     {
-        var compilation = CSharpCompilation.Create(
-            "HiAuRo.ContextAdapter",
-            [CSharpSyntaxTree.ParseText(AdapterSource)],
-            GetReferences(dllPath),
-            _compileOptions);
+        var ctxType = helperAsm.GetType("HiAuRo.Helper.IHelperContext")!;
 
-        using var ms = new MemoryStream();
-        var result = compilation.Emit(ms);
-        if (!result.Success)
-        {
-            var errors = string.Join("\n", result.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
-            throw new InvalidOperationException($"编译 ContextAdapter 失败:\n{errors}");
-        }
-
-        ms.Position = 0;
-
-        // 在 Helper ALC 中加载编译出的程序集
-        Assembly adapterAsm;
         using (helperAlc.EnterContextualReflection())
         {
-            adapterAsm = helperAlc.LoadFromStream(ms);
+            // 程序集名必须为 "HiAuRo" 以匹配 InternalsVisibleTo
+            var asmName = new AssemblyName("HiAuRo");
+            var asmBuilder = AssemblyBuilder.DefineDynamicAssembly(asmName, AssemblyBuilderAccess.Run);
+            var modBuilder = asmBuilder.DefineDynamicModule("Main");
+            var typeBuilder = modBuilder.DefineType("HelperContextAdapter", TypeAttributes.Class | TypeAttributes.Public | TypeAttributes.Sealed);
+            typeBuilder.AddInterfaceImplementation(ctxType);
+
+            // 静态委托字段
+            var fldHasStatus = typeBuilder.DefineField("OnHasStatus", typeof(Func<uint, bool>),
+                FieldAttributes.Public | FieldAttributes.Static);
+            var fldHasStatusOnTarget = typeBuilder.DefineField("OnHasStatusOnTarget", typeof(Func<uint, bool>),
+                FieldAttributes.Public | FieldAttributes.Static);
+            var fldGetGauge = typeBuilder.DefineField("OnGetGauge", typeof(Func<Type, object?>),
+                FieldAttributes.Public | FieldAttributes.Static);
+
+            var invokeFunc = typeof(Func<uint, bool>).GetMethod("Invoke")!;
+            var invokeFunc2 = typeof(Func<Type, object?>).GetMethod("Invoke")!;
+            var getTypeFromHandle = typeof(Type).GetMethod("GetTypeFromHandle")!;
+
+            // --- HasStatus ---
+            {
+                var method = typeBuilder.DefineMethod("HasStatus",
+                    MethodAttributes.Public | MethodAttributes.Virtual,
+                    typeof(bool), [typeof(uint)]);
+                var il = method.GetILGenerator();
+                il.Emit(OpCodes.Ldsfld, fldHasStatus);
+                il.Emit(OpCodes.Ldarg_1);
+                il.Emit(OpCodes.Callvirt, invokeFunc);
+                il.Emit(OpCodes.Ret);
+                typeBuilder.DefineMethodOverride(method, ctxType.GetMethod("HasStatus")!);
+            }
+
+            // --- HasStatusOnTarget ---
+            {
+                var method = typeBuilder.DefineMethod("HasStatusOnTarget",
+                    MethodAttributes.Public | MethodAttributes.Virtual,
+                    typeof(bool), [typeof(uint)]);
+                var il = method.GetILGenerator();
+                il.Emit(OpCodes.Ldsfld, fldHasStatusOnTarget);
+                il.Emit(OpCodes.Ldarg_1);
+                il.Emit(OpCodes.Callvirt, invokeFunc);
+                il.Emit(OpCodes.Ret);
+                typeBuilder.DefineMethodOverride(method, ctxType.GetMethod("HasStatusOnTarget")!);
+            }
+
+            // --- GetGauge<T> ---
+            {
+                var method = typeBuilder.DefineMethod("GetGauge",
+                    MethodAttributes.Public | MethodAttributes.Virtual);
+                var gParams = method.DefineGenericParameters("T");
+                gParams[0].SetGenericParameterAttributes(GenericParameterAttributes.ReferenceTypeConstraint);
+                method.SetReturnType(gParams[0]);
+
+                var il = method.GetILGenerator();
+                il.Emit(OpCodes.Ldsfld, fldGetGauge);
+                il.Emit(OpCodes.Ldtoken, gParams[0]);
+                il.Emit(OpCodes.Call, getTypeFromHandle);
+                il.Emit(OpCodes.Callvirt, invokeFunc2);
+                il.Emit(OpCodes.Unbox_Any, gParams[0]);
+                il.Emit(OpCodes.Ret);
+                typeBuilder.DefineMethodOverride(method, ctxType.GetMethod("GetGauge")!);
+            }
+
+            var proxyType = typeBuilder.CreateType()!;
+
+            // 注入委托
+            proxyType.GetField("OnHasStatus")!.SetValue(null, (Func<uint, bool>)impl.HasStatus);
+            proxyType.GetField("OnHasStatusOnTarget")!.SetValue(null, (Func<uint, bool>)impl.HasStatusOnTarget);
+            proxyType.GetField("OnGetGauge")!.SetValue(null, (Func<Type, object?>)impl.GetGauge);
+
+            return Activator.CreateInstance(proxyType)!;
         }
-
-        // 设置静态委托字段
-        var adapterType = adapterAsm.GetType("HelperContextAdapter")!;
-        adapterType.GetField("OnHasStatus")!.SetValue(null, (Func<uint, bool>)impl.HasStatus);
-        adapterType.GetField("OnHasStatusOnTarget")!.SetValue(null, (Func<uint, bool>)impl.HasStatusOnTarget);
-        adapterType.GetField("OnGetGauge")!.SetValue(null, (Func<Type, object?>)impl.GetGauge);
-
-        return Activator.CreateInstance(adapterType)!;
     }
 }

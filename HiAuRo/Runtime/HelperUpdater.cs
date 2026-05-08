@@ -125,18 +125,18 @@ public static class HelperUpdater
         _helperAsm = _alc.LoadFromStream(ms);
         Loaded = true;
 
-        InitializeHelperRuntime(dllPath);
+        InitializeHelperRuntime();
     }
 
-    /// <summary>通过 Roslyn 编译适配类 + 反射调用 HelperRuntime.Initialize，注入上下文实现</summary>
-    private static void InitializeHelperRuntime(string dllPath)
+    /// <summary>通过 Reflection.Emit 生成 IHelperContext 实现 + 反射调用 HelperRuntime.Initialize</summary>
+    private static void InitializeHelperRuntime()
     {
         if (_helperAsm == null || _alc == null) return;
 
         try
         {
             _contextImpl = new HiAuRoContextImpl();
-            var proxy = RoslynCompiledProxy.Create(_contextImpl, dllPath, _alc);
+            var proxy = EmitProxy.Create(_contextImpl, _helperAsm, _alc);
 
             var runtimeType = _helperAsm.GetType("HiAuRo.Helper.HelperRuntime")!;
             var initMethod = runtimeType.GetMethod("Initialize",
