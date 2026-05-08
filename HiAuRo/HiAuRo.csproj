@@ -58,12 +58,10 @@
       <MainFiles Include="$(OutputPath)*.json" />
       <MainFiles Include="$(OutputPath)*.deps.json" />
       <WebFiles Include="$(OutputPath)UI\web\**\*" />
-      <OmenFiles Include="..\bin\$(Configuration)\**\*" Exclude="..\bin\$(Configuration)\**\*.pdb" />
     </ItemGroup>
 
     <Copy SourceFiles="@(MainFiles)" DestinationFolder="$(StagingDir)" />
     <Copy SourceFiles="@(WebFiles)" DestinationFolder="$(StagingDir)\UI\web" />
-    <Copy SourceFiles="@(OmenFiles)" DestinationFolder="$(StagingDir)" />
 
     <Delete Files="$(ZipPath)" Condition="Exists('$(ZipPath)')" />
     <ZipDirectory SourceDirectory="$(StagingDir)" DestinationFile="$(ZipPath)" />
