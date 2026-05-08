@@ -72,23 +72,37 @@ public sealed class HelperContextAdapter : IHelperContext
     private static readonly CSharpCompilationOptions _compileOptions = new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
         .WithOptimizationLevel(OptimizationLevel.Release);
 
-    private static readonly MetadataReference[] _coreRefs =
-    [
-        MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
-        MetadataReference.CreateFromFile(typeof(Func<>).Assembly.Location),
-    ];
+    private static List<MetadataReference>? _refCache;
+    private static readonly object _refLock = new();
+
+    /// <summary>收集编译引用（首次运行时收集，后续复用缓存）</summary>
+    private static List<MetadataReference> GetReferences(string helperDllPath)
+    {
+        lock (_refLock)
+        {
+            if (_refCache != null) return _refCache;
+
+            _refCache = [];
+            foreach (var asm in AppDomain.CurrentDomain.GetAssemblies())
+            {
+                if (asm.IsDynamic || string.IsNullOrEmpty(asm.Location)) continue;
+                try { _refCache.Add(MetadataReference.CreateFromFile(asm.Location)); }
+                catch { }
+            }
+            // 确保 Helper DLL 引用存在
+            try { _refCache.Add(MetadataReference.CreateFromFile(helperDllPath)); }
+            catch { }
+            return _refCache;
+        }
+    }
 
     /// <summary>创建 Helper ALC 内的 IHelperContext 实现实例</summary>
     public static object Create(HiAuRoContextImpl impl, string dllPath, AssemblyLoadContext helperAlc)
     {
-        var refs = new MetadataReference[_coreRefs.Length + 1];
-        Array.Copy(_coreRefs, refs, _coreRefs.Length);
-        refs[^1] = MetadataReference.CreateFromFile(dllPath);
-
         var compilation = CSharpCompilation.Create(
             "HiAuRo.ContextAdapter",
             [CSharpSyntaxTree.ParseText(AdapterSource)],
-            refs,
+            GetReferences(dllPath),
             _compileOptions);
 
         using var ms = new MemoryStream();
