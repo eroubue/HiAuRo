@@ -222,9 +222,19 @@ public partial class Plugin : IDalamudPlugin
 
         bridge.On("hotkey", data =>
         {
-            if (data == null) return;
+            if (data == null) { DService.Instance().Log.Warning("[UI] hotkey: data is null"); return; }
             var id = data.Value.TryGetProperty("id", out var idEl) ? idEl.GetString() : null;
-            if (id != null) HiAuRo.ACR.HotkeyHelper.ExecuteById(id);
+            if (id == null) { DService.Instance().Log.Warning("[UI] hotkey: id not found in data"); return; }
+            if (!RuntimeCore.IsRunning) { DService.Instance().Log.Information($"[UI] hotkey: '{id}' ignored (ACR 未启动)"); return; }
+            var all = HiAuRo.ACR.HotkeyHelper.GetAll();
+            var match = all.FirstOrDefault(r => r.Id == id);
+            if (match == null) { DService.Instance().Log.Warning($"[UI] hotkey: '{id}' not found in {all.Count} registered resolvers"); return; }
+            var check = match.Check();
+            if (check < 0) { DService.Instance().Log.Information($"[UI] hotkey: '{id}' blocked (Check={check})"); return; }
+            DService.Instance().Log.Information($"[UI] hotkey: executing '{id}' ({match.Label}) Check={check}");
+            // 技能执行必须走 Dalamud 主线程
+            var hotkeyId = id;
+            Browsingway.Services.Framework.RunOnFrameworkThread(() => HiAuRo.ACR.HotkeyHelper.ExecuteById(hotkeyId));
         });
 
         bridge.On("qttoggle", data =>

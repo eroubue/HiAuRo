@@ -34,24 +34,24 @@ public sealed class WebUiBridge : IDisposable
         var bytes = Encoding.UTF8.GetBytes(json);
         var segment = new ArraySegment<byte>(bytes);
 
-        List<WebSocket> deadClients;
+        List<WebSocket> sendTargets;
         lock (_lock)
         {
-            deadClients = _clients.Where(c => c.State != WebSocketState.Open).ToList();
-            foreach (var dead in deadClients) _clients.Remove(dead);
+            _clients.RemoveAll(c => c.State != WebSocketState.Open);
+            sendTargets = [.._clients];
+        }
 
-            foreach (var client in _clients)
+        foreach (var client in sendTargets)
+        {
+            try
             {
-                try
-                {
-                    _ = client.SendAsync(segment, WebSocketMessageType.Text, true, CancellationToken.None);
-                }
-                catch
-                {
-                    deadClients.Add(client);
-                }
+                await client.SendAsync(segment, WebSocketMessageType.Text, true, CancellationToken.None);
             }
-            foreach (var dead in deadClients) _clients.Remove(dead);
+            catch (Exception ex)
+            {
+                DService.Instance().Log.Warning($"[WebUiBridge] SendAsync 失败: {ex.Message}");
+                lock (_lock) _clients.Remove(client);
+            }
         }
     }
 

@@ -51,7 +51,6 @@ public static class HotkeyHelper
             _handlers.Clear();
             _keyBindings.Clear();
         }
-        OnExecuted = null;
     }
 
     /// <summary>设置热键绑定</summary>
@@ -110,17 +109,26 @@ public static class HotkeyHelper
     /// <summary>通过 ID 直接执行热键（Web 前端按钮点击）</summary>
     public static void ExecuteById(string id)
     {
-        if (!HiAuRo.Runtime.RuntimeCore.IsRunning) return; // 停止时阻断所有热键
+        if (!HiAuRo.Runtime.RuntimeCore.IsRunning) { DService.Instance().Log.Information($"[HotkeyHelper] ExecuteById: '{id}' blocked (ACR stopped)"); return; }
 
         string? executedLabel = null;
         lock (_lock)
         {
             foreach (var resolver in _resolvers)
             {
-                if (resolver.Id == id && resolver.Check() >= 0)
+                if (resolver.Id == id)
                 {
-                    resolver.Execute();
-                    executedLabel = resolver.Label;
+                    var c = resolver.Check();
+                    if (c >= 0)
+                    {
+                        DService.Instance().Log.Information($"[HotkeyHelper] ExecuteById: '{id}' ({resolver.Label}) Check={c}, calling Execute");
+                        resolver.Execute();
+                        executedLabel = resolver.Label;
+                    }
+                    else
+                    {
+                        DService.Instance().Log.Information($"[HotkeyHelper] ExecuteById: '{id}' found but Check={c}");
+                    }
                     break;
                 }
             }
@@ -128,6 +136,8 @@ public static class HotkeyHelper
 
         if (executedLabel != null)
             OnExecuted?.Invoke(id, executedLabel);
+        else
+            DService.Instance().Log.Warning($"[HotkeyHelper] ExecuteById: '{id}' no resolver executed (label=null)");
     }
 
     /// <summary>获取所有已注册热键</summary>

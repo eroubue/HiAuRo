@@ -44,12 +44,14 @@ public static class ACRLifecycle
         if (state == CombatContext.State.Idle || state == CombatContext.State.Zoning)
         {
             _resetCalled = false;
+            Runner.ProcessSpellQueue(false); // 热键在所有状态都应消费
             return;
         }
 
         if (state == CombatContext.State.OutOfCombat)
         {
             if (!_resetCalled) { Runner.Reset(); _resetCalled = true; }
+            Runner.ProcessSpellQueue(false); // 非战斗也能消费热键队列
             return;
         }
 

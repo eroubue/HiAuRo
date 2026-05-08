@@ -216,7 +216,18 @@ internal class RenderProcess : IDisposable
 		};
 
 		process.OutputDataReceived += (_, args) => Services.PluginLog.Info($"[Render]: {args.Data}");
-		process.ErrorDataReceived += (_, args) => Services.PluginLog.Error($"[Render]: {args.Data}");
+		process.ErrorDataReceived += (_, args) =>
+		{
+			if (args.Data == null) return;
+			var data = args.Data;
+			// Chromium GCM 推送注册 / QUOTA_EXCEEDED / DEPRECATED_ENDPOINT 等内部噪音，不是应用级错误
+			if (data.Contains("gcm") || data.Contains("QUOTA_EXCEEDED") || data.Contains("DEPRECATED_ENDPOINT"))
+			{
+				Services.PluginLog.Verbose($"[Render]: {data}");
+				return;
+			}
+			Services.PluginLog.Error($"[Render]: {data}");
+		};
 
 		return process;
 	}

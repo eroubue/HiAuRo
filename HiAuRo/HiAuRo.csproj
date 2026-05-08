@@ -56,32 +56,5 @@
     </ItemGroup>
     <Copy SourceFiles="@(_RendererFiles)" DestinationFolder="$(OutputPath)renderer" SkipUnchangedFiles="true" Condition="Exists('$(_RendererSrc)Browsingway.Renderer.exe')" />
   </Target>
-
-  <!-- 构建后打包 zip -->
-  <Target Name="PackagePlugin" AfterTargets="Build">
-    <PropertyGroup>
-      <StagingDir>$(OutputPath)_pkg\</StagingDir>
-      <ZipPath>$(OutputPath)HiAuRo-$(Version).zip</ZipPath>
-    </PropertyGroup>
-
-    <RemoveDir Directories="$(StagingDir)" />
-    <MakeDir Directories="$(StagingDir)\UI\web" />
-
-    <ItemGroup>
-      <MainFiles Include="$(OutputPath)*.dll" Exclude="$(OutputPath)*.pdb" />
-      <MainFiles Include="$(OutputPath)*.json" />
-      <MainFiles Include="$(OutputPath)*.deps.json" />
-      <WebFiles Include="$(OutputPath)UI\web\**\*" />
-    </ItemGroup>
-
-    <Copy SourceFiles="@(MainFiles)" DestinationFolder="$(StagingDir)" />
-    <Copy SourceFiles="@(WebFiles)" DestinationFolder="$(StagingDir)\UI\web" />
-
-    <Delete Files="$(ZipPath)" Condition="Exists('$(ZipPath)')" />
-    <ZipDirectory SourceDirectory="$(StagingDir)" DestinationFile="$(ZipPath)" />
-    <RemoveDir Directories="$(StagingDir)" />
-
-    <Message Importance="high" Text="Package: $(ZipPath)" />
-  </Target>
-
+  
 </Project>

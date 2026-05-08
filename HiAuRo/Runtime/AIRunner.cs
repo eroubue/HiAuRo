@@ -26,6 +26,7 @@ public sealed class AIRunner
     private CombatContext.State _prevFactAxisState;
     private CombatContext.State _prevExecAxisState; // 执行轴战斗状态追踪
     private CombatContext.State _prevAssistAxisState; // 辅助轴战斗状态追踪
+    private CombatContext.State _prevState; // 用于检测战斗状态切换
 
     public AIRunner()
     {
@@ -106,9 +107,18 @@ public sealed class AIRunner
         {
             var state = CombatContext.CurrentState;
 
+            // 进入战斗时清掉非战斗攒下的热键队列，避免延迟爆发
+            if (state != _prevState && state == CombatContext.State.InCombat)
+            {
+                DService.Instance().Log.Information("[AIRunner] entering combat, clearing stale SpellQueue");
+                SpellQueue.Clear();
+            }
+            _prevState = state;
+
             if (state == CombatContext.State.Idle || state == CombatContext.State.Zoning)
             {
                 Data.Objects.Refresh();
+                ProcessSpellQueue(blockBuild);
                 return;
             }
 
@@ -117,6 +127,7 @@ public sealed class AIRunner
                 CurrentRotation?.EventHandler?.OnPreCombat();
                 // 倒计时阶段行为检查
                 UpdateCountDown();
+                ProcessSpellQueue(blockBuild);
                 return;
             }
 
@@ -245,14 +256,9 @@ public sealed class AIRunner
                 }
             }
 
-            // 执行队列中待处理的 Slot（受 blockBuild 影响）
-            if (!blockBuild && SpellQueue.HasPending())
-            {
-                var queued = SpellQueue.GetNext();
-                if (queued != null)
-                    SlotExecutor.ExecuteSlot(queued);
+            // 执行队列中待处理的 Slot（受 blockBuild 影响，优先于 AI 循环）
+            if (ProcessSpellQueue(blockBuild))
                 return;
-            }
 
             // 从 AI 循环获取下一个 Slot（Check 总是执行，Build 受 blockBuild 影响）
             var nextSlot = AiLoop.GetNextSlot(blockBuild);
@@ -441,6 +447,19 @@ public sealed class AIRunner
             }
         }
 
+        return false;
+    }
+
+    internal bool ProcessSpellQueue(bool blockBuild)
+    {
+        if (blockBuild || !SpellQueue.HasPending()) return false;
+        var queued = SpellQueue.GetNext();
+        if (queued != null)
+        {
+            DService.Instance().Log.Information($"[AIRunner] ProcessSpellQueue: executing {queued.Actions.Count} spell(s)");
+            SlotExecutor.ExecuteSlot(queued);
+            return true;
+        }
         return false;
     }
 }

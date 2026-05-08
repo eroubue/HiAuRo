@@ -101,6 +101,5 @@ public static class QTHelper
             _data.Clear();
             _order.Clear();
         }
-        OnChanged = null;
     }
 }

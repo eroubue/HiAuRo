@@ -92,17 +92,32 @@ public static class ACRLoader
                 return selfAsm;
             }
 
-            // 其它宿主程序集（OmenTools, Dalamud 等）：查找 Default ALC 中已加载的版本
+            // 其它宿主程序集（OmenTools, Dalamud 等）：
+            // 1. 先在 Default ALC 中查找（如 System.*, Microsoft.*）
             foreach (var asm in AssemblyLoadContext.Default.Assemblies)
             {
                 if (asm.GetName().Name == name.Name)
                 {
-                    DService.Instance().Log.Debug($"[ACRLoader]   → 找到已加载: {asm.GetName().Name} v{asm.GetName().Version}");
+                    DService.Instance().Log.Debug($"[ACRLoader]   → 在 Default ALC 找到: {asm.GetName().Name} v{asm.GetName().Version}");
                     return asm;
                 }
             }
 
-            // Fallback: 让 Default ALC 自行解析
+            // 2. 再在 HiAuRo 自身 ALC 中查找（OmenTools 等宿主程序集在这里）
+            var hostAlc = AssemblyLoadContext.GetLoadContext(typeof(ACRLoader).Assembly);
+            if (hostAlc != null)
+            {
+                foreach (var asm in hostAlc.Assemblies)
+                {
+                    if (asm.GetName().Name == name.Name)
+                    {
+                        DService.Instance().Log.Debug($"[ACRLoader]   → 在宿主 ALC 找到: {asm.GetName().Name} v{asm.GetName().Version}");
+                        return asm;
+                    }
+                }
+            }
+
+            // 3. Fallback: 让 Default ALC 自行解析
             try
             {
                 return AssemblyLoadContext.Default.LoadFromAssemblyName(name);
