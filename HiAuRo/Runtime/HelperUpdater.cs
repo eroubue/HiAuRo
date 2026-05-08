@@ -28,6 +28,7 @@ public static class HelperUpdater
     private static AssemblyLoadContext? _alc;
     private static Assembly? _helperAsm;
     private static HiAuRoContextImpl? _contextImpl;
+    private static byte[]? _cachedDllBytes;
 
     public static bool Loaded { get; private set; }
 
@@ -101,16 +102,14 @@ public static class HelperUpdater
     {
         if (!File.Exists(dllPath)) return;
 
+        // 读入内存后立即释放文件句柄，避免下次更新时 DLL 被占用
+        _cachedDllBytes = File.ReadAllBytes(dllPath);
+
         _alc?.Unload();
         _alc = new AssemblyLoadContext("HiAuRo.Helper", isCollectible: true);
-        _alc.Resolving += (ctx, name) =>
-        {
-            if (name.Name?.StartsWith("HiAuRo.Helper") == true)
-                return ctx.LoadFromAssemblyPath(dllPath);
-            return null;
-        };
 
-        _helperAsm = _alc.LoadFromAssemblyPath(dllPath);
+        using var ms = new MemoryStream(_cachedDllBytes, writable: false);
+        _helperAsm = _alc.LoadFromStream(ms);
         Loaded = true;
 
         InitializeHelperRuntime();
