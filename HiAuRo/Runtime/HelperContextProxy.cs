@@ -1,22 +1,23 @@
 using System.Reflection;
+using System.Runtime.Loader;
+using Microsoft.CodeAnalysis;
+using Microsoft.CodeAnalysis.CSharp;
 using OmenTools.OmenService;
 
 namespace HiAuRo.Runtime;
 
 /// <summary>
 /// HelperRuntime 上下文实现 —— 通过 DService 提供 HasStatus/HasStatusOnTarget/GetGauge
-/// 由于 HiAuRo.Helper.dll 是运行时动态加载（非编译期引用），
-/// 通过 DispatchProxy 创建适配 IHelperContext 接口的代理对象
+/// 通过 Roslyn 在 Helper 的 ALC 中编译一个实现 IHelperContext 的适配类，
+/// 避免 DispatchProxy 跨 ALC 类型等效性问题
 /// </summary>
 sealed class HiAuRoContextImpl
 {
-    /// <summary>检查玩家自身是否有指定状态</summary>
     public bool HasStatus(uint statusId)
     {
         return LocalPlayerState.HasStatus(statusId, out _);
     }
 
-    /// <summary>检查当前目标是否有指定状态</summary>
     public bool HasStatusOnTarget(uint statusId)
     {
         var target = TargetManager.SoftTarget ?? TargetManager.Target;
@@ -30,13 +31,11 @@ sealed class HiAuRoContextImpl
         return false;
     }
 
-    /// <summary>获取职业量谱（泛型版本，内部通过反射适配 JobGaugeBase 约束差异）</summary>
     public T? GetGauge<T>() where T : class
     {
         return (T?)GetGauge(typeof(T));
     }
 
-    /// <summary>通过 Type 获取职业量谱（非泛型版本，供反射调用）</summary>
     public object? GetGauge(Type t)
     {
         var gauges = DService.Instance().JobGauges;
@@ -46,40 +45,72 @@ sealed class HiAuRoContextImpl
 }
 
 /// <summary>
-/// DispatchProxy 适配器 —— 将 HiAuRoContextImpl 包装为 Helper DLL 的 IHelperContext 实现
-/// 运行时动态加载的 Helper DLL 中 IHelperContext 为 internal，DispatchProxy 无需编译期类型引用
+/// Roslyn 编译适配器 —— 在 Helper ALC 中编译一个普通 C# 类实现 IHelperContext，
+/// 通过静态委托字段桥接 HiAuRoContextImpl（跨 ALC 安全）
 /// </summary>
-sealed class HelperDispatchProxy : DispatchProxy
+static class RoslynCompiledProxy
 {
-    private HiAuRoContextImpl _impl = null!;
+    private const string AdapterSource = @"
+using HiAuRo.Helper;
+using System;
 
-    protected override object? Invoke(MethodInfo? targetMethod, object?[]? args)
+public sealed class HelperContextAdapter : IHelperContext
+{
+    public static Func<uint, bool> OnHasStatus = null!;
+    public static Func<uint, bool> OnHasStatusOnTarget = null!;
+    public static Func<Type, object?> OnGetGauge = null!;
+
+    public bool HasStatus(uint statusId) => OnHasStatus(statusId);
+    public bool HasStatusOnTarget(uint statusId) => OnHasStatusOnTarget(statusId);
+    public T? GetGauge<T>() where T : class => (T?)OnGetGauge(typeof(T));
+}
+";
+
+    private static readonly CSharpCompilationOptions _compileOptions = new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary)
+        .WithOptimizationLevel(OptimizationLevel.Release);
+
+    private static readonly MetadataReference[] _coreRefs =
+    [
+        MetadataReference.CreateFromFile(typeof(object).Assembly.Location),
+        MetadataReference.CreateFromFile(typeof(Func<>).Assembly.Location),
+    ];
+
+    /// <summary>创建 Helper ALC 内的 IHelperContext 实现实例</summary>
+    public static object Create(HiAuRoContextImpl impl, string dllPath, AssemblyLoadContext helperAlc)
     {
-        if (targetMethod == null) return null;
+        var refs = new MetadataReference[_coreRefs.Length + 1];
+        Array.Copy(_coreRefs, refs, _coreRefs.Length);
+        refs[^1] = MetadataReference.CreateFromFile(dllPath);
 
-        return targetMethod.Name switch
+        var compilation = CSharpCompilation.Create(
+            "HiAuRo.ContextAdapter",
+            [CSharpSyntaxTree.ParseText(AdapterSource)],
+            refs,
+            _compileOptions);
+
+        using var ms = new MemoryStream();
+        var result = compilation.Emit(ms);
+        if (!result.Success)
         {
-            nameof(HiAuRoContextImpl.HasStatus) =>
-                _impl.HasStatus((uint)args![0]!),
-            nameof(HiAuRoContextImpl.HasStatusOnTarget) =>
-                _impl.HasStatusOnTarget((uint)args![0]!),
-            "GetGauge" =>
-                _impl.GetGauge(targetMethod.GetGenericArguments().FirstOrDefault() ?? typeof(object)),
-            _ => null
-        };
-    }
+            var errors = string.Join("\n", result.Diagnostics.Where(d => d.Severity == DiagnosticSeverity.Error));
+            throw new InvalidOperationException($"编译 ContextAdapter 失败:\n{errors}");
+        }
 
-    /// <summary>创建适配 Helper DLL 中 IHelperContext 接口的代理实例</summary>
-    public static object CreateProxy(HiAuRoContextImpl impl, Assembly helperAsm)
-    {
-        var ctxType = helperAsm.GetType("HiAuRo.Helper.IHelperContext")!;
-        var createMethod = typeof(DispatchProxy).GetMethods(BindingFlags.Public | BindingFlags.Static)
-            .First(m => m.Name == "Create" && m.IsGenericMethodDefinition && m.GetParameters().Length == 0)
-            .MakeGenericMethod(ctxType, typeof(HelperDispatchProxy));
+        ms.Position = 0;
 
-        var proxy = createMethod.Invoke(null, null)!;
-        // proxy 继承自 HelperDispatchProxy 的子类，可强制转换
-        ((HelperDispatchProxy)proxy)._impl = impl;
-        return proxy;
+        // 在 Helper ALC 中加载编译出的程序集
+        Assembly adapterAsm;
+        using (helperAlc.EnterContextualReflection())
+        {
+            adapterAsm = helperAlc.LoadFromStream(ms);
+        }
+
+        // 设置静态委托字段
+        var adapterType = adapterAsm.GetType("HelperContextAdapter")!;
+        adapterType.GetField("OnHasStatus")!.SetValue(null, (Func<uint, bool>)impl.HasStatus);
+        adapterType.GetField("OnHasStatusOnTarget")!.SetValue(null, (Func<uint, bool>)impl.HasStatusOnTarget);
+        adapterType.GetField("OnGetGauge")!.SetValue(null, (Func<Type, object?>)impl.GetGauge);
+
+        return Activator.CreateInstance(adapterType)!;
     }
 }
