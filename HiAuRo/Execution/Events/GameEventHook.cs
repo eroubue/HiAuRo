@@ -39,7 +39,7 @@ public sealed class GameEventHook
         try
         {
             var sigScanner = DService.Instance().SigScanner;
-            var actionEffectAddr = sigScanner.ScanText("40 55 56 57 41 54 41 55 41 56 41 57 48 8D AC 24");
+            var actionEffectAddr = sigScanner.ScanText("40 55 53 56 57 41 54 41 55 41 56 41 57 48 8D AC 24 ?? ?? ?? ?? 48 81 EC ?? ?? ?? ?? 48 8B 05 ?? ?? ?? ?? 48 33 C4 48 89 45 70 4C 8B BD");
             if (actionEffectAddr != nint.Zero)
             {
                 _actionEffectHook = DService.Instance().Hook.HookFromAddress<ActionEffectDelegate>(
