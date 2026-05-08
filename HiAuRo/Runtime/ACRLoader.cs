@@ -38,6 +38,9 @@ public static class ACRLoader
                     using var ms = new MemoryStream(dllBytes, writable: false);
                     var asm = alc.LoadFromStream(ms);
                     _loadedAcrAssemblies.Add(asm);
+
+                    // 立即预解析所有引用程序集，避免 JIT 惰性解析在战斗中触发
+                    PreResolveReferences(alc, asm, authorDir);
                     foreach (var type in asm.GetExportedTypes())
                     {
                         if (type is { IsAbstract: false, IsInterface: false } &&
@@ -151,6 +154,28 @@ public static class ACRLoader
         }
 
         return null;
+    }
+
+    /// <summary>立即解析所有引用程序集，避免战斗中 JIT 惰性解析触发 I/O</summary>
+    private static void PreResolveReferences(AssemblyLoadContext alc, Assembly asm, string authorDir)
+    {
+        foreach (var refName in asm.GetReferencedAssemblies())
+        {
+            try
+            {
+                // 确保引用程序集已加载到该 ALC 中
+                alc.LoadFromAssemblyName(refName);
+            }
+            catch
+            {
+                // 如果 ALC 自身解析不了，尝试 ResolveAssembly 回退（如 ACR 本地依赖）
+                try
+                {
+                    ResolveAssembly(alc, refName, authorDir);
+                }
+                catch { }
+            }
+        }
     }
 
     /// <summary>卸载所有外部 ACR</summary>
