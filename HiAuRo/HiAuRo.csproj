@@ -11,9 +11,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../OmenTools/OmenTools.csproj">
-      <Private>False</Private>
-    </ProjectReference>
+    <ProjectReference Include="../OmenTools/OmenTools.csproj" />
   </ItemGroup>
 
   <ItemGroup>
