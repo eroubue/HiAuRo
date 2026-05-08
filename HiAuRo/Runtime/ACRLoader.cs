@@ -34,7 +34,9 @@ public static class ACRLoader
             {
                 try
                 {
-                    var asm = alc.LoadFromAssemblyPath(dllPath);
+                    var dllBytes = File.ReadAllBytes(dllPath);
+                    using var ms = new MemoryStream(dllBytes, writable: false);
+                    var asm = alc.LoadFromStream(ms);
                     _loadedAcrAssemblies.Add(asm);
                     foreach (var type in asm.GetExportedTypes())
                     {
@@ -142,7 +144,11 @@ public static class ACRLoader
 
         var path = Path.Combine(authorDir, name.Name + ".dll");
         if (File.Exists(path))
-            return ctx.LoadFromAssemblyPath(path);
+        {
+            var depBytes = File.ReadAllBytes(path);
+            using var depMs = new MemoryStream(depBytes, writable: false);
+            return ctx.LoadFromStream(depMs);
+        }
 
         return null;
     }
