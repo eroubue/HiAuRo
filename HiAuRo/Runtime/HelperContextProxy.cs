@@ -51,8 +51,11 @@ sealed class HiAuRoContextImpl
 static class RoslynCompiledProxy
 {
     private const string AdapterSource = @"
+using System.Runtime.CompilerServices;
 using HiAuRo.Helper;
 using System;
+
+[assembly: IgnoresAccessChecksTo(""HiAuRo.Helper"")]
 
 public sealed class HelperContextAdapter : IHelperContext
 {
