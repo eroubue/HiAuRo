@@ -147,7 +147,10 @@ public static class HelperUpdater
         }
         catch (Exception ex)
         {
-            DService.Instance().Log.Warning($"[HelperUpdater] InitializeHelperRuntime 失败: {ex.Message}");
+            var msg = ex is System.Reflection.TargetInvocationException tie && tie.InnerException != null
+                ? tie.InnerException.ToString()
+                : ex.ToString();
+            DService.Instance().Log.Warning($"[HelperUpdater] InitializeHelperRuntime 失败: {msg}");
         }
     }
 
