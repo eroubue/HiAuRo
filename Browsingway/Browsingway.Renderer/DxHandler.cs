@@ -55,9 +55,6 @@ internal static unsafe class DxHandler
 
 		// Use the adapter to build the device we'll use
 		D3D11_CREATE_DEVICE_FLAG flags = D3D11_CREATE_DEVICE_BGRA_SUPPORT;
-#if DEBUG
-		flags |= D3D11_CREATE_DEVICE_DEBUG;
-#endif
 
 		ID3D11Device* device;
 		ID3D11DeviceContext* context;

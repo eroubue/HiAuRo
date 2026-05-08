@@ -121,6 +121,24 @@ public sealed class MainWindow : Window
         ImGui.Separator();
         changed |= ImGui.Checkbox("Debug 日志", ref debug);
 
+        ImGui.Spacing();
+        ImGui.Separator();
+        ImGui.Text("触发器目录同步 (GitHub)");
+        ImGui.Separator();
+
+        var ghToken = _config.GitHubToken ?? "";
+        var ghRepo = _config.CatalogRepo ?? "";
+        var ghBranch = _config.CatalogBranch ?? "";
+
+        ImGui.SetNextItemWidth(250);
+        changed |= ImGui.InputTextWithHint("GitHub Token", "ghp_... (repo 权限)", ref ghToken, 128, ImGuiInputTextFlags.Password);
+
+        ImGui.SetNextItemWidth(200);
+        changed |= ImGui.InputText("仓库", ref ghRepo, 128);
+
+        ImGui.SetNextItemWidth(150);
+        changed |= ImGui.InputText("分支", ref ghBranch, 64);
+
         if (changed)
         {
             _config.ActionQueueInMs = aq;
@@ -128,6 +146,9 @@ public sealed class MainWindow : Window
             _config.AoeCount = aoe;
             _config.AttackRange = range;
             _config.DebugEnabled = debug;
+            _config.GitHubToken = ghToken.Length > 0 ? ghToken : null;
+            _config.CatalogRepo = ghRepo;
+            _config.CatalogBranch = ghBranch;
             _saveConfig();
         }
     }

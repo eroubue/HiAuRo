@@ -27,78 +27,120 @@ public partial class Plugin : IDalamudPlugin
 
     public Plugin(IDalamudPluginInterface pluginInterface)
     {
-        Instance = this;
-        _pluginInterface = pluginInterface;
-
-        DService.Init(pluginInterface);
-        _config = LoadConfig();
-        BrowsingwayPluginInit(pluginInterface);
-
-        _ = HelperUpdater.CheckAndUpdateAsync();
-
-        var webRoot = Path.Combine(_pluginInterface.ConfigDirectory.FullName, "web");
-        var sourceWebRoot = Path.Combine(_pluginInterface.AssemblyLocation.Directory?.FullName ?? ".", "UI", "web");
-
-        // 始终覆盖更新 web 前端文件
-        if (Directory.Exists(sourceWebRoot))
-            CopyDirectory(sourceWebRoot, webRoot);
-
-        SettingMgr.Init(_pluginInterface.ConfigDirectory.FullName);
-        CommandMgr.Init();
-        EventSystem.Init();
-        GameEventHook.Instance.Init();
-        ExecutionAxis.Instance.Init();
-        RuntimeCore.Start();
-        DecisionEngine.Instance.Init();
-        AssistAxis.Instance.Init();
-        ModeSwitch.TryAutoSwitchToExecutionAxis();
-        CombatContext.StateChanged += OnCombatStateChanged;
-
-        _uiBridge = new WebUiBridge();
-        RegisterUiHandlers(_uiBridge);
-        AuthoringServer.Instance.Register(_uiBridge);
-        _uiServer = new WebUiServer(webRoot, _uiBridge);
-        _uiServer.Start();
-
-        ACR.HotkeyHelper.OnExecuted += OnHotkeyExecuted;
-        ACR.QTHelper.OnChanged += OnQtChanged;
-
-        _windowSystem = new WindowSystem("HiAuRo");
-        _mainWindow = new MainWindow(_config, () => _pluginInterface.SavePluginConfig(_config));
-        _windowSystem.AddWindow(_mainWindow);
-        _pluginInterface.UiBuilder.Draw += _windowSystem.Draw;
-        _pluginInterface.UiBuilder.OpenMainUi += () => _mainWindow.IsOpen = !_mainWindow.IsOpen;
-        _pluginInterface.UiBuilder.OpenConfigUi += () => _mainWindow.IsOpen = !_mainWindow.IsOpen;
-
-        // 加载外部 ACR
-        ACRLifecycle.Init(_pluginInterface.ConfigDirectory.FullName);
-        ACRLoader.LoadAll(_pluginInterface.AssemblyLocation.Directory?.FullName ?? ".");
-
         try
         {
-            var merged = new TriggerCatalog();
-            TriggerCatalogBuilder.MergeInto(merged,
-                TriggerCatalogBuilder.BuildFromAssembly(typeof(Execution.Triggers.Cond.TriggerCond_敌人读条).Assembly, "builtin"));
+            Instance = this;
+            _pluginInterface = pluginInterface;
 
-            foreach (var acrAsm in ACRLoader.LoadedAcrAssemblies)
+            DService.Init(pluginInterface);
+            _config = LoadConfig();
+            BrowsingwayPluginInit(pluginInterface);
+
+            _ = HelperUpdater.CheckAndUpdateAsync();
+
+            var webRoot = Path.Combine(_pluginInterface.ConfigDirectory.FullName, "web");
+            var sourceWebRoot = Path.Combine(_pluginInterface.AssemblyLocation.Directory?.FullName ?? ".", "UI", "web");
+
+            // 始终覆盖更新 web 前端文件
+            if (Directory.Exists(sourceWebRoot))
+                CopyDirectory(sourceWebRoot, webRoot);
+
+            SettingMgr.Init(_pluginInterface.ConfigDirectory.FullName);
+            CommandMgr.Init();
+            EventSystem.Init();
+            GameEventHook.Instance.Init();
+            ExecutionAxis.Instance.Init();
+            RuntimeCore.Start();
+            DecisionEngine.Instance.Init();
+            AssistAxis.Instance.Init();
+            ModeSwitch.TryAutoSwitchToExecutionAxis();
+            CombatContext.StateChanged += OnCombatStateChanged;
+
+            _uiBridge = new WebUiBridge();
+            RegisterUiHandlers(_uiBridge);
+            AuthoringServer.Instance.Register(_uiBridge);
+            _uiServer = new WebUiServer(webRoot, _uiBridge);
+            _uiServer.Start();
+
+            ACR.HotkeyHelper.OnExecuted += OnHotkeyExecuted;
+            ACR.QTHelper.OnChanged += OnQtChanged;
+
+            _windowSystem = new WindowSystem("HiAuRo");
+            _mainWindow = new MainWindow(_config, () => _pluginInterface.SavePluginConfig(_config));
+            _windowSystem.AddWindow(_mainWindow);
+            _pluginInterface.UiBuilder.Draw += _windowSystem.Draw;
+            _pluginInterface.UiBuilder.OpenMainUi += () => _mainWindow.IsOpen = !_mainWindow.IsOpen;
+            _pluginInterface.UiBuilder.OpenConfigUi += () => _mainWindow.IsOpen = !_mainWindow.IsOpen;
+
+            // 加载外部 ACR
+            ACRLifecycle.Init(_pluginInterface.ConfigDirectory.FullName);
+            ACRLoader.LoadAll(_pluginInterface.AssemblyLocation.Directory?.FullName ?? ".");
+
+            try
             {
-                var acrCatalog = TriggerCatalogBuilder.BuildFromAssembly(acrAsm, "acr");
-                TriggerCatalogBuilder.MergeInto(merged, acrCatalog);
+                var merged = new TriggerCatalog();
+                TriggerCatalogBuilder.MergeInto(merged,
+                    TriggerCatalogBuilder.BuildFromAssembly(typeof(Execution.Triggers.Cond.TriggerCond_敌人读条).Assembly, "builtin"));
+
+                foreach (var acrAsm in ACRLoader.LoadedAcrAssemblies)
+                {
+                    var acrCatalog = TriggerCatalogBuilder.BuildFromAssembly(acrAsm, "acr");
+                    TriggerCatalogBuilder.MergeInto(merged, acrCatalog);
+                }
+
+                var catalogPath = Path.Combine(_pluginInterface.ConfigDirectory.FullName, "trigger-catalog.json");
+                var catalogJson = System.Text.Json.JsonSerializer.Serialize(merged,
+                    new System.Text.Json.JsonSerializerOptions { WriteIndented = true, PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase });
+                File.WriteAllText(catalogPath, catalogJson);
+                DService.Instance().Log.Information($"[TriggerCatalog] 已生成 ({merged.Conditions.Count}C {merged.Actions.Count}A {merged.Scripts.Count}S)");
+            }
+            catch (Exception ex)
+            {
+                DService.Instance().Log.Warning($"[TriggerCatalog] 生成失败: {ex.Message}");
             }
 
-            var catalogPath = Path.Combine(_pluginInterface.ConfigDirectory.FullName, "trigger-catalog.json");
-            var catalogJson = System.Text.Json.JsonSerializer.Serialize(merged,
-                new System.Text.Json.JsonSerializerOptions { WriteIndented = true, PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase });
-            File.WriteAllText(catalogPath, catalogJson);
-            DService.Instance().Log.Information($"[TriggerCatalog] 已生成 ({merged.Conditions.Count}C {merged.Actions.Count}A {merged.Scripts.Count}S)");
+            DService.Instance().Chat.Print("[HiAuRo] /hi on|off|toggle|status|panel|reload  悬浮窗: localhost:5678/jobview.html");
+            DService.Instance().Log.Information($"[Lifecycle] HiAuRo 宿主已加载。版本: {_config.LastSeenPluginVersion}");
         }
         catch (Exception ex)
         {
-            DService.Instance().Log.Warning($"[TriggerCatalog] 生成失败: {ex.Message}");
+            try
+            {
+                DService.Instance().Log.Error($"[Lifecycle] 插件构造函数异常，尝试释放已分配资源: {ex}");
+                SafeDispose();
+            }
+            catch (Exception disposeEx)
+            {
+                DService.Instance().Log.Error($"[Lifecycle] 释放资源时再次异常: {disposeEx}");
+            }
+            throw;
+        }
+    }
+
+    private void SafeDispose()
+    {
+        CombatContext.StateChanged -= OnCombatStateChanged;
+        ACR.HotkeyHelper.OnExecuted -= OnHotkeyExecuted;
+        ACR.QTHelper.OnChanged -= OnQtChanged;
+        Instance = null!;
+        RuntimeCore.Shutdown();
+        CombatContext.Reset();
+        ExecutionAxis.Instance.Shutdown();
+        AssistAxis.Instance.Shutdown();
+        GameEventHook.Instance.Shutdown();
+        EventSystem.Shutdown();
+        CommandMgr.Shutdown();
+
+        if (_windowSystem != null)
+        {
+            _pluginInterface.UiBuilder.Draw -= _windowSystem.Draw;
+            _windowSystem.RemoveAllWindows();
         }
 
-        DService.Instance().Chat.Print("[HiAuRo] /hi on|off|toggle|status|panel|reload  悬浮窗: localhost:5678/jobview.html");
-        DService.Instance().Log.Information($"[Lifecycle] HiAuRo 宿主已加载。版本: {_config.LastSeenPluginVersion}");
+        _uiServer?.Stop();
+        _uiBridge?.Dispose();
+        BrowsingwayDispose();
+        DService.Uninit();
     }
 
     private static void OnCombatStateChanged(CombatContext.State oldState, CombatContext.State newState)

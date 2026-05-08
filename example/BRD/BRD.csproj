@@ -1,6 +1,7 @@
-<Project Sdk="Dalamud.CN.NET.Sdk/15.0.0">
+<Project Sdk="Microsoft.NET.Sdk">
 
-  <PropertyGroup>
+
+<PropertyGroup>
     <AssemblyName>HiAuRo.BRD</AssemblyName>
     <RootNamespace>HiAuRo.Jobs.BRD</RootNamespace>
     <TargetFramework>net10.0-windows</TargetFramework>
@@ -11,33 +12,7 @@
     <Use_DalamudPackager>false</Use_DalamudPackager>
   </PropertyGroup>
 
-  <!-- 开发时用项目引用，发布后改为 DLL 引用 -->
-  <!-- 方式 A: 项目引用（同一 workspace 开发用） -->
-  <ItemGroup>
-    <ProjectReference Include="../../HiAuRo/HiAuRo.csproj">
-      <Private>false</Private>
-    </ProjectReference>
-    <ProjectReference Include="../../OmenTools/OmenTools.csproj">
-      <Private>false</Private>
-    </ProjectReference>
-  </ItemGroup>
 
-  <!--
-  方式 B: DLL 引用（ACR 作者独立开发时取消注释下面这段）
-  <ItemGroup>
-    <Reference Include="HiAuRo">
-      <HintPath>$(appdata)\XIVLauncherCN\devPlugins\HiAuRo\HiAuRo.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
-    <Reference Include="OmenTools">
-      <HintPath>$(appdata)\XIVLauncherCN\installedPlugins\OmenTools\OmenTools.dll</HintPath>
-      <Private>false</Private>
-    </Reference>
-  </ItemGroup>
-  <PropertyGroup>
-    <ProduceReferenceAssembly>false</ProduceReferenceAssembly>
-  </PropertyGroup>
-  -->
 
   <!-- 可选：自定义设置页 -->
   <ItemGroup>

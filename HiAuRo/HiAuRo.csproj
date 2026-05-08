@@ -41,6 +41,22 @@
     <None Remove="Sdk\**" />
   </ItemGroup>
 
+  <!-- 拷贝 Browsingway.Renderer.exe 到插件输出目录 -->
+  <Target Name="CopyRendererOutput" AfterTargets="Build">
+    <PropertyGroup>
+      <_RendererSrc>..\Browsingway\out\</_RendererSrc>
+    </PropertyGroup>
+    <MakeDir Directories="$(OutputPath)renderer" Condition="Exists('$(_RendererSrc)Browsingway.Renderer.exe')" />
+    <ItemGroup>
+      <_RendererFiles Include="$(_RendererSrc)Browsingway.Renderer.*" />
+      <_RendererFiles Include="$(_RendererSrc)Browsingway.Common.dll" />
+      <_RendererFiles Include="$(_RendererSrc)CefSharp.OffScreen.dll" />
+      <_RendererFiles Include="$(_RendererSrc)SharedMemory.dll" />
+      <_RendererFiles Include="$(_RendererSrc)FlatSharp.Runtime.dll" />
+    </ItemGroup>
+    <Copy SourceFiles="@(_RendererFiles)" DestinationFolder="$(OutputPath)renderer" SkipUnchangedFiles="true" Condition="Exists('$(_RendererSrc)Browsingway.Renderer.exe')" />
+  </Target>
+
   <!-- 构建后打包 zip -->
   <Target Name="PackagePlugin" AfterTargets="Build">
     <PropertyGroup>

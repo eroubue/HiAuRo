@@ -35,7 +35,7 @@ internal class Overlay : IDisposable
 		};
 
 		_overlayConfig = overlayConfig;
-		_texErrorIcon = Services.TextureProvider.GetFromFile(Path.Combine(pluginDir, "dead.png"));
+		_texErrorIcon = null;
 	}
 
 	public Guid RenderGuid => _overlayConfig.Guid;

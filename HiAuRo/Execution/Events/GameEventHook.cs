@@ -36,13 +36,24 @@ public sealed class GameEventHook
 
         FrameworkManager.Instance().Reg(OnFrameworkUpdate);
 
-        var sigScanner = DService.Instance().SigScanner;
-        var actionEffectAddr = sigScanner.ScanText("40 55 56 57 41 54 41 55 41 56 41 57 48 8D AC 24");
-        if (actionEffectAddr != nint.Zero)
+        try
         {
-            _actionEffectHook = DService.Instance().Hook.HookFromAddress<ActionEffectDelegate>(
-                actionEffectAddr, OnActionEffect);
-            _actionEffectHook.Enable();
+            var sigScanner = DService.Instance().SigScanner;
+            var actionEffectAddr = sigScanner.ScanText("40 55 56 57 41 54 41 55 41 56 41 57 48 8D AC 24");
+            if (actionEffectAddr != nint.Zero)
+            {
+                _actionEffectHook = DService.Instance().Hook.HookFromAddress<ActionEffectDelegate>(
+                    actionEffectAddr, OnActionEffect);
+                _actionEffectHook.Enable();
+            }
+            else
+            {
+                DService.Instance().Log.Warning("[GameEventHook] ActionEffect 签名未找到，跳过 Hook 挂载");
+            }
+        }
+        catch (Exception ex)
+        {
+            DService.Instance().Log.Warning($"[GameEventHook] ActionEffect Hook 挂载失败 (可能是版本更新): {ex.Message}");
         }
     }
 
