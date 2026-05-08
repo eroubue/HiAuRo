@@ -1,4 +1,5 @@
 using HiAuRo.Runtime;
+using OmenTools.Interop.Game.Lumina;
 using static HiAuRo.ACR.SpellsDefine;
 
 namespace HiAuRo.ACR.HotkeyResolvers;
@@ -11,6 +12,7 @@ public sealed class HotkeyResolver_Sprint : IHotkeyResolver
     public string Id => "sprint";
     public string Label => "疾跑";
     public string DefaultKey => string.Empty;
+    public uint IconId => LuminaWrapper.GetActionIconID(疾跑);
 
     public int Check()
     {

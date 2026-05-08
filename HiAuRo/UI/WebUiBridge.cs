@@ -121,6 +121,8 @@ public sealed class WebUiBridge : IDisposable
             {
                 id = r.Id,
                 label = r.Label,
+                iconId = r.IconId,
+                iconUrl = IconServer.GetIconUrl(r.IconId),
                 available = r.Check() >= 0,
                 binding = ACR.HotkeyHelper.GetBinding(r.Id)
             }).ToList();

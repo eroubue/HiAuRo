@@ -27,7 +27,7 @@ function connect() {
             const msg = JSON.parse(e.data);
             switch (msg.type) {
                 case 'status':
-                    console.log('[HiAuRo] status received, qts:', msg.data.qts?.length, 'hks:', msg.data.hotkeys?.length);
+                    console.log('[HiAuRo] status received, qts:', msg.data.qts?.length, 'hks:', msg.data.hotkeys?.length, 'hkIcons:', msg.data.hotkeys?.map(h => h.iconId).join(','));
                     Object.assign(state, msg.data);
                     renderAll();
                     break;
@@ -163,7 +163,7 @@ function renderHk() {
         `<div class="hk-cell${h.available ? '' : ' unavailable'}" id="hk-${esc(h.id)}"
             title="${esc(h.label)}${h.binding ? ' [' + esc(h.binding) + ']' : ''}"
             onclick="${h.available ? `send('hotkey',{id:'${esc(h.id)}'})` : ''}">
-            <div class="hk-icon">⚡</div>
+            ${h.iconUrl ? `<img class="hk-sprite" src="${h.iconUrl}" alt="${esc(h.label)}">` : '<div class="hk-icon">⚡</div>'}
             <div class="hk-label">${esc(h.label)}</div>
             ${h.binding ? `<div class="hk-bind">${esc(h.binding)}</div>` : ''}
         </div>`

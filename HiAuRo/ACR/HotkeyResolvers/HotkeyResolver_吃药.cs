@@ -1,4 +1,5 @@
 using FFXIVClientStructs.FFXIV.Client.Game;
+using OmenTools.Interop.Game.Lumina;
 
 namespace HiAuRo.ACR.HotkeyResolvers;
 
@@ -12,6 +13,7 @@ public sealed class HotkeyResolver_吃药 : IHotkeyResolver
     public string Id { get; }
     public string Label { get; }
     public string DefaultKey { get; }
+    public uint IconId => LuminaWrapper.GetItemIconID(_itemId);
 
     /// <param name="id">热键 ID</param>
     /// <param name="label">显示名称</param>

@@ -88,6 +88,8 @@ public static class ACRLifecycle
                 {
                     id = r.Id,
                     label = r.Label,
+                    iconId = r.IconId,
+                    iconUrl = HiAuRo.UI.IconServer.GetIconUrl(r.IconId),
                     available = r.Check() >= 0,
                     binding = ACR.HotkeyHelper.GetBinding(r.Id)
                 }).ToList(),
@@ -189,6 +191,8 @@ public static class ACRLifecycle
                 {
                     id = r.Id,
                     label = r.Label,
+                    iconId = r.IconId,
+                    iconUrl = HiAuRo.UI.IconServer.GetIconUrl(r.IconId),
                     available = r.Check() >= 0,
                     binding = ACR.HotkeyHelper.GetBinding(r.Id)
                 }).ToList(),

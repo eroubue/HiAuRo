@@ -1,4 +1,5 @@
 using HiAuRo.Runtime;
+using OmenTools.Interop.Game.Lumina;
 
 namespace HiAuRo.ACR.HotkeyResolvers;
 
@@ -10,6 +11,7 @@ public sealed class HotkeyResolver_Potion : IHotkeyResolver
     public string Id => "potion";
     public string Label => "爆发药";
     public string DefaultKey => string.Empty;
+    public uint IconId => LuminaWrapper.GetItemIconID(44163);
 
     public int Check()
     {

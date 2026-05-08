@@ -1,4 +1,5 @@
 using HiAuRo.Runtime;
+using OmenTools.Interop.Game.Lumina;
 
 namespace HiAuRo.ACR.HotkeyResolvers;
 
@@ -10,16 +11,19 @@ public sealed class HotkeyResolver_NormalSpell : IHotkeyResolver
     private readonly uint _spellId;
     private readonly SpellTargetType _targetType;
     private readonly string _name;
+    private readonly uint _iconId;
 
     public string Id { get; }
     public string Label { get; }
     public string DefaultKey => string.Empty;
+    public uint IconId => _iconId;
 
     public HotkeyResolver_NormalSpell(uint spellId, string name, SpellTargetType targetType = SpellTargetType.Target)
     {
         _spellId = spellId;
         _name = name;
         _targetType = targetType;
+        _iconId = LuminaWrapper.GetActionIconID(spellId);
         Id = $"spell_{spellId}";
         Label = name;
     }

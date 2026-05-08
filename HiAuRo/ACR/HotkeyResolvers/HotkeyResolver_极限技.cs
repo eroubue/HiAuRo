@@ -1,4 +1,5 @@
 using FFXIVClientStructs.FFXIV.Client.Game;
+using OmenTools.Interop.Game.Lumina;
 
 namespace HiAuRo.ACR.HotkeyResolvers;
 
@@ -10,6 +11,7 @@ public sealed class HotkeyResolver_极限技 : IHotkeyResolver
     public string Id => "Hotkey_LB";
     public string Label => "极限技";
     public string DefaultKey => "";
+    public uint IconId => LuminaWrapper.GetActionIconID(198);
 
     public void Execute()
     {

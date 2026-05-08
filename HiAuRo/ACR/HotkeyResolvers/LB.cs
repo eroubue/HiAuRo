@@ -1,4 +1,5 @@
 using HiAuRo.Runtime;
+using OmenTools.Interop.Game.Lumina;
 using static HiAuRo.ACR.SpellsDefine;
 
 namespace HiAuRo.ACR.HotkeyResolvers;
@@ -11,6 +12,7 @@ public sealed class HotkeyResolver_LB : IHotkeyResolver
     public string Id => "lb";
     public string Label => "极限技";
     public string DefaultKey => string.Empty;
+    public uint IconId => LuminaWrapper.GetActionIconID(极限技);
 
     public int Check()
     {

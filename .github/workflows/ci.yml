@@ -18,13 +18,6 @@ jobs:
         with:
           submodules: recursive
 
-      - name: Download Helper DLL
-        shell: pwsh
-        run: |
-          $rel = Invoke-RestMethod "https://api.github.com/repos/denghaoxuan991876906/HiAuRo.Helper/releases/latest"
-          $asset = $rel.assets | Where-Object { $_.name -eq "HiAuRo.Helper.dll" } | Select-Object -First 1
-          if ($asset) { Invoke-WebRequest $asset.browser_download_url -OutFile HiAuRo.Helper.dll }
-
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
@@ -61,7 +54,7 @@ jobs:
           New-Item -ItemType Directory -Force sdk\lib\net10.0 | Out-Null
           Copy-Item HiAuRo\bin\Release\HiAuRo.dll sdk\lib\net10.0\
           Copy-Item HiAuRo\bin\Release\HiAuRo.deps.json sdk\lib\net10.0\ -ErrorAction SilentlyContinue
-          Copy-Item HiAuRo.Helper.dll sdk\lib\net10.0\ -ErrorAction SilentlyContinue
+
           Copy-Item HiAuRo\bin\Release\OmenTools.dll sdk\lib\net10.0\
           foreach ($dll in @("Dalamud.dll","Dalamud.Common.dll","Dalamud.Bindings.ImGui.dll","FFXIVClientStructs.dll","Lumina.dll","Lumina.Excel.dll","ImGuiScene.dll","TerraFX.Interop.Windows.dll","Newtonsoft.Json.dll","Serilog.dll","CheapLoc.dll")) {
             Copy-Item "dalamud\$dll" "sdk\lib\net10.0\" -ErrorAction SilentlyContinue
