@@ -27,6 +27,7 @@ public static class HelperUpdater
 
     private static AssemblyLoadContext? _alc;
     private static Assembly? _helperAsm;
+    private static HiAuRoContextImpl? _contextImpl;
 
     public static bool Loaded { get; private set; }
 
@@ -111,6 +112,31 @@ public static class HelperUpdater
 
         _helperAsm = _alc.LoadFromAssemblyPath(dllPath);
         Loaded = true;
+
+        InitializeHelperRuntime();
+    }
+
+    /// <summary>通过反射调用 HelperRuntime.Initialize，注入上下文实现</summary>
+    private static void InitializeHelperRuntime()
+    {
+        if (_helperAsm == null) return;
+
+        try
+        {
+            _contextImpl = new HiAuRoContextImpl();
+            var proxy = HelperDispatchProxy.CreateProxy(_contextImpl, _helperAsm);
+
+            var runtimeType = _helperAsm.GetType("HiAuRo.Helper.HelperRuntime")!;
+            var initMethod = runtimeType.GetMethod("Initialize",
+                BindingFlags.NonPublic | BindingFlags.Static)!;
+            initMethod.Invoke(null, [proxy]);
+
+            DService.Instance().Log.Information("[HelperUpdater] HelperRuntime 上下文已注入");
+        }
+        catch (Exception ex)
+        {
+            DService.Instance().Log.Warning($"[HelperUpdater] InitializeHelperRuntime 失败: {ex.Message}");
+        }
     }
 
     private static void TryLoadLocal()
