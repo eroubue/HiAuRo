@@ -9,7 +9,6 @@ FFXIV Dalamud 战斗辅助框架（.NET 10，Dalamud.CN.NET.Sdk 15.0.0）。
 ## ACR 开发者 — 一键开始
 
 ```bash
-dotnet nuget add source "https://nuget.pkg.github.com/denghaoxuan991876906/index.json" -n github
 dotnet add package HiAuRo.Sdk
 ```
 
@@ -68,4 +67,4 @@ Browsingway/         ← CEF 渲染
 | 仓库 | 说明 |
 |------|------|
 | [HiAuRo.Helper](https://github.com/denghaoxuan991876906/HiAuRo.Helper) | 全职业数据辅助库 |
-| [HiAuRo.Sdk](https://github.com/denghaoxuan991876906/HiAuRo/pkgs/nuget/HiAuRo.Sdk) | ACR 开发 NuGet 包 |
+| [HiAuRo.Sdk](https://www.nuget.org/packages/HiAuRo.Sdk) | ACR 开发 NuGet 包 |

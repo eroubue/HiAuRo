@@ -113,6 +113,11 @@ jobs:
         with:
           dotnet-version: '10.0.x'
 
+      - name: Publish to nuget.org
+        env:
+          NUGET_API_KEY: ${{ secrets.NUGET_API_KEY }}
+        run: dotnet nuget push nupkg\*.nupkg --source "https://api.nuget.org/v3/index.json" --api-key $env:NUGET_API_KEY --skip-duplicate
+
       - name: Publish to GitHub Packages
         run: dotnet nuget push nupkg\*.nupkg --source "https://nuget.pkg.github.com/denghaoxuan991876906/index.json" --api-key ${{ secrets.GITHUB_TOKEN }} --skip-duplicate
 
