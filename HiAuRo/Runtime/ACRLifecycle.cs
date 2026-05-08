@@ -32,6 +32,9 @@ public static class ACRLifecycle
         _externalAlcs.Add(alc);
     }
 
+    /// <summary>强制下一帧重新检查职业（用于加载后触发首次匹配）</summary>
+    public static void ForceRecheck() { _lastJob = 0; }
+
     /// <summary>初始化</summary>
     public static void Init(string settingRoot) { }
 

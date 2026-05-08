@@ -75,6 +75,7 @@ public partial class Plugin : IDalamudPlugin
             // 加载外部 ACR
             ACRLifecycle.Init(_pluginInterface.ConfigDirectory.FullName);
             ACRLoader.LoadAll(_pluginInterface.AssemblyLocation.Directory?.FullName ?? ".");
+            ACRLifecycle.ForceRecheck(); // RuntimeCore 可能先于 LoadAll 跑了第一帧，强制重检
 
             try
             {
