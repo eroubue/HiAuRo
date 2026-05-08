@@ -115,6 +115,18 @@ public static class ACRLoader
                         return asm;
                     }
                 }
+
+                // 2.5 宿主 ALC 遍历不到时（如 Dalamud 惰性加载），让宿主 ALC 自身尝试解析
+                try
+                {
+                    var fromHost = hostAlc.LoadFromAssemblyName(name);
+                    if (fromHost != null)
+                    {
+                        DService.Instance().Log.Debug($"[ACRLoader]   → 宿主 ALC 解析: {fromHost.GetName().Name} v{fromHost.GetName().Version}");
+                        return fromHost;
+                    }
+                }
+                catch { }
             }
 
             // 3. Fallback: 让 Default ALC 自行解析
