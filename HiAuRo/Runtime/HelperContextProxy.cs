@@ -73,9 +73,9 @@ sealed class HelperDispatchProxy : DispatchProxy
     public static object CreateProxy(HiAuRoContextImpl impl, Assembly helperAsm)
     {
         var ctxType = helperAsm.GetType("HiAuRo.Helper.IHelperContext")!;
-        var createMethod = typeof(DispatchProxy)
-            .GetMethod(nameof(DispatchProxy.Create), BindingFlags.Public | BindingFlags.Static)
-            !.MakeGenericMethod(ctxType, typeof(HelperDispatchProxy));
+        var createMethod = typeof(DispatchProxy).GetMethods(BindingFlags.Public | BindingFlags.Static)
+            .First(m => m.Name == "Create" && m.IsGenericMethodDefinition && m.GetParameters().Length == 0)
+            .MakeGenericMethod(ctxType, typeof(HelperDispatchProxy));
 
         var proxy = createMethod.Invoke(null, null)!;
         // proxy 继承自 HelperDispatchProxy 的子类，可强制转换

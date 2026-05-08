@@ -1,4 +1,3 @@
-using System.Diagnostics;
 using System.Net.Http;
 using System.Net.Http.Json;
 using System.Reflection;
@@ -15,6 +14,7 @@ public static class HelperUpdater
     private const string RepoOwner = "denghaoxuan991876906";
     private const string RepoName = "HiAuRo.Helper";
     private const string DllName = "HiAuRo.Helper.dll";
+    private const string VersionFileName = "version.txt";
 
     private static readonly HttpClient _http = new()
     {
@@ -41,9 +41,9 @@ public static class HelperUpdater
             if (latestTag == null) return;
 
             var localDll = Path.Combine(StoreDir, DllName);
-            var localVersion = GetLocalVersion(localDll);
+            var localTag = GetLocalTag();
 
-            if (latestTag == localVersion && File.Exists(localDll))
+            if (latestTag == localTag && File.Exists(localDll))
             {
                 LoadDll(localDll);
                 return;
@@ -52,6 +52,7 @@ public static class HelperUpdater
             var downloaded = await DownloadRelease(latestTag, localDll);
             if (downloaded)
             {
+                WriteLocalTag(latestTag);
                 DService.Instance().Log.Information($"[HelperUpdater] 已更新 {RepoName} → {latestTag}");
                 LoadDll(localDll);
             }
@@ -87,15 +88,27 @@ public static class HelperUpdater
         return true;
     }
 
-    private static string? GetLocalVersion(string dllPath)
+    private static string? GetLocalTag()
     {
-        if (!File.Exists(dllPath)) return null;
+        var path = Path.Combine(StoreDir, VersionFileName);
         try
         {
-            var info = FileVersionInfo.GetVersionInfo(dllPath);
-            return info.FileVersion is { Length: > 0 } v ? $"v{v}" : null;
+            return File.Exists(path) ? File.ReadAllText(path).Trim() : null;
         }
         catch { return null; }
+    }
+
+    private static void WriteLocalTag(string tag)
+    {
+        try
+        {
+            Directory.CreateDirectory(StoreDir);
+            File.WriteAllText(Path.Combine(StoreDir, VersionFileName), tag);
+        }
+        catch (Exception ex)
+        {
+            DService.Instance().Log.Warning($"[HelperUpdater] 写版本文件失败: {ex.Message}");
+        }
     }
 
     private static void LoadDll(string dllPath)
