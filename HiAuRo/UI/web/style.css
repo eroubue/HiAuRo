@@ -42,9 +42,7 @@ body {
 /* ====== MainWindow — 折叠态胶囊 ====== */
 #main-win {
     display: flex; flex-direction: column; max-width: 310px;
-    background: var(--glass-bg);
-    backdrop-filter: blur(30px) saturate(180%);
-    -webkit-backdrop-filter: blur(30px) saturate(180%);
+    background: var(--bg-elevated);
     border: 1px solid var(--glass-border);
     border-radius: var(--radius-pill);
     box-shadow: var(--shadow-md);
@@ -175,9 +173,7 @@ body {
 /* ====== Qt floating panel ====== */
 #qt-panel {
     display: inline-block;
-    background: var(--glass-bg);
-    backdrop-filter: blur(30px) saturate(180%);
-    -webkit-backdrop-filter: blur(30px) saturate(180%);
+    background: var(--bg-elevated);
     border: 1px solid var(--glass-border);
     border-radius: var(--radius-pill);
     box-shadow: var(--shadow-sm);
@@ -203,9 +199,7 @@ body {
 /* ====== Hotkey floating panel ====== */
 #hk-panel {
     display: inline-block;
-    background: var(--glass-bg);
-    backdrop-filter: blur(30px) saturate(180%);
-    -webkit-backdrop-filter: blur(30px) saturate(180%);
+    background: var(--bg-elevated);
     border: 1px solid var(--glass-border);
     border-radius: var(--radius-md);
     box-shadow: var(--shadow-sm);
@@ -325,8 +319,7 @@ body {
 .custom-select.open .custom-select-trigger { border-color: var(--accent-blue); }
 .custom-select-drop {
     position: absolute; top: calc(100% + 4px); left: 0; min-width: 100%; z-index: 300;
-    background: var(--bg-elevated); backdrop-filter: blur(20px);
-    -webkit-backdrop-filter: blur(20px);
+    background: var(--bg-elevated);
     border: 1px solid var(--glass-border); border-radius: var(--radius-sm);
     box-shadow: var(--shadow-md); overflow: hidden;
     display: none; padding: 2px 0;
