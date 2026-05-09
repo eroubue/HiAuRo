@@ -254,6 +254,7 @@ function renderTabs() {
         : [...otherTabs, { id: '__qt_set', label: 'QT设置' }, { id: '__hk_set', label: '热键设置' }];
 
     if (!allTabs.length) { tabBar.innerHTML = ''; return; }
+    console.warn('[HiAuRo] renderTabs:', allTabs.length, 'tabs, activeTab:', activeTab);
     if (!activeTab || !allTabs.find(t => t.id === activeTab)) activeTab = allTabs[0].id;
 
     tabBar.innerHTML = allTabs.map(t =>
