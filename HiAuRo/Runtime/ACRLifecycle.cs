@@ -176,7 +176,18 @@ public static class ACRLifecycle
             var builder = new HiAuRo.UI.UiBuilderImpl();
             ui.RegisterControls(builder);
             var controls = builder.GetControls();
-            DService.Instance().Log.Information($"[ACR] UI控件收集: {controls.Count}个 (hks={controls.Count(c=>c.Type=="qthotkey")} qts={controls.Count(c=>c.Type=="qttoggle")} mainCtrl={controls.Count(c=>c.Type=="maincontrol")})");
+            var tabCount = controls.Count(c => c.Type == "tab");
+            DService.Instance().Log.Information($"[ACR] UI控件收集: {controls.Count}个 (tabs={tabCount} hks={controls.Count(c=>c.Type=="qthotkey")} qts={controls.Count(c=>c.Type=="qttoggle")} mainCtrl={controls.Count(c=>c.Type=="maincontrol")})");
+
+            // 序列化验证: 打印 tab 控件的 JSON
+            try
+            {
+                var json = System.Text.Json.JsonSerializer.Serialize(controls,
+                    new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase, WriteIndented = false });
+                DService.Instance().Log.Information($"[ACR] controls JSON ({json.Length} chars): {(json.Length > 400 ? json[..400] + "..." : json)}");
+            }
+            catch (Exception ex) { DService.Instance().Log.Error($"[ACR] controls 序列化异常: {ex.Message}"); }
+
             _ = Plugin.Instance._uiBridge.SendAsync(new
             {
                 type = "controls",
