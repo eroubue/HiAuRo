@@ -1,4 +1,5 @@
 using System.Numerics;
+using FFXIVClientStructs.FFXIV.Client.Game;
 using OmenTools.Dalamud.Services.ObjectTable.Abstractions.ObjectKinds;
 using CSGameObject = FFXIVClientStructs.FFXIV.Client.Game.Object.GameObject;
 using CSCharacter = FFXIVClientStructs.FFXIV.Client.Game.Character.Character;
@@ -216,7 +217,7 @@ public static class GameObjectExtension
 
     public static unsafe bool IsEnemy(this IGameObject obj)
         => obj != null && obj.IsTargetable
-           && FFXIVClientStructs.FFXIV.Client.Game.ActionManager.CanUseActionOnTarget(7, (CSGameObject*)obj.Address);
+           && ActionManager.CanUseActionOnTarget(7 /* ActionType.Buddy */, (CSGameObject*)obj.Address);
 
     public static T? ToGameObject<T>(this uint objectId) where T : class, IGameObject
         => DService.Instance().ObjectTable.SearchByID(objectId) as T;

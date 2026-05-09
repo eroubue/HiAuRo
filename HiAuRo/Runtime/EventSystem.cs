@@ -24,6 +24,25 @@ public static class EventSystem
     /// <summary>上一次成功执行的技能 ID（连击系统用）</summary>
     public static uint LastComboSpellId { get; private set; }
 
+    /// <summary>去重：自记录 ID 集合，防止 OnPostUseAction 同 ID 二次覆盖</summary>
+    private static readonly HashSet<uint> _selfRecordedIds = [];
+
+    /// <summary>SlotExecutor 自行调用的记录入口（绕过 OmenTools Hook）</summary>
+    public static void OnUseActionSuccess(uint actionId, HiAuRo.ACR.SpellType spellType)
+    {
+        _selfRecordedIds.Add(actionId);
+        if (_selfRecordedIds.Count > 8)
+            _selfRecordedIds.Remove(_selfRecordedIds.Min());
+
+        LastCompletedActionId = actionId;
+        HiAuRo.ACR.SpellHistoryHelper.RecordSpell(actionId);
+        if (spellType is HiAuRo.ACR.SpellType.RealGcd or HiAuRo.ACR.SpellType.GeneralGcd)
+        {
+            HiAuRo.ACR.SpellHistoryHelper.RecordGcd();
+        }
+        DService.Instance().Log.Debug($"[EventSystem] 自行记录: id={actionId} LastCompleted={LastCompletedActionId}");
+    }
+
     public static void Init()
     {
         if (_initialized) return;
@@ -91,11 +110,23 @@ public static class EventSystem
         bool result, ActionType actionType, uint actionId, ulong targetId,
         uint extraParam, ActionManager.UseActionMode queueState, uint comboRouteId)
     {
+        DService.Instance().Log.Debug($"[EventSystem] OnPostUseAction: result={result} actionId={actionId} targetId={targetId:X} comboRouteId={comboRouteId}");
+
         if (result)
         {
-            LastComboSpellId = LastCompletedActionId;
-            LastCompletedActionId = actionId;
-            HiAuRo.ACR.SpellHistoryHelper.RecordSpell(actionId);
+            // 去重：已通过 OnUseActionSuccess 自行记录过的 ID 不再更新 Combo/History
+            if (_selfRecordedIds.Remove(actionId))
+            {
+                DService.Instance().Log.Debug($"[EventSystem] OnPostUseAction: id={actionId} 已自行记录, 跳过状态更新");
+            }
+            else
+            {
+                LastComboSpellId = LastCompletedActionId;
+                LastCompletedActionId = actionId;
+                HiAuRo.ACR.SpellHistoryHelper.RecordSpell(actionId);
+            }
+
+            DService.Instance().Log.Information($"[EventSystem] 技能成功: id={actionId} type={actionType} target={targetId:X} LastCombo={LastComboSpellId} LastCompleted={LastCompletedActionId}");
             foreach (var handler in _onActionCompletedHandlers)
             {
                 try { handler(actionId); }

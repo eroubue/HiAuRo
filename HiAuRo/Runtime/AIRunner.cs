@@ -108,10 +108,14 @@ public sealed class AIRunner
             var state = CombatContext.CurrentState;
 
             // 进入战斗时清掉非战斗攒下的热键队列，避免延迟爆发
-            if (state != _prevState && state == CombatContext.State.InCombat)
+            if (state != _prevState)
             {
-                DService.Instance().Log.Information("[AIRunner] entering combat, clearing stale SpellQueue");
-                SpellQueue.Clear();
+                DService.Instance().Log.Information($"[AIRunner] 战斗状态切换: {_prevState} → {state}");
+                if (state == CombatContext.State.InCombat)
+                {
+                    DService.Instance().Log.Information("[AIRunner] 进入战斗, 清空旧 SpellQueue");
+                    SpellQueue.Clear();
+                }
             }
             _prevState = state;
 
@@ -140,10 +144,12 @@ public sealed class AIRunner
             {
                 if (TryResolveTarget())
                 {
+                    DService.Instance().Log.Information($"[AIRunner] 自动选择目标: {Data.Target.Current?.Name}");
                     // 目标已选中，继续正常循环
                 }
                 else
                 {
+                    DService.Instance().Log.Debug("[AIRunner] 无目标且未能自动选择, 调用 OnNoTarget");
                     CurrentRotation?.EventHandler?.OnNoTarget();
                     return;
                 }
@@ -156,8 +162,12 @@ public sealed class AIRunner
             // ACR 暂停检查
             if (CurrentRotation?.CanPauseACRCheck != null)
             {
-                if (CurrentRotation.CanPauseACRCheck() > 0)
+                var pauseResult = CurrentRotation.CanPauseACRCheck();
+                if (pauseResult > 0)
+                {
+                    DService.Instance().Log.Debug($"[AIRunner] ACR 暂停检查返回 {pauseResult}, 跳过本帧");
                     return;
+                }
             }
 
             // --- 执行轴检查（Phase 6） ---

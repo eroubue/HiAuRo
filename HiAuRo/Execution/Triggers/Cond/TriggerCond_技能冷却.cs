@@ -32,7 +32,7 @@ public sealed class TriggerCond_技能冷却 : ITriggerCond
 
     public bool Handle(ITriggerCondParams? condParams = null)
     {
-        var cd = CooldownHelper.GetCooldownRemaining(_spellId);
+        var cd = SpellHelper.GetCooldownRemaining(_spellId);
         return cd >= 0 && cd <= _remainingMs;
     }
 }

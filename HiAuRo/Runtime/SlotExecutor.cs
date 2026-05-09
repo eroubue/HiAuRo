@@ -20,12 +20,15 @@ public sealed class SlotExecutor
     {
         var handler = _runner.EventHandler;
 
+        DService.Instance().Log.Information($"[SlotExec] 开始执行 Slot, Actions={slot.Actions.Count}");
+
         foreach (var action in slot.Actions)
         {
             var spell = action.Spell;
 
             if (spell.Id == 0)
             {
+                DService.Instance().Log.Debug("[SlotExec] SpellId=0, 延迟100ms后继续");
                 Coroutine.Instance.WaitAsync(100);
                 continue;
             }
@@ -33,22 +36,35 @@ public sealed class SlotExecutor
             switch (action.Wait)
             {
                 case WaitType.WaitInMs:
+                    DService.Instance().Log.Debug($"[SlotExec] WaitInMs={action.TimeInMs}ms ({spell.Name})");
                     Coroutine.Instance.WaitAsync(action.TimeInMs);
                     break;
                 case WaitType.WaitForSndHalfWindow:
                     var remain = GCDHelper.GetGCDCooldown();
                     var duration = GCDHelper.GetGCDDuration();
                     var waitMs = (long)(remain - duration * 0.5f);
-                    if (waitMs > 0) Coroutine.Instance.WaitAsync(waitMs);
+                    if (waitMs > 0)
+                    {
+                        DService.Instance().Log.Debug($"[SlotExec] WaitForSndHalfWindow={waitMs}ms (GCD剩余={remain:F0}ms) ({spell.Name})");
+                        Coroutine.Instance.WaitAsync(waitMs);
+                    }
                     break;
             }
 
             handler?.BeforeSpell(slot, spell);
 
             var targetId = ResolveTarget(spell);
+            var targetName = GetTargetNameById(targetId);
             var actionType = SpellCategoryToActionType(spell.SpellCategory);
 
-            UseActionManager.Instance().UseAction(actionType, spell.Id, targetId, 0, 0, 0);
+            DService.Instance().Log.Information($"[SlotExec] UseAction: {spell.Name}({spell.Id}) TargetType={spell.TargetType} TargetId={targetId:X}({targetName}) ActionType={actionType}");
+            var useResult = UseActionManager.Instance().UseAction(actionType, spell.Id, targetId, 0, 0, 0);
+            DService.Instance().Log.Information($"[SlotExec] UseAction result={useResult}");
+
+            if (useResult)
+            {
+                EventSystem.OnUseActionSuccess(spell.Id, spell.Type);
+            }
 
             handler?.AfterSpell(slot, spell);
         }
@@ -59,8 +75,25 @@ public sealed class SlotExecutor
             foreach (var action in slot.AppendedSequence.Sequence)
                 action(seqSlot);
             if (seqSlot.Actions.Count > 0)
+            {
+                DService.Instance().Log.Information($"[SlotExec] 追加序列, 入队 {seqSlot.Actions.Count}个技能");
                 _runner.SpellQueue.Enqueue(seqSlot);
+            }
         }
+    }
+
+    private static string GetTargetNameById(ulong id)
+    {
+        if (id == 0) return "无目标";
+        if (Data.Me.Object?.GameObjectID == id) return "自己";
+        if (Data.Target.Current?.GameObjectID == id) return Data.Target.Current.Name.ToString();
+        // 检查队伍成员
+        foreach (var pm in Data.Party.All)
+        {
+            if (pm.Player?.GameObjectID == id)
+                return pm.Player.Name.ToString();
+        }
+        return "?";
     }
 
     private static ulong ResolveTarget(Spell spell)

@@ -19,11 +19,16 @@ public sealed class AILoop_Normal : IAILoop
 
     public Slot? GetNextSlot(bool blockBuild = false)
     {
-        if (_resolvers.Count == 0) return null;
+        if (_resolvers.Count == 0)
+        {
+            DService.Instance().Log.Error("[AILoop] 没有已注册的 SlotResolver");
+            return null;
+        }
 
         bool isGcdReady = GCDHelper.IsGCDReady();
         bool isOffGcdWindow = GCDHelper.CanUseOffGcd();
         var maxAbility = 2;
+        float gcdRemain = isGcdReady ? 0 : GCDHelper.GetGCDCooldown();
 
         foreach (var data in _resolvers)
         {
@@ -35,7 +40,7 @@ public sealed class AILoop_Normal : IAILoop
             }
             catch (Exception ex)
             {
-                DService.Instance().Log.Error($"[AILoop] Check error: {ex.Message}");
+                DService.Instance().Log.Error($"[AILoop] Check#{data.Resolver.GetType().Name} 异常: {ex}");
                 continue;
             }
 
@@ -60,6 +65,9 @@ public sealed class AILoop_Normal : IAILoop
             {
                 var slot = new Slot();
                 data.Resolver.Build(slot);
+                var resolverName = data.Resolver.GetType().Name;
+
+                DService.Instance().Log.Information($"[AILoop] Build: {resolverName} → {slot.Actions.Count}个技能 = [{string.Join(", ", slot.Actions.Select(a => $"{a.Spell.Name}({a.Spell.Id})"))}] (GCD={isGcdReady} oGCD={isOffGcdWindow} GCDr={gcdRemain:F0}ms ab={_abilityCount}/{maxAbility})");
 
                 if (data.Mode == SlotMode.Gcd)
                     _abilityCount = 0; // GCD 重置能力技计数
@@ -70,7 +78,7 @@ public sealed class AILoop_Normal : IAILoop
             }
             catch (Exception ex)
             {
-                DService.Instance().Log.Error($"[AILoop] Build error: {ex.Message}");
+                DService.Instance().Log.Error($"[AILoop] Build error: {ex.Message}\n{ex.StackTrace}");
             }
         }
 

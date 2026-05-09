@@ -158,7 +158,7 @@ public sealed class DecisionEngine
     }
 
     private static int GetCooldownRemaining(uint spellId) =>
-        (int)global::HiAuRo.ACR.CooldownHelper.GetCooldownRemaining(spellId);
+        (int)global::HiAuRo.ACR.SpellHelper.GetCooldownRemaining(spellId);
 
     #endregion
 

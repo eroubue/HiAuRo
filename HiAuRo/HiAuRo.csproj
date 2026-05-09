@@ -17,6 +17,7 @@
   <ItemGroup>
     <ProjectReference Include="..\Browsingway\Browsingway.Common\Browsingway.Common.csproj" />
     <ProjectReference Include="..\Browsingway\Browsingway\Browsingway.csproj" />
+    <ProjectReference Include="..\Browsingway\Browsingway.Renderer\Browsingway.Renderer.csproj" ReferenceOutputAssembly="false" />
   </ItemGroup>
 
   <!-- Roslyn for TreeScriptNode dynamic compilation -->
@@ -41,8 +42,8 @@
     <None Remove="Sdk\**" />
   </ItemGroup>
 
-  <!-- 拷贝 Browsingway.Renderer.exe 到插件输出目录 -->
-  <Target Name="CopyRendererOutput" AfterTargets="Build">
+  <!-- 拷贝 Browsingway.Renderer.exe 到插件输出目录，并纳入 Dalamud 打包 -->
+  <Target Name="CopyRendererOutput" AfterTargets="CoreBuild">
     <PropertyGroup>
       <_RendererSrc>..\Browsingway\out\</_RendererSrc>
     </PropertyGroup>
@@ -55,6 +56,10 @@
       <_RendererFiles Include="$(_RendererSrc)FlatSharp.Runtime.dll" />
     </ItemGroup>
     <Copy SourceFiles="@(_RendererFiles)" DestinationFolder="$(OutputPath)renderer" SkipUnchangedFiles="true" Condition="Exists('$(_RendererSrc)Browsingway.Renderer.exe')" />
+    <!-- 声明为 Content 让 Dalamud 打包器识别并包含到 zip -->
+    <ItemGroup Condition="Exists('$(_RendererSrc)Browsingway.Renderer.exe')">
+      <Content Include="$(OutputPath)renderer\**\*" CopyToOutputDirectory="PreserveNewest" LinkBase="renderer\" Visible="false" />
+    </ItemGroup>
   </Target>
   
 </Project>

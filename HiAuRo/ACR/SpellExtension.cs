@@ -1,5 +1,6 @@
 using FFXIVClientStructs.FFXIV.Client.Game;
 using HiAuRo.Infrastructure;
+using OmenTools.Extensions;
 using OmenTools.Dalamud.Services.ObjectTable.Abstractions.ObjectKinds;
 using System.Numerics;
 
@@ -28,13 +29,9 @@ public static class SpellExtension
 
     #region IsUnlock
 
-    /// <summary>技能是否已解锁（已学习 + 等级满足 + 未被锁定）</summary>
+    /// <summary>技能是否已解锁（OmenTools 已含等级检查，不重复查询 Lumina）</summary>
     public static unsafe bool IsUnlock(this uint spellId)
     {
-        var level = Data.Me.CurrentLevel;
-        var row = SpellHelper.GetActionRow(spellId);
-        if (row == null) return false;
-        if (row.Value.ClassJobLevel > level) return false;
         return OmenTools.Extensions.ActionManagerExtension.IsActionUnlocked(spellId);
     }
 
@@ -49,7 +46,7 @@ public static class SpellExtension
     public static bool IsUnlockWithCDCheck(this uint spellId)
     {
         if (!spellId.IsUnlock()) return false;
-        return !CooldownHelper.IsOnCooldown(spellId);
+        return SpellHelper.CanUseSpell(spellId);
     }
 
     public static bool IsUnlockWithCDCheck(this Spell spell) => spell.Id.IsUnlockWithCDCheck();
@@ -58,17 +55,26 @@ public static class SpellExtension
 
     #region IsReadyWithCanCast
 
-    /// <summary>综合就绪检查：解锁 + 没用过 + 可释放 + CD/充能满足</summary>
+    /// <summary>综合就绪检查：GetActionStatus 原生判断 + RecentlyUsed 去重 + 预排队容差</summary>
     public static bool IsReadyWithCanCast(this Spell spell)
     {
-        if (!spell.Id.IsUnlock()) return false;
+        if (!SpellHelper.IsActionReady(spell.Id, ResolveTargetForCheck(spell))) return false;
         if (SpellHistoryHelper.RecentlyUsed(spell.Id, 500)) return false;
-        if (!SpellHelper.CanUseSpell(spell.Id)) return false;
 
         var charges = spell.Charges;
         if (charges >= 1) return true;
         if (charges <= 0 && spell.CooldownMs <= PluginConfig.Instance.ActionQueueInMs) return true;
         return false;
+    }
+
+    private static ulong ResolveTargetForCheck(Spell spell)
+    {
+        return spell.TargetType switch
+        {
+            SpellTargetType.Self => Data.Me.Object?.GameObjectID ?? 0xE000_0000,
+            SpellTargetType.Target => Data.Target.Current?.GameObjectID ?? 0xE000_0000,
+            _ => 0xE000_0000
+        };
     }
 
     #endregion
@@ -78,8 +84,8 @@ public static class SpellExtension
     /// <summary>充能是否接近满层</summary>
     public static bool IsMaxChargeReady(this uint spellId, float delta = 0.5f)
     {
-        var current = CooldownHelper.GetCharges(spellId);
-        var max = CooldownHelper.GetMaxCharges(spellId);
+        var current = SpellHelper.GetCharges(spellId);
+        var max = SpellHelper.GetMaxCharges(spellId);
         return current >= max - delta;
     }
 
@@ -93,9 +99,9 @@ public static class SpellExtension
     /// <summary>CD 是否在 N 个 GCD 内转好</summary>
     public static bool CoolDownInGCDs(this uint spellId, int gcdCount)
     {
-        if (!CooldownHelper.IsOnCooldown(spellId)) return true;
-        var remaining = CooldownHelper.GetCooldownRemaining(spellId);
-        return remaining <= gcdCount * 2500;
+        if (SpellHelper.CanUseSpell(spellId)) return true;
+        var remaining = SpellHelper.GetCooldownRemaining(spellId);
+        return remaining <= gcdCount * GCDHelper.GetGCDDuration();
     }
 
     public static bool CoolDownInGCDs(this Spell spell, int gcdCount)
@@ -108,15 +114,14 @@ public static class SpellExtension
     /// <summary>能力技 CD 在接下来 N 个 GCD 窗口内转好</summary>
     public static bool AbilityCoolDownInNextGCDsWindow(this Spell spell, int count = 2)
     {
-        if (!CooldownHelper.IsOnCooldown(spell.Id)) return true;
-        var remaining = CooldownHelper.GetCooldownRemaining(spell.Id);
-        return remaining <= count * 2500;
+        if (SpellHelper.CanUseSpell(spell.Id)) return true;
+        return SpellHelper.GetCooldownRemaining(spell.Id) <= count * GCDHelper.GetGCDDuration();
     }
 
     public static bool AbilityCoolDownInNextGCDsWindow(this uint spellId, int count = 2)
     {
-        if (!CooldownHelper.IsOnCooldown(spellId)) return true;
-        return CooldownHelper.GetCooldownRemaining(spellId) <= count * 2500;
+        if (SpellHelper.CanUseSpell(spellId)) return true;
+        return SpellHelper.GetCooldownRemaining(spellId) <= count * GCDHelper.GetGCDDuration();
     }
 
     #endregion

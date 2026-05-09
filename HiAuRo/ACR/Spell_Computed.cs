@@ -44,10 +44,10 @@ public sealed partial class Spell
     public float CooldownSec => (float)Cooldown.TotalSeconds;
 
     /// <summary>充能层数</summary>
-    public unsafe float Charges => CooldownHelper.GetCharges(Id);
+    public unsafe float Charges => (int)ActionManager.Instance()->GetCurrentCharges(Id);
 
     /// <summary>最大充能层数</summary>
-    public unsafe int MaxCharges => CooldownHelper.GetMaxCharges(Id);
+    public unsafe int MaxCharges => ActionManager.GetMaxCharges(Id, 0);
 
     /// <summary>咏唱时间</summary>
     public unsafe TimeSpan CastTime =>
@@ -61,7 +61,7 @@ public sealed partial class Spell
             var row = SpellHelper.GetActionRow(Id);
             if (row == null) return TimeSpan.Zero;
             return TimeSpan.FromMilliseconds(
-                ActionManager.GetAdjustedCastTime((FFXIVClientStructs.FFXIV.Client.Game.ActionType)row.Value.ActionCategory.RowId, row.Value.Cast100ms) * 100f);
+                ActionManager.GetAdjustedCastTime((ActionType)row.Value.ActionCategory.RowId, row.Value.Cast100ms) * 100f);
         }
     }
 
@@ -73,7 +73,7 @@ public sealed partial class Spell
             var row = SpellHelper.GetActionRow(Id);
             if (row == null) return TimeSpan.Zero;
             return TimeSpan.FromMilliseconds(
-                ActionManager.GetAdjustedRecastTime((FFXIVClientStructs.FFXIV.Client.Game.ActionType)row.Value.ActionCategory.RowId, row.Value.Recast100ms) * 100f);
+                ActionManager.GetAdjustedRecastTime((ActionType)row.Value.ActionCategory.RowId, row.Value.Recast100ms) * 100f);
         }
     }
 
