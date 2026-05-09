@@ -193,7 +193,8 @@ public static class ACRLifecycle
                 type = "controls",
                 data = controls
             });
-            DService.Instance().Log.Information("[ACR] controls 消息已发送");
+            Plugin.Instance._uiBridge.CacheControls(controls);
+            DService.Instance().Log.Information("[ACR] controls 消息已发送 + 已缓存");
         }
         else
         {
@@ -215,7 +216,17 @@ public static class ACRLifecycle
                 hkBindings = settings.HkBindings
             }
         });
-        DService.Instance().Log.Information($"[ACR] uiSettings 消息已发送 (qtVisible={settings.QtVisible?.Count ?? 0} hkVisible={settings.HkVisible?.Count ?? 0})");
+        Plugin.Instance._uiBridge.CacheUiSettings(new
+        {
+            qtCols = settings.QtCols,
+            qtBtnW = settings.QtBtnW,
+            qtVisible = settings.QtVisible,
+            hkCols = settings.HkCols,
+            hkBtnSize = settings.HkBtnSize,
+            hkVisible = settings.HkVisible,
+            hkBindings = settings.HkBindings
+        });
+        DService.Instance().Log.Information($"[ACR] uiSettings 消息已发送 + 已缓存 (qtVisible={settings.QtVisible?.Count ?? 0} hkVisible={settings.HkVisible?.Count ?? 0})");
 
         // 推送完整状态（qt + hotkey 数据）
         var hotkeyList = ACR.HotkeyHelper.GetAll();

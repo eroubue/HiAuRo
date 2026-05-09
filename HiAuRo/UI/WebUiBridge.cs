@@ -21,6 +21,24 @@ public sealed class WebUiBridge : IDisposable
 
     private readonly Dictionary<string, Action<JsonElement?>> _handlers = [];
 
+    // 缓存初始数据，新连接时补发（避免 controls/uiSettings 消息在 WS 连接前丢失）
+    private byte[]? _cachedControls;
+    private byte[]? _cachedUiSettings;
+
+    /// <summary>缓存控件定义 JSON，供新 WebSocket 连接补发</summary>
+    public void CacheControls(List<UiControlDef> controls)
+    {
+        var json = JsonSerializer.Serialize(new { type = "controls", data = controls }, _jsonOptions);
+        _cachedControls = Encoding.UTF8.GetBytes(json);
+    }
+
+    /// <summary>缓存 UI 设置 JSON，供新 WebSocket 连接补发</summary>
+    public void CacheUiSettings(object uiSettings)
+    {
+        var json = JsonSerializer.Serialize(new { type = "uiSettings", data = uiSettings }, _jsonOptions);
+        _cachedUiSettings = Encoding.UTF8.GetBytes(json);
+    }
+
     /// <summary>注册消息处理器</summary>
     public void On(string type, Action<JsonElement?> handler)
     {
@@ -159,6 +177,12 @@ public sealed class WebUiBridge : IDisposable
             }, _jsonOptions);
             var bytes = Encoding.UTF8.GetBytes(json);
             await ws.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
+
+            // 补发缓存的 controls / uiSettings（避免 WS 连接前消息丢失）
+            if (_cachedControls != null)
+                await ws.SendAsync(new ArraySegment<byte>(_cachedControls), WebSocketMessageType.Text, true, CancellationToken.None);
+            if (_cachedUiSettings != null)
+                await ws.SendAsync(new ArraySegment<byte>(_cachedUiSettings), WebSocketMessageType.Text, true, CancellationToken.None);
         }
         catch (Exception ex) { DService.Instance().Log.Error($"[WS] PushInitialStatus 失败: {ex.Message}"); }
     }
