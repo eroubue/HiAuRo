@@ -43,7 +43,14 @@ public partial class Plugin : IDalamudPlugin
 
             // 始终覆盖更新 web 前端文件
             if (Directory.Exists(sourceWebRoot))
+            {
                 CopyDirectory(sourceWebRoot, webRoot);
+                DService.Instance().Log.Information($"[UI] web文件已复制: {sourceWebRoot} → {webRoot}");
+            }
+            else
+            {
+                DService.Instance().Log.Error($"[UI] web源目录不存在: {sourceWebRoot}, 悬浮窗将无内容!");
+            }
 
             SettingMgr.Init(_pluginInterface.ConfigDirectory.FullName);
             CommandMgr.Init();
@@ -73,8 +80,10 @@ public partial class Plugin : IDalamudPlugin
             _pluginInterface.UiBuilder.OpenConfigUi += () => _mainWindow.IsOpen = !_mainWindow.IsOpen;
 
             // 加载外部 ACR
+            DService.Instance().Log.Information("[ACR] 开始扫描外部 ACR...");
             ACRLifecycle.Init(_pluginInterface.ConfigDirectory.FullName);
             ACRLoader.LoadAll(_pluginInterface.AssemblyLocation.Directory?.FullName ?? ".");
+            DService.Instance().Log.Information("[ACR] 扫描完成, 等待职业切换触发加载");
             ACRLifecycle.ForceRecheck(); // RuntimeCore 可能先于 LoadAll 跑了第一帧，强制重检
 
             try
@@ -101,7 +110,8 @@ public partial class Plugin : IDalamudPlugin
             }
 
             DService.Instance().Chat.Print("[HiAuRo] /hi on|off|toggle|status|panel|reload  悬浮窗: localhost:5678/jobview.html");
-            DService.Instance().Log.Information($"[Lifecycle] HiAuRo 宿主已加载。版本: {_config.LastSeenPluginVersion}");
+            DService.Instance().Log.Information($"[Lifecycle] HiAuRo 初始化完成。版本: {_config.LastSeenPluginVersion}");
+            DService.Instance().Log.Information($"[Lifecycle] 状态: BW={_browserHost != null} WS={_uiServer != null} ACR={ACRLifecycle.CurrentAcrName}");
         }
         catch (Exception ex)
         {

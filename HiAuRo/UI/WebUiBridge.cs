@@ -19,6 +19,9 @@ public sealed class WebUiBridge : IDisposable
         PropertyNameCaseInsensitive = true
     };
 
+    /// <summary>当前 WebSocket 客户端数量</summary>
+    public int ClientCount { get { lock (_lock) return _clients.Count; } }
+
     private readonly Dictionary<string, Action<JsonElement?>> _handlers = [];
 
     /// <summary>注册消息处理器</summary>
@@ -59,6 +62,7 @@ public sealed class WebUiBridge : IDisposable
     public async Task HandleConnection(WebSocket ws, CancellationToken ct)
     {
         lock (_lock) _clients.Add(ws);
+        DService.Instance().Log.Information($"[WS] 客户端已连接 (当前{_clients.Count}个)");
 
         // 连接时推送初始状态
         PushInitialStatus(ws);
@@ -93,6 +97,7 @@ public sealed class WebUiBridge : IDisposable
         finally
         {
             lock (_lock) _clients.Remove(ws);
+            DService.Instance().Log.Information($"[WS] 客户端已断开 (剩余{_clients.Count}个)");
             if (ws.State != WebSocketState.Closed)
             {
                 try { await ws.CloseAsync(WebSocketCloseStatus.NormalClosure, "", CancellationToken.None); }
@@ -137,6 +142,8 @@ public sealed class WebUiBridge : IDisposable
                 binding = q.HotkeyBinding
             }).ToList();
 
+            DService.Instance().Log.Information($"[WS] PushInitialStatus: hks={hotkeys.Count} qts={qts.Count} acr={HiAuRo.Runtime.ACRLifecycle.CurrentAcrName}");
+
             var json = JsonSerializer.Serialize(new
             {
                 type = "status",
@@ -156,6 +163,6 @@ public sealed class WebUiBridge : IDisposable
             var bytes = Encoding.UTF8.GetBytes(json);
             await ws.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
         }
-        catch { }
+        catch (Exception ex) { DService.Instance().Log.Error($"[WS] PushInitialStatus 失败: {ex.Message}"); }
     }
 }

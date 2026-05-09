@@ -1,5 +1,6 @@
 using System.Net;
 using System.Net.WebSockets;
+using System.Threading;
 
 namespace HiAuRo.UI;
 
@@ -25,12 +26,17 @@ public sealed class WebUiServer
         _listener = new HttpListener();
         _listener.Prefixes.Add("http://localhost:5678/");
 
-        try { _listener.Start(); }
+        try
+        {
+            _listener.Start();
+            DService.Instance().Log.Information("[WebServer] 启动成功 (http://localhost:5678/)");
+        }
         catch (HttpListenerException)
         {
             _listener.Prefixes.Clear();
             _listener.Prefixes.Add("http://localhost:5679/");
             _listener.Start();
+            DService.Instance().Log.Warning("[WebServer] 5678被占用, 改用 http://localhost:5679/");
         }
 
         _ = Task.Run(() => ListenLoop(_cts.Token));
@@ -67,15 +73,21 @@ public sealed class WebUiServer
         }
     }
 
+    private static int _reqCount = 0;
+
     private async Task HandleRequest(HttpListenerContext ctx, CancellationToken ct)
     {
         try
         {
             var path = ctx.Request.Url?.AbsolutePath ?? "/";
+            var reqNum = Interlocked.Increment(ref _reqCount);
+            if (reqNum <= 10)
+                DService.Instance().Log.Information($"[WebServer] 请求 #{reqNum}: {path}");
 
             // WebSocket
             if (path == "/ws" && ctx.Request.IsWebSocketRequest)
             {
+                DService.Instance().Log.Information($"[WebServer] 请求 #{reqNum}: WebSocket 升级 /ws");
                 var wsCtx = await ctx.AcceptWebSocketAsync(null);
                 await _bridge.HandleConnection(wsCtx.WebSocket, ct);
                 return;
@@ -92,14 +104,20 @@ public sealed class WebUiServer
                 ctx.Response.ContentType = GetContentType(fullPath);
                 ctx.Response.ContentLength64 = data.Length;
                 await ctx.Response.OutputStream.WriteAsync(data, ct);
+                if (reqNum <= 10)
+                    DService.Instance().Log.Information($"[WebServer] 200 {path} ({data.Length} bytes)");
             }
             else
             {
                 ctx.Response.StatusCode = 404;
+                DService.Instance().Log.Warning($"[WebServer] 404 {path} (fullPath={fullPath}, exists={File.Exists(fullPath)})");
             }
         }
         catch (ObjectDisposedException) { }
-        catch (Exception) { }
+        catch (Exception ex)
+        {
+            DService.Instance().Log.Warning($"[WebServer] 请求处理异常: {ex.Message}");
+        }
         finally
         {
             try { ctx.Response.OutputStream.Close(); } catch { }

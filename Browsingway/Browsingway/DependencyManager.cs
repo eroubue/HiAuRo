@@ -76,10 +76,12 @@ public class DependencyManager : IDisposable
 		if (_missingDependencies.Length == 0)
 		{
 			_viewMode = ViewMode.Hidden;
+			Services.PluginLog.Info("[BW.Dep] 依赖检查完成: 所有依赖就绪, 触发 DependenciesReady");
 			DependenciesReady?.Invoke(this, EventArgs.Empty);
 		}
 		else
 		{
+			Services.PluginLog.Warning($"[BW.Dep] 缺少 {_missingDependencies.Length} 个依赖 (CEF等), 需用户确认安装");
 			_viewMode = ViewMode.Confirm;
 		}
 	}

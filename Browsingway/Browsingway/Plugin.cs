@@ -37,12 +37,14 @@ namespace Browsingway;
 		}
 
 		_pluginConfigDir = pluginInterface.GetPluginConfigDirectory();
+		Services.PluginLog.Info($"[BW] BrowserHost 构造: pluginDir={_pluginDir}, configDir={_pluginConfigDir}");
 
 		_dependencyManager = new DependencyManager(_pluginDir, _pluginConfigDir);
 		_dependencyManager.DependenciesReady += (_, _) => DependenciesReady();
 		_dependencyManager.Initialise();
 
 		pluginInterface.UiBuilder.Draw += Render;
+		Services.PluginLog.Info("[BW] BrowserHost 构造完成 (等待依赖就绪...)");
 	}
 
 	public void Dispose()
@@ -60,6 +62,7 @@ namespace Browsingway;
 
 	private void DependenciesReady()
 	{
+		Services.PluginLog.Info("[BW] 依赖就绪, 初始化 DxHandler + WndProcHandler + RenderProcess");
 		DxHandler.Initialise(Services.PluginInterface);
 
 		WndProcHandler.Initialise(DxHandler.WindowHandle);
@@ -69,6 +72,7 @@ namespace Browsingway;
 		_renderProcess = new RenderProcess(pid, _pluginDir, _pluginConfigDir, _dependencyManager, Services.PluginLog);
 		_renderProcess.Rpc!.RendererReady += msg =>
 		{
+			Services.PluginLog.Info($"[BW] RendererReady: DxSharedTextures={msg.HasDxSharedTexturesSupport}");
 			if (!msg.HasDxSharedTexturesSupport)
 			{
 				Services.PluginLog.Error("Could not initialize shared textures transport. Browsingway will not work.");
@@ -101,11 +105,15 @@ namespace Browsingway;
 				}
 			});
 		};
+		Services.PluginLog.Info($"[BW] 启动 RenderProcess (exe路径={Path.Combine(_pluginDir, "renderer", "Browsingway.Renderer.exe")})");
 		_renderProcess.Start();
 	}
 
+	private int _renderFrameCount = 0;
+
 	private void CreateHiAuRoOverlays()
 	{
+		Services.PluginLog.Info($"[BW] CreateHiAuRoOverlays 开始 (overlays={_overlays.Count})");
 		void Add(string name, string url, int w, int h)
 		{
 			var config = new InlayConfiguration
@@ -122,12 +130,13 @@ namespace Browsingway;
 			var overlay = new Overlay(_renderProcess!, config, _pluginDir);
 			_overlays[config.Guid] = overlay;
 			_overlayByName[name] = config.Guid;
-			Services.PluginLog.Info($"Created HiAuRo overlay: {name} {w}x{h} {url}");
+			Services.PluginLog.Info($"[BW] 创建 overlay: {name} {w}x{h} url={url} guid={config.Guid}");
 		}
 
 		Add("MainWindow", "http://localhost:5678/main.html", 310, 480);
 		Add("QtWindow", "http://localhost:5678/qt.html", 200, 50);
 		Add("HotkeyWindow", "http://localhost:5678/hotkey.html", 260, 130);
+		Services.PluginLog.Info($"[BW] CreateHiAuRoOverlays 完成 (共{_overlays.Count}个overlay)");
 	}
 
 	/// <summary>更新已有 overlay 的 URL / 尺寸 / 缩放 / 锁定</summary>
@@ -154,6 +163,9 @@ namespace Browsingway;
 
 	private void Render()
 	{
+		if (++_renderFrameCount == 1)
+			Services.PluginLog.Info($"[BW] 首帧渲染 (overlays={_overlays.Count}, renderProcess={_renderProcess != null})");
+
 		_dependencyManager.Render();
 
 		ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(0, 0));

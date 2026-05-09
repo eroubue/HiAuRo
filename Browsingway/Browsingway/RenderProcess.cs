@@ -63,11 +63,17 @@ internal class RenderProcess : IDisposable
 			return;
 		}
 
+		var exePath = _process.StartInfo.FileName;
+		var cefDir = _dependencyManager.GetDependencyPathFor("cef");
+		Services.PluginLog.Info($"[BW.Render] 启动渲染进程: {exePath}");
+		Services.PluginLog.Info($"[BW.Render] CEF路径: {cefDir}, 存在: {Directory.Exists(cefDir)}");
+
 		_process.Start();
 		_process.BeginOutputReadLine();
 		_process.BeginErrorReadLine();
 
 		_running = true;
+		Services.PluginLog.Info($"[BW.Render] 渲染进程已启动 (PID={_process.Id})");
 	}
 
 	private int _restarting = 0; // This needs to be a numeric type for Interlocked.Exchange
@@ -92,11 +98,14 @@ internal class RenderProcess : IDisposable
 			// process is still running, reset restart counter if it ran for at least 5 seconds
 			if (_restartCount > 0 && DateTime.Now - _process.StartTime > TimeSpan.FromSeconds(_processOkAfterSeconds))
 			{
+				Services.PluginLog.Info($"[BW.Render] 进程稳定运行 {_processOkAfterSeconds}s, 重置重启计数");
 				_restartCount = 0;
 			}
 
 			return;
 		}
+
+		Services.PluginLog.Warning($"[BW.Render] 检测到渲染进程已退出 (exitCode={_process.ExitCode})");
 
 		if (_restartCount >= _maxRestarts)
 		{
@@ -118,6 +127,7 @@ internal class RenderProcess : IDisposable
 					_restartCount++;
 					Services.PluginLog.Error($"Render process crashed - will restart asap (attempt {_restartCount}/{_maxRestarts}).");
 					_process = SetupProcess();
+					Services.PluginLog.Info($"[BW.Render] 重启渲染进程 (attempt {_restartCount}/{_maxRestarts})");
 					_process.Start();
 					_process.BeginOutputReadLine();
 					_process.BeginErrorReadLine();
@@ -215,7 +225,11 @@ internal class RenderProcess : IDisposable
 			RedirectStandardError = true
 		};
 
-		process.OutputDataReceived += (_, args) => Services.PluginLog.Info($"[Render]: {args.Data}");
+		process.OutputDataReceived += (_, args) =>
+		{
+			if (args.Data != null)
+				Services.PluginLog.Info($"[BW.Render:stdout] {args.Data}");
+		};
 		process.ErrorDataReceived += (_, args) =>
 		{
 			if (args.Data == null) return;
@@ -223,10 +237,10 @@ internal class RenderProcess : IDisposable
 			// Chromium GCM 推送注册 / QUOTA_EXCEEDED / DEPRECATED_ENDPOINT 等内部噪音，不是应用级错误
 			if (data.Contains("gcm") || data.Contains("QUOTA_EXCEEDED") || data.Contains("DEPRECATED_ENDPOINT"))
 			{
-				Services.PluginLog.Verbose($"[Render]: {data}");
+				Services.PluginLog.Verbose($"[BW.Render:stderr] {data}");
 				return;
 			}
-			Services.PluginLog.Error($"[Render]: {data}");
+			Services.PluginLog.Error($"[BW.Render:stderr] {data}");
 		};
 
 		return process;

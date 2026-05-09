@@ -30,6 +30,7 @@ internal class Overlay : IDisposable
 		// TODO: handle that the correct way
 		_renderProcess.Crashed += (_, _) =>
 		{
+			Services.PluginLog.Warning($"[BW.Overlay] 渲染进程崩溃, 标记 {_overlayConfig.Name} 为错误状态");
 			_size = Vector2.Zero;
 			_hasRenderError = true;
 		};
@@ -113,6 +114,8 @@ internal class Overlay : IDisposable
 		return (true, 0);
 	}
 
+	private bool _textureLogged = false;
+
 	public void Render()
 	{
 		ImGui.SetNextWindowSize(new Vector2(640, 480), ImGuiCond.FirstUseEver);
@@ -123,6 +126,11 @@ internal class Overlay : IDisposable
 		// TODO: Browsingway.Renderer can take some time to spin up properly, should add a loading state.
 		if (_textureHandler != null && !_hasRenderError)
 		{
+			if (!_textureLogged)
+			{
+				Services.PluginLog.Info($"[BW.Overlay] {_overlayConfig.Name} 纹理就绪, 开始渲染");
+				_textureLogged = true;
+			}
 			HandleMouseEvent();
 			_textureHandler.Render();
 		}
@@ -187,7 +195,11 @@ internal class Overlay : IDisposable
 		{
 			_textureHandler = new SharedTextureHandler(handle);
 		}
-		catch (Exception e) { _textureRenderException = e; }
+		catch (Exception e)
+		{
+			_textureRenderException = e;
+			Services.PluginLog.Error($"[BW.Overlay] {_overlayConfig.Name} 纹理创建异常: {e.Message}");
+		}
 
 		if (oldTextureHandler != null) { oldTextureHandler.Dispose(); }
 	}
@@ -271,6 +283,7 @@ internal class Overlay : IDisposable
 
 		if (_size == Vector2.Zero)
 		{
+			Services.PluginLog.Info($"[BW.Overlay] {_overlayConfig.Name} 首次NewOverlay: {currentSize.X}x{currentSize.Y}, url={_overlayConfig.Url}");
 			_ = _renderProcess.Rpc?.NewOverlay(new NewOverlayMessage()
 			{
 				Guid = RenderGuid.ToByteArray(),

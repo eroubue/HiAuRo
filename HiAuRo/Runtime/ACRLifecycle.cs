@@ -72,12 +72,16 @@ public static class ACRLifecycle
         if (currentJob == _lastJob && currentJob != 0) return;
         _lastJob = currentJob;
 
+        DService.Instance().Log.Information($"[ACR] 职业切换: {_lastJob} → {currentJob}");
+
         if (_acrRegistry.TryGetValue(currentJob, out var reg))
         {
+            DService.Instance().Log.Information($"[ACR] 找到匹配ACR: {reg.SettingDir}");
             LoadRotation(reg.Factory(), reg.SettingDir);
         }
         else
         {
+            DService.Instance().Log.Information($"[ACR] 无匹配ACR, 卸载");
             UnloadRotation();
         }
 
@@ -139,8 +143,10 @@ public static class ACRLifecycle
     {
         UnloadRotation();
         CurrentJobId = _lastJob;
+        DService.Instance().Log.Information($"[ACR] LoadRotation 开始: author={entry.AuthorName}, jobId={CurrentJobId}, settingFolder={settingFolder}");
         Runner.Load(entry, settingFolder);
         CurrentEntry = entry;
+        DService.Instance().Log.Information($"[ACR] Runner.Load 完成, CurrentRotation={Runner.CurrentRotation != null}");
 
         // 注册 ACR 自定义触发类型
         if (Runner.CurrentRotation != null)
@@ -170,11 +176,17 @@ public static class ACRLifecycle
             var builder = new HiAuRo.UI.UiBuilderImpl();
             ui.RegisterControls(builder);
             var controls = builder.GetControls();
+            DService.Instance().Log.Information($"[ACR] UI控件收集: {controls.Count}个 (hks={controls.Count(c=>c.Type=="qthotkey")} qts={controls.Count(c=>c.Type=="qttoggle")} mainCtrl={controls.Count(c=>c.Type=="maincontrol")})");
             _ = Plugin.Instance._uiBridge.SendAsync(new
             {
                 type = "controls",
                 data = controls
             });
+            DService.Instance().Log.Information("[ACR] controls 消息已发送");
+        }
+        else
+        {
+            DService.Instance().Log.Warning("[ACR] GetRotationUI() 返回 null, 无 UI 控件");
         }
 
         // 推送 UI 设置
@@ -192,8 +204,11 @@ public static class ACRLifecycle
                 hkBindings = settings.HkBindings
             }
         });
+        DService.Instance().Log.Information($"[ACR] uiSettings 消息已发送 (qtVisible={settings.QtVisible?.Count ?? 0} hkVisible={settings.HkVisible?.Count ?? 0})");
 
         // 推送完整状态（qt + hotkey 数据）
+        var hotkeyList = ACR.HotkeyHelper.GetAll();
+        var qtList = ACR.QTHelper.GetAll();
         _ = Plugin.Instance._uiBridge.SendAsync(new
         {
             type = "status",
@@ -202,7 +217,7 @@ public static class ACRLifecycle
                 job = CurrentAcrName,
                 enabled = RuntimeCore.IsRunning,
                 paused = ACR.MainControlHelper.IsPaused,
-                hotkeys = ACR.HotkeyHelper.GetAll().Select(r => new
+                hotkeys = hotkeyList.Select(r => new
                 {
                     id = r.Id,
                     label = r.Label,
@@ -211,7 +226,7 @@ public static class ACRLifecycle
                     available = r.Check() >= 0,
                     binding = ACR.HotkeyHelper.GetBinding(r.Id)
                 }).ToList(),
-                qts = ACR.QTHelper.GetAll().Select(q => new
+                qts = qtList.Select(q => new
                 {
                     id = q.Id,
                     label = q.Label,
@@ -222,15 +237,18 @@ public static class ACRLifecycle
                 }).ToList()
             }
         });
+        DService.Instance().Log.Information($"[ACR] status 消息已发送 (hotkeys={hotkeyList.Count} qts={qtList.Count} wsClients={Plugin.Instance._uiBridge.ClientCount})");
     }
 
     private static void UnloadRotation()
     {
+        DService.Instance().Log.Information($"[ACR] UnloadRotation: {CurrentAcrName}");
         ACR.QTHelper.OnChanged -= OnQtChanged;
         ACR.HotkeyHelper.OnExecuted -= OnHkExecuted;
 
         Runner.Unload();
         CurrentEntry = null;
+        CurrentJobId = 0;
         ACR.HotkeyHelper.Clear();
         ACR.QTHelper.Clear();
         ACR.MainControlHelper.Reset();
