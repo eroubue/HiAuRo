@@ -5,21 +5,9 @@ let activeTab = '';
 let expanded = false;
 let uiSettings = { qtCols:0, qtBtnW:0, qtVisible:{}, hkCols:0, hkBtnSize:52, hkVisible:{}, hkBindings:{} };
 
-// ================ 日志转发到后端调试 ================
-const _origLog = console.log, _origWarn = console.warn, _origErr = console.error;
-function logRaw(level, msg, src) {
-    if (ws && ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify({ type: 'log', data: { level: level, msg: String(msg).substring(0, 500), src: src || 'app' } }));
-    }
-}
-console.log   = function() { _origLog.apply(console, arguments); logRaw('info', Array.from(arguments).join(' ')); };
-console.warn  = function() { _origWarn.apply(console, arguments); logRaw('warn', Array.from(arguments).join(' ')); };
-console.error = function() { _origErr.apply(console, arguments); logRaw('error', Array.from(arguments).join(' ')); };
-
 // ================ WebSocket ================
 function connect() {
     ws = new WebSocket('ws://localhost:5678/ws');
-    ws.onopen = () => console.log('[HiAuRo] connected');
     ws.onclose = () => setTimeout(connect, 3000);
     ws.onerror = () => ws.close();
     ws.onmessage = (e) => {
@@ -27,7 +15,6 @@ function connect() {
             const msg = JSON.parse(e.data);
             switch (msg.type) {
                 case 'status':
-                    console.log('[HiAuRo] status received, qts:', msg.data.qts?.length, 'hks:', msg.data.hotkeys?.length, 'hkIcons:', msg.data.hotkeys?.map(h => h.iconId).join(','));
                     Object.assign(state, msg.data);
                     renderAll();
                     break;
@@ -54,24 +41,19 @@ function connect() {
                     if (expanded) renderTabs();
                     break;
                 case 'uiSettings':
-                    console.log('[HiAuRo] received uiSettings:', JSON.stringify(msg.data).substring(0, 200));
                     uiSettings = Object.assign(uiSettings, msg.data);
-                    console.log('[HiAuRo] uiSettings updated, calling renderQt/Hk');
                     if (expanded) renderTabs();
                     renderQt();
                     renderHk();
                     break;
             }
-        } catch (ex) { console.error('[HiAuRo]', ex); }
+        } catch (ex) {}
     };
 }
 
 function send(type, data) {
     if (ws && ws.readyState === WebSocket.OPEN) {
-        console.log('[HiAuRo] send:', type);
         ws.send(JSON.stringify({ type, data: data || {} }));
-    } else {
-        console.log('[HiAuRo] send FAILED ws state:', ws?.readyState);
     }
 }
 
@@ -144,9 +126,8 @@ function iconStop() {
 // ================ Qt chips ================
 function renderQt() {
     const grid = document.getElementById('qt-grid');
-    if (!grid) { console.log('[HiAuRo] renderQt: no qt-grid element'); return; }
+    if (!grid) return;
     const qts = (state.qts || []).filter(q => uiSettings.qtVisible[q.id] !== false);
-    console.log('[HiAuRo] renderQt:', qts.length, 'items, cols:', uiSettings.qtCols);
     grid.innerHTML = qts.map(q => 
         `<button class="qt-chip${q.value ? ' on' : ''}" title="${esc(q.tooltip || '')}" onclick="send('qttoggle',{id:'${esc(q.id)}'})">${esc(q.label)}</button>`
     ).join('');
@@ -156,9 +137,8 @@ function renderQt() {
 // ================ Hotkey cells ================
 function renderHk() {
     const grid = document.getElementById('hk-grid');
-    if (!grid) { console.log('[HiAuRo] renderHk: no hk-grid element'); return; }
+    if (!grid) return;
     const hks = (state.hotkeys || []).filter(h => uiSettings.hkVisible[h.id] !== false);
-    console.log('[HiAuRo] renderHk:', hks.length, 'items, cols:', uiSettings.hkCols);
     grid.innerHTML = hks.map(h => 
         `<div class="hk-cell${h.available ? '' : ' unavailable'}" id="hk-${esc(h.id)}"
             title="${esc(h.label)}${h.binding ? ' [' + esc(h.binding) + ']' : ''}"
@@ -342,7 +322,7 @@ function renderItems(items) {
     return h;
 }
 
-function ctlChanged(type, id, value) { console.log('[HiAuRo]', type, id, value); }
+function ctlChanged(type, id, value) {}
 
 function initCustomSelects(container) {
     if (!container) return;
