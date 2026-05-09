@@ -40,11 +40,12 @@ public static class UiSettingsStore
 /// </summary>
 public sealed class UiSettings
 {
-    public int QtCols { get; set; } = 0; // 0=自动
-    public int QtBtnW { get; set; } = 0; // 0=auto
+    public int QtCols { get; set; } = 0;
+    public int QtBtnW { get; set; } = 0;
     public Dictionary<string, bool> QtVisible { get; set; } = [];
+    public Dictionary<string, bool> QtValues { get; set; } = []; // QT 开关值持久化
 
-    public int HkCols { get; set; } = 0; // 0=自动
+    public int HkCols { get; set; } = 0;
     public int HkBtnSize { get; set; } = 52;
     public Dictionary<string, bool> HkVisible { get; set; } = [];
     public Dictionary<string, string> HkBindings { get; set; } = [];

@@ -17,7 +17,7 @@ public sealed class MainWindow : Window
     {
         _config = config;
         _saveConfig = saveConfig;
-        SizeConstraints = new WindowSizeConstraints { MinimumSize = new Vector2(300, 200), MaximumSize = new Vector2(520, 600) };
+        SizeConstraints = new WindowSizeConstraints { MinimumSize = new Vector2(300, 200), MaximumSize = new Vector2(float.MaxValue, float.MaxValue) };
         IsOpen = false;
     }
 
@@ -43,6 +43,11 @@ public sealed class MainWindow : Window
             if (ImGui.BeginTabItem("Debug"))
             {
                 DrawDebug();
+                ImGui.EndTabItem();
+            }
+            if (ImGui.BeginTabItem("ACR Debug"))
+            {
+                DrawAcrDebug();
                 ImGui.EndTabItem();
             }
             ImGui.EndTabBar();
@@ -170,6 +175,109 @@ public sealed class MainWindow : Window
         ImGui.Text($"ACR: {ACRLifecycle.CurrentAcrName}");
         ImGui.Text($"SpellQueue: {ACRLifecycle.Runner.SpellQueue.QueueSize}");
         ImGui.Text($"OpenerMgr: {ACRLifecycle.Runner.OpenerMgr.CurrentState}");
+    }
+
+    private void DrawAcrDebug()
+    {
+        ImGui.Spacing();
+        ImGui.Text("SlotResolver 实时状态");
+        ImGui.Separator();
+
+        var runner = ACRLifecycle.Runner;
+        if (runner.AiLoop is not AILoop_Normal loop)
+        {
+            ImGui.Text("无活跃 ACR 或 IAILoop 类型不匹配");
+            return;
+        }
+
+        var resolvers = loop.DebugResolvers;
+        if (resolvers.Count == 0)
+        {
+            ImGui.Text("没有已注册的 SlotResolver");
+            return;
+        }
+
+        // GCD 状态条
+        float gcdRemain = ACR.GCDHelper.GetGCDCooldown();
+        bool gcdReady = gcdRemain <= 0;
+        bool ogcdWindow = ACR.GCDHelper.CanUseOffGcd();
+        ImGui.TextColored(gcdReady ? new Vector4(0, 1, 0, 1) : new Vector4(1, 0.6f, 0, 1),
+            $"GCD: {(gcdReady ? "就绪" : $"{gcdRemain:F0}ms")} | oGCD窗口: {(ogcdWindow ? "开" : "关")}");
+
+        ImGui.SameLine();
+        ImGui.TextDisabled($"(共 {resolvers.Count} 个)");
+
+        ImGui.Spacing();
+
+        if (!ImGui.BeginTable("##AcrDebugTable", 5,
+                ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.Resizable))
+            return;
+
+        ImGui.TableSetupColumn("Resolver", ImGuiTableColumnFlags.WidthFixed, 160);
+        ImGui.TableSetupColumn("Mode", ImGuiTableColumnFlags.WidthFixed, 55);
+        ImGui.TableSetupColumn("Check", ImGuiTableColumnFlags.WidthFixed, 45);
+        ImGui.TableSetupColumn("窗口", ImGuiTableColumnFlags.WidthFixed, 40);
+        ImGui.TableSetupColumn("产出技能", ImGuiTableColumnFlags.WidthStretch);
+        ImGui.TableHeadersRow();
+
+        foreach (var info in resolvers)
+        {
+            ImGui.TableNextRow();
+
+            ImGui.TableNextColumn();
+            ImGui.Text(info.Name);
+
+            ImGui.TableNextColumn();
+            ImGui.Text(info.Mode.ToString());
+
+            ImGui.TableNextColumn();
+            if (info.CheckThrew)
+            {
+                ImGui.TextColored(new Vector4(1, 0, 0, 1), "ERR");
+                if (ImGui.IsItemHovered())
+                    ImGui.SetTooltip(info.CheckError);
+            }
+            else if (info.CheckResult >= 0)
+            {
+                ImGui.TextColored(new Vector4(0, 1, 0, 1), info.CheckResult.ToString());
+            }
+            else
+            {
+                ImGui.TextColored(new Vector4(0.6f, 0.6f, 0.6f, 1), info.CheckResult.ToString());
+            }
+
+            ImGui.TableNextColumn();
+            if (info.BuiltSlot)
+            {
+                ImGui.TextColored(new Vector4(0, 1, 0, 1), "●");
+            }
+            else if (info.PassedWindow)
+            {
+                ImGui.TextColored(new Vector4(1, 1, 0, 1), "○");
+            }
+            else if (info.CheckResult >= 0)
+            {
+                ImGui.TextColored(new Vector4(0.6f, 0.6f, 0.6f, 1), "✗");
+            }
+            else
+            {
+                ImGui.Text("-");
+            }
+
+            ImGui.TableNextColumn();
+            if (info.BuiltSlot && info.BuiltSkills.Length > 0)
+            {
+                ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0, 1, 0, 1));
+                ImGui.TextWrapped(info.BuiltSkills);
+                ImGui.PopStyleColor();
+            }
+            else if (info.CheckResult >= 0 && !info.PassedWindow)
+            {
+                ImGui.TextColored(new Vector4(0.5f, 0.5f, 0.5f, 1), "等待窗口");
+            }
+        }
+
+        ImGui.EndTable();
     }
 
     private void DrawOverlaySettings()

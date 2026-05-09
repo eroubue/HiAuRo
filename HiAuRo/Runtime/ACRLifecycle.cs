@@ -11,6 +11,8 @@ public static class ACRLifecycle
     public static AIRunner Runner { get; } = new();
     public static IRotationEntry? CurrentEntry { get; private set; }
     public static string CurrentAcrName => CurrentEntry?.AuthorName ?? "无ACR";
+    public static string CurrentAuthor => CurrentEntry?.AuthorName ?? "";
+    public static uint CurrentJobId { get; private set; }
 
     /// <summary>外部 ACR: JobId → (Factory, SettingDir)</summary>
     private static readonly Dictionary<uint, (Func<IRotationEntry> Factory, string SettingDir)> _acrRegistry = [];
@@ -136,6 +138,7 @@ public static class ACRLifecycle
     private static void LoadRotation(IRotationEntry entry, string settingFolder)
     {
         UnloadRotation();
+        CurrentJobId = _lastJob;
         Runner.Load(entry, settingFolder);
         CurrentEntry = entry;
 
@@ -143,13 +146,22 @@ public static class ACRLifecycle
         if (Runner.CurrentRotation != null)
             HiAuRo.Execution.ExecutionJsonLoader.RegisterFromRotation(Runner.CurrentRotation);
 
-        // 恢复 UI 设置
-        ACR.UiSettingsStore.Init(settingFolder);
-        var settings = ACR.UiSettingsStore.Load();
+        // 恢复 UI 设置（从 {configDir}/ACR/{author}/{jobId}.json）
+        var author = CurrentAuthor;
+        var jobId = CurrentJobId;
+        var settings = HiAuRo.Setting.SettingMgr.LoadAcrUiSettings(author, jobId);
 
         // 恢复热键绑定
         foreach (var (id, key) in settings.HkBindings)
             ACR.HotkeyHelper.SetBinding(id, key);
+
+        // 恢复 QT 值
+        foreach (var (id, value) in settings.QtValues)
+            ACR.QTHelper.SetValue(id, value);
+
+        // QT 值变更自动保存
+        ACR.QTHelper.OnChanged += OnQtChanged;
+        ACR.HotkeyHelper.OnExecuted += OnHkExecuted;
 
         // 收集 ACR 作者声明的 UI 控件 → 推送到 Web 前端动态渲染
         var ui = entry.GetRotationUI();
@@ -214,10 +226,28 @@ public static class ACRLifecycle
 
     private static void UnloadRotation()
     {
+        ACR.QTHelper.OnChanged -= OnQtChanged;
+        ACR.HotkeyHelper.OnExecuted -= OnHkExecuted;
+
         Runner.Unload();
         CurrentEntry = null;
         ACR.HotkeyHelper.Clear();
         ACR.QTHelper.Clear();
         ACR.MainControlHelper.Reset();
     }
+
+    private static void OnQtChanged(string id, bool value)
+    {
+        var author = CurrentAuthor;
+        var jobId = CurrentJobId;
+        if (string.IsNullOrEmpty(author) || jobId == 0) return;
+
+        // 合并现有设置，只更新 QtValues，保留 HkBindings/HkVisible/QtVisible 等
+        var existing = HiAuRo.Setting.SettingMgr.LoadAcrUiSettings(author, jobId);
+        var qtAll = ACR.QTHelper.GetAll();
+        existing.QtValues = qtAll.ToDictionary(q => q.Id, q => q.Value);
+        HiAuRo.Setting.SettingMgr.SaveAcrUiSettings(author, jobId, existing);
+    }
+
+    private static void OnHkExecuted(string id, string label) { } // 占位，绑定/可见性由前端 saveUiSettings 维护
 }

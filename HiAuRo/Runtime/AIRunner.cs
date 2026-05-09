@@ -27,6 +27,7 @@ public sealed class AIRunner
     private CombatContext.State _prevExecAxisState; // 执行轴战斗状态追踪
     private CombatContext.State _prevAssistAxisState; // 辅助轴战斗状态追踪
     private CombatContext.State _prevState; // 用于检测战斗状态切换
+    private uint _lastTerritoryId; // 用于检测切图
 
     public AIRunner()
     {
@@ -118,6 +119,18 @@ public sealed class AIRunner
                 }
             }
             _prevState = state;
+
+            // 切图检测
+            var territoryId = Data.Combat.TerritoryType;
+            if (territoryId != _lastTerritoryId)
+            {
+                if (_lastTerritoryId != 0)
+                {
+                    DService.Instance().Log.Information($"[AIRunner] 切图: {_lastTerritoryId} → {territoryId}");
+                    CurrentRotation?.EventHandler?.OnTerritoryChanged();
+                }
+                _lastTerritoryId = territoryId;
+            }
 
             if (state == CombatContext.State.Idle || state == CombatContext.State.Zoning)
             {

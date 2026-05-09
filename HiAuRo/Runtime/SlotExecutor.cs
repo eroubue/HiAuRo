@@ -64,6 +64,7 @@ public sealed class SlotExecutor
             if (useResult)
             {
                 EventSystem.OnUseActionSuccess(spell.Id, spell.Type);
+                handler?.OnSpellCastSuccess(slot, spell);
             }
 
             handler?.AfterSpell(slot, spell);

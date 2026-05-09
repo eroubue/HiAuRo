@@ -12,8 +12,8 @@ public static class QTHelper
     /// <summary>QT 值变更事件。参数: (id, newValue)</summary>
     public static event Action<string, bool>? OnChanged;
 
-    /// <summary>注册 QT 开关（重复 id 忽略）</summary>
-    public static void Register(string id, string label, bool defaultValue, string? tooltip = null, string? color = null)
+    /// <summary>注册 QT 开关（重复 id 忽略，仅供 UiBuilderImpl 内部使用）</summary>
+    internal static void Register(string id, string label, bool defaultValue, string? tooltip = null, string? color = null)
     {
         lock (_lock)
         {

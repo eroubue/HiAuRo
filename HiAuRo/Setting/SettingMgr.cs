@@ -3,13 +3,13 @@ using HiAuRo.Infrastructure;
 namespace HiAuRo.Setting;
 
 /// <summary>
-/// 全局 + 职业设置管理器
+/// 全局 + 职业 + ACR 设置管理器
+/// 目录结构: {configDir}/ACR/{author}/  → {jobId}.json, _global.json
 /// </summary>
 public static class SettingMgr
 {
     private static string? _configDir;
 
-    /// <summary>配置目录</summary>
     public static string ConfigDirectory => _configDir ?? string.Empty;
 
     public static void Init(string configDir)
@@ -19,30 +19,26 @@ public static class SettingMgr
             Directory.CreateDirectory(configDir);
     }
 
-    #region 公共方法
+    #region 全局 / 职业设置
 
-    /// <summary>获取全局设置</summary>
     public static T GetSetting<T>() where T : class, new()
     {
         var path = GetGlobalSettingPath<T>();
         return Load<T>(path) ?? new T();
     }
 
-    /// <summary>获取职业设置</summary>
     public static T GetJobSetting<T>(string jobName) where T : class, new()
     {
         var path = GetJobSettingPath<T>(jobName);
         return Load<T>(path) ?? new T();
     }
 
-    /// <summary>保存全局设置</summary>
     public static void SaveSetting<T>(T setting) where T : class
     {
         var path = GetGlobalSettingPath<T>();
         Save(path, setting);
     }
 
-    /// <summary>保存职业设置</summary>
     public static void SaveJobSetting<T>(string jobName, T setting) where T : class
     {
         var path = GetJobSettingPath<T>(jobName);
@@ -53,24 +49,59 @@ public static class SettingMgr
 
     #region ACR 设置
 
-    /// <summary>获取 ACR 作者配置目录</summary>
+    /// <summary>获取 ACR 作者配置目录: {configDir}/ACR/{author}/</summary>
     public static string GetAcrDir(string author) =>
         Path.Combine(ConfigDirectory, "ACR", author);
 
-    /// <summary>获取 ACR 职业设置</summary>
-    public static T GetAcrSetting<T>(string author, ACR.Jobs job) where T : class, new()
+    /// <summary>获取 ACR 职业设置路径: {configDir}/ACR/{author}/{jobId}.json</summary>
+    public static string GetAcrJobPath(string author, uint jobId) =>
+        Path.Combine(GetAcrDir(author), $"{jobId}.json");
+
+    /// <summary>获取 ACR 全局设置路径: {configDir}/ACR/{author}/_global.json</summary>
+    public static string GetAcrGlobalPath(string author) =>
+        Path.Combine(GetAcrDir(author), "_global.json");
+
+    /// <summary>读取 ACR 职业设置</summary>
+    public static T GetAcrJobSetting<T>(string author, uint jobId) where T : class, new()
     {
-        var dir = GetAcrDir(author);
-        var path = Path.Combine(dir, $"{job}.json");
+        var path = GetAcrJobPath(author, jobId);
         return Load<T>(path) ?? new T();
     }
 
     /// <summary>保存 ACR 职业设置</summary>
-    public static void SaveAcrSetting<T>(string author, ACR.Jobs job, T setting) where T : class
+    public static void SaveAcrJobSetting<T>(string author, uint jobId, T setting) where T : class
     {
-        var dir = GetAcrDir(author);
-        var path = Path.Combine(dir, $"{job}.json");
+        var path = GetAcrJobPath(author, jobId);
         Save(path, setting);
+    }
+
+    /// <summary>读取 ACR 全局设置（跨职业共享）</summary>
+    public static T GetAcrGlobalSetting<T>(string author) where T : class, new()
+    {
+        var path = GetAcrGlobalPath(author);
+        return Load<T>(path) ?? new T();
+    }
+
+    /// <summary>保存 ACR 全局设置（跨职业共享）</summary>
+    public static void SaveAcrGlobalSetting<T>(string author, T setting) where T : class
+    {
+        var path = GetAcrGlobalPath(author);
+        Save(path, setting);
+    }
+
+    /// <summary>保存 UI 设置（QtVisible / HkBindings / HkVisible）到 ACR 职业路径</summary>
+    public static void SaveAcrUiSettings(string author, uint jobId, ACR.UiSettings settings)
+    {
+        var path = GetAcrJobPath(author, jobId);
+        Save(path, settings);
+    }
+
+    /// <summary>加载 UI 设置，合并到现有 ACR.UiSettings</summary>
+    public static ACR.UiSettings LoadAcrUiSettings(string author, uint jobId)
+    {
+        var path = GetAcrJobPath(author, jobId);
+        var loaded = Load<ACR.UiSettings>(path);
+        return loaded ?? new ACR.UiSettings();
     }
 
     #endregion

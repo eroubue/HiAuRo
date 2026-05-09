@@ -44,20 +44,22 @@ public sealed class UiBuilderImpl : HiAuRo.ACR.IUiBuilder
         _controls.Add(new UiControlDef(id, "dropdown", _currentGroup, label, defaultValue,
             Options: options));
 
-    public void AddHotkey(string id, string label, string defaultKey) =>
-        _controls.Add(new UiControlDef(id, "hotkey", _currentGroup, label, defaultKey));
+    public void AddHotkey(string id, string label, string defaultKey, bool defaultVisible = true) =>
+        _controls.Add(new UiControlDef(id, "hotkey", _currentGroup, label, defaultKey,
+            Meta: new { defaultVisible }));
 
-    public void AddQtHotkey(string label, IHotkeyResolver resolver)
+    public void AddQtHotkey(string label, IHotkeyResolver resolver, bool defaultVisible = true)
     {
         HotkeyHelper.Register(resolver);
-        _controls.Add(new UiControlDef(resolver.Id, "qthotkey", _currentGroup, label, resolver.DefaultKey));
+        _controls.Add(new UiControlDef(resolver.Id, "qthotkey", _currentGroup, label, resolver.DefaultKey,
+            Meta: new { defaultVisible }));
     }
 
-    public void AddQtToggle(string id, string label, bool defaultValue, string? tooltip = null, string? color = null)
+    public void AddQtToggle(string id, string label, bool defaultValue, string? tooltip = null, string? color = null, bool defaultVisible = true)
     {
         QTHelper.Register(id, label, defaultValue, tooltip, color);
         _controls.Add(new UiControlDef(id, "qttoggle", _currentGroup, label, defaultValue,
-            Meta: new { tooltip, color }));
+            Meta: new { tooltip, color, defaultVisible }));
     }
 
     public void AddMainControl(bool showPause = true, bool showSave = true)

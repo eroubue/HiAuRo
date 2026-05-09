@@ -265,7 +265,9 @@ public partial class Plugin : IDalamudPlugin
                 if (s != null)
                 {
                     DService.Instance().Log.Debug($"[UI] 反序列化成功 qtCols={s.QtCols} hkCols={s.HkCols}");
-                    HiAuRo.ACR.UiSettingsStore.Save(s);
+                    HiAuRo.Setting.SettingMgr.SaveAcrUiSettings(
+                        HiAuRo.Runtime.ACRLifecycle.CurrentAuthor,
+                        HiAuRo.Runtime.ACRLifecycle.CurrentJobId, s);
                     _ = SendUiSettings(s);
                 }
                 else { DService.Instance().Log.Debug("[UI] 反序列化结果为 null"); }

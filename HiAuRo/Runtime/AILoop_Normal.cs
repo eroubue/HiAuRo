@@ -10,18 +10,55 @@ namespace HiAuRo.Runtime;
 public sealed class AILoop_Normal : IAILoop
 {
     private readonly List<SlotResolverData> _resolvers;
+    private readonly List<ResolverDebugInfo> _debugInfos;
     private int _abilityCount;
+
+    /// <summary>ACR Debug 面板数据（每帧刷新，只读访问）</summary>
+    public IReadOnlyList<ResolverDebugInfo> DebugResolvers => _debugInfos;
 
     public AILoop_Normal(List<SlotResolverData> resolvers)
     {
         _resolvers = resolvers;
+        _debugInfos = new List<ResolverDebugInfo>(resolvers.Count);
+        foreach (var data in resolvers)
+            _debugInfos.Add(new ResolverDebugInfo
+            {
+                Name = data.Resolver.GetType().Name,
+                Mode = data.Mode
+            });
     }
 
     public Slot? GetNextSlot(bool blockBuild = false)
     {
+        // 每帧重置 debug 数据
+        foreach (var info in _debugInfos)
+        {
+            info.CheckResult = -99;
+            info.CheckThrew = false;
+            info.CheckError = "";
+            info.PassedWindow = false;
+            info.BuiltSlot = false;
+            info.BuiltSkills = "";
+        }
+
         if (_resolvers.Count == 0)
         {
             DService.Instance().Log.Error("[AILoop] 没有已注册的 SlotResolver");
+            return null;
+        }
+
+        // 无目标时不调 Check，ACR 作者在 OnNoTarget 中自行处理
+        if (Data.Target.Current == null)
+        {
+            foreach (var info in _debugInfos)
+            {
+                info.CheckResult = -99;
+                info.CheckThrew = false;
+                info.CheckError = "";
+                info.PassedWindow = false;
+                info.BuiltSlot = false;
+                info.BuiltSkills = "";
+            }
             return null;
         }
 
@@ -30,16 +67,23 @@ public sealed class AILoop_Normal : IAILoop
         var maxAbility = 2;
         float gcdRemain = isGcdReady ? 0 : GCDHelper.GetGCDCooldown();
 
-        foreach (var data in _resolvers)
+        for (int i = 0; i < _resolvers.Count; i++)
         {
+            var data = _resolvers[i];
+            var info = _debugInfos[i];
+
             // Check() 不管窗口，全调
             int checkResult;
             try
             {
                 checkResult = data.Resolver.Check();
+                info.CheckResult = checkResult;
             }
             catch (Exception ex)
             {
+                info.CheckResult = -99;
+                info.CheckThrew = true;
+                info.CheckError = ex.Message;
                 DService.Instance().Log.Error($"[AILoop] Check#{data.Resolver.GetType().Name} 异常: {ex}");
                 continue;
             }
@@ -55,7 +99,13 @@ public sealed class AILoop_Normal : IAILoop
                 _              => false
             };
 
-            if (!canExecute) continue;
+            if (!canExecute)
+            {
+                info.PassedWindow = false;
+                continue;
+            }
+
+            info.PassedWindow = true;
 
             // 暂停/停止时只阻断 Build，Check 已执行完毕
             if (blockBuild) return null;
@@ -66,6 +116,9 @@ public sealed class AILoop_Normal : IAILoop
                 var slot = new Slot();
                 data.Resolver.Build(slot);
                 var resolverName = data.Resolver.GetType().Name;
+
+                info.BuiltSlot = true;
+                info.BuiltSkills = string.Join(",", slot.Actions.Select(a => a.Spell.Name));
 
                 DService.Instance().Log.Information($"[AILoop] Build: {resolverName} → {slot.Actions.Count}个技能 = [{string.Join(", ", slot.Actions.Select(a => $"{a.Spell.Name}({a.Spell.Id})"))}] (GCD={isGcdReady} oGCD={isOffGcdWindow} GCDr={gcdRemain:F0}ms ab={_abilityCount}/{maxAbility})");
 
