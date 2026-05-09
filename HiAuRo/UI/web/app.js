@@ -280,7 +280,7 @@ function renderTabBody() {
 
     let html = '';
     for (const g of groups) {
-        const items = tabControls.filter(c => c.parentId === g.id);
+        const items = controls.filter(c => c.parentId === g.id);
         html += `<div class="set-group"><div class="set-group-title">${esc(g.label)}</div>${renderItems(items)}</div>`;
     }
     html += renderItems(orphaned);
