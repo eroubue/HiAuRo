@@ -151,7 +151,7 @@ namespace Browsingway;
 			Services.PluginLog.Info($"[BW] 创建 overlay: {name} {w}x{h} url={url} guid={config.Guid}");
 		}
 
-		Add("MainWindow", "http://localhost:5678/main.html", 310, 480);
+		Add("MainWindow", "http://localhost:5678/main.html", 360, 500);
 		Add("QtWindow", "http://localhost:5678/qt.html", 200, 50);
 		Add("HotkeyWindow", "http://localhost:5678/hotkey.html", 260, 130);
 		Services.PluginLog.Info($"[BW] CreateHiAuRoOverlays 完成 (共{_overlays.Count}个overlay)");

@@ -41,7 +41,7 @@ body {
 
 /* ====== MainWindow — 折叠态胶囊 ====== */
 #main-win {
-    display: flex; flex-direction: column; max-width: 310px;
+    display: flex; flex-direction: column;
     background: var(--glass-bg);
     backdrop-filter: blur(30px) saturate(180%);
     -webkit-backdrop-filter: blur(30px) saturate(180%);
@@ -57,24 +57,11 @@ body {
 }
 #main-win.expanded {
     border-radius: var(--radius-lg);
-    width: 310px;
-    max-height: 480px;
+    width: 360px;
+    max-height: 500px;
 }
 
 /* bar-header 固定不滚 */
-.bar-header {
-    flex-shrink: 0;
-    display: flex; align-items: center; gap: 8px;
-    padding: 6px 14px; height: var(--bar-h);
-}
-
-#main-win.expanded {
-    border-radius: var(--radius-lg);
-    width: 310px;
-    max-height: 480px;
-}
-
-/* --- bar-header: 收起时整行, 展开时变面板顶栏 --- */
 .bar-header {
     display: flex; align-items: center; gap: 8px;
     padding: 6px 14px; height: var(--bar-h);
@@ -165,16 +152,17 @@ body {
 .tab-bar {
     display: flex; gap: 0; padding: 4px 8px 0; flex-shrink: 0;
     border-bottom: 1px solid var(--glass-border);
-    overflow-x: auto; overflow-y: hidden;
+    overflow-x: hidden; overflow-y: hidden;
     scrollbar-width: none;
-    flex-wrap: nowrap;
+    flex-wrap: wrap;
 }
 .tab-bar::-webkit-scrollbar { display: none; }
 .tab-btn {
     font-family: var(--font); font-size: 13px; font-weight: 500; color: var(--text-secondary);
-    padding: 7px 14px; border: none; background: transparent;
+    padding: 7px 4px; border: none; background: transparent;
     cursor: pointer; white-space: nowrap; border-bottom: 2px solid transparent;
     transition: all 0.15s ease; margin-bottom: -1px; pointer-events: auto;
+    flex: 0 0 calc(25% - 0px); text-align: center; overflow: hidden; text-overflow: ellipsis;
 }
 .tab-btn:hover { color: var(--text-primary); }
 .tab-btn.active { color: var(--accent-blue); border-bottom-color: var(--accent-blue); }
