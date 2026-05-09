@@ -350,6 +350,10 @@ public sealed class MainWindow : Window
                 changed = true;
             }
 
+            ImGui.SameLine();
+            if (ImGui.Button("CEF DevTools"))
+                host?.DebugOverlay(ol.Name);
+
             ImGui.Unindent(16);
             ImGui.Spacing();
             ImGui.PopID();

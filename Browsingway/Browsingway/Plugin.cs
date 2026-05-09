@@ -154,8 +154,8 @@ namespace Browsingway;
 		}
 
 		Add("MainWindow", "http://localhost:5678/main.html", 360, 500);
-		Add("QtWindow", "http://localhost:5678/qt.html", 200, 50);
-		Add("HotkeyWindow", "http://localhost:5678/hotkey.html", 260, 130);
+		Add("QtWindow", "http://localhost:5678/qt.html", 320, 80);
+		Add("HotkeyWindow", "http://localhost:5678/hotkey.html", 300, 160);
 		Services.PluginLog.Info($"[BW] CreateHiAuRoOverlays 完成 (共{_overlays.Count}个overlay)");
 	}
 
@@ -173,6 +173,17 @@ namespace Browsingway;
 		if (locked is not null) overlay.SetLocked(locked.Value);
 		if (width is not null && height is not null)
 			_ = _renderProcess?.Rpc?.ResizeOverlay(guid, width.Value, height.Value);
+	}
+
+	/// <summary>打开指定 overlay 的 CEF DevTools 调试窗口</summary>
+	public void DebugOverlay(string name)
+	{
+		if (!_overlayByName.TryGetValue(name, out var guid) || !_overlays.TryGetValue(guid, out var overlay))
+		{
+			Services.PluginLog.Warning($"Overlay not found: {name}");
+			return;
+		}
+		overlay.Debug();
 	}
 
 	private (bool, long) OnWndProc(WindowsMessage msg, ulong wParam, long lParam)
