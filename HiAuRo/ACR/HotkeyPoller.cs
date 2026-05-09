@@ -44,4 +44,7 @@ public static class HotkeyPoller
         // 清理已解绑的键
         _heldKeys.RemoveWhere(k => !bindings.ContainsValue(k));
     }
+
+    /// <summary>清空按住状态（插件卸载时调用，避免下次加载残留）</summary>
+    public static void Clear() => _heldKeys.Clear();
 }

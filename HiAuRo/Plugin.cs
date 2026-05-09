@@ -134,6 +134,7 @@ public partial class Plugin : IDalamudPlugin
         ACR.HotkeyHelper.OnExecuted -= OnHotkeyExecuted;
         ACR.QTHelper.OnChanged -= OnQtChanged;
         Instance = null!;
+        PluginConfig.Instance = null!;
         RuntimeCore.Shutdown();
         CombatContext.Reset();
         ExecutionAxis.Instance.Shutdown();
@@ -151,6 +152,16 @@ public partial class Plugin : IDalamudPlugin
         _uiServer?.Stop();
         _uiBridge?.Dispose();
         BrowsingwayDispose();
+
+        // 清除静态缓存（避免下次加载残留）
+        ACRLoader.UnloadAll();
+        Execution.ExecutionJsonLoader.Clear();
+        Execution.ScriptCompiler.ClearCache();
+        Decision.DecisionSkillRegistry.Clear();
+        ACR.HotkeyPoller.Clear();
+        ACR.SpellHistoryHelper.Reset();
+        ACRLifecycle.Shutdown();
+
         DService.Uninit();
     }
 
@@ -192,6 +203,7 @@ public partial class Plugin : IDalamudPlugin
         ACR.QTHelper.OnChanged -= OnQtChanged;
 
         Instance = null!;
+        PluginConfig.Instance = null!;
 
         RuntimeCore.Shutdown();
         CombatContext.Reset();
@@ -207,6 +219,16 @@ public partial class Plugin : IDalamudPlugin
         _uiServer.Stop();
         _uiBridge.Dispose();
         BrowsingwayDispose();
+
+        // 清除静态缓存（避免下次加载残留）
+        ACRLoader.UnloadAll();
+        Execution.ExecutionJsonLoader.Clear();
+        Execution.ScriptCompiler.ClearCache();
+        Decision.DecisionSkillRegistry.Clear();
+        ACR.HotkeyPoller.Clear();
+        ACR.SpellHistoryHelper.Reset();
+        ACRLifecycle.Shutdown();
+
         DService.Instance().Log.Information("[Lifecycle] HiAuRo 宿主已释放。");
         DService.Uninit();
     }

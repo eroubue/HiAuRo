@@ -501,6 +501,13 @@ public static class ExecutionJsonLoader
         _condTypes[fullTypeName] = type;
     }
 
+    /// <summary>清除已注册的条件/动作类型（插件卸载时调用）</summary>
+    public static void Clear()
+    {
+        _condTypes.Clear();
+        _actionTypes.Clear();
+    }
+
     /// <summary>注册自定义动作类型</summary>
     public static void RegisterActionType(string fullTypeName, Type type)
     {

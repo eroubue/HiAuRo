@@ -40,6 +40,21 @@ public static class ACRLifecycle
     /// <summary>初始化</summary>
     public static void Init(string settingRoot) { }
 
+    /// <summary>清除静态缓存（插件卸载时调用）</summary>
+    public static void Shutdown()
+    {
+        UnloadRotation();
+        _acrRegistry.Clear();
+        foreach (var alc in _externalAlcs)
+        {
+            try { alc.Unload(); }
+            catch { }
+        }
+        _externalAlcs.Clear();
+        _lastJob = 0;
+        _resetCalled = false;
+    }
+
     /// <summary>每帧由 RuntimeCore 调用</summary>
     public static void Update()
     {

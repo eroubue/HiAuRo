@@ -54,6 +54,9 @@ public sealed class WebUiServer
             _listener?.Close();
         }
         catch (ObjectDisposedException) { }
+        _cts?.Dispose();
+        _cts = null;
+        _listener = null;
     }
 
     private async Task ListenLoop(CancellationToken ct)

@@ -131,6 +131,9 @@ public sealed class WebUiBridge : IDisposable
             }
             _clients.Clear();
         }
+        _handlers.Clear();
+        _cachedControls = null;
+        _cachedUiSettings = null;
     }
 
     private async void PushInitialStatus(WebSocket ws)

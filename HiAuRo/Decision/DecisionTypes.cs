@@ -74,6 +74,14 @@ public static class DecisionSkillRegistry
         if (personalMit != null) 单人减伤表[job] = personalMit;
         if (teamHeal != null) 团队治疗表[job] = teamHeal;
     }
+
+    /// <summary>清空所有已注册技能</summary>
+    public static void Clear()
+    {
+        团队减伤表.Clear();
+        单人减伤表.Clear();
+        团队治疗表.Clear();
+    }
 }
 
 #endregion

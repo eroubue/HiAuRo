@@ -61,7 +61,14 @@ public class DependencyManager : IDisposable
 		_texIcon = null;
 	}
 
-	public void Dispose() { }
+	public void Dispose()
+	{
+		DependenciesReady = null;
+		_installProgress.Clear();
+		_missingDependencies = null;
+		_texIcon?.Dispose();
+		_texIcon = null;
+	}
 
 	public event EventHandler? DependenciesReady;
 

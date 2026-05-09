@@ -71,7 +71,12 @@ public static class ScriptCompiler
     }
 
     /// <summary>清除编译缓存</summary>
-    public static void ClearCache() => _cache.Clear();
+    public static void ClearCache()
+    {
+        _cache.Clear();
+        _refCache.Clear();
+        _refsLoaded = false;
+    }
 
     /// <summary>收集编译引用（首次编译时，后续缓存）</summary>
     private static List<MetadataReference> GetReferences()

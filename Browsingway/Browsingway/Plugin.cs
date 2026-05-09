@@ -19,6 +19,7 @@ namespace Browsingway;
 	public class BrowserHost : IDisposable
 {
 	private readonly DependencyManager _dependencyManager;
+	private readonly IDalamudPluginInterface _pluginInterface;
 	private readonly Dictionary<Guid, Overlay> _overlays = new();
 	private readonly Dictionary<string, Guid> _overlayByName = new(StringComparer.OrdinalIgnoreCase);
 	private readonly string _pluginConfigDir;
@@ -29,6 +30,7 @@ namespace Browsingway;
 	public BrowserHost(IDalamudPluginInterface pluginInterface)
 	{
 		_ = pluginInterface.Create<Services>()!;
+		_pluginInterface = pluginInterface;
 
 		_pluginDir = pluginInterface.AssemblyLocation.DirectoryName ?? "";
 		if (String.IsNullOrEmpty(_pluginDir))
@@ -40,7 +42,7 @@ namespace Browsingway;
 		Services.PluginLog.Info($"[BW] BrowserHost 构造: pluginDir={_pluginDir}, configDir={_pluginConfigDir}");
 
 		_dependencyManager = new DependencyManager(_pluginDir, _pluginConfigDir);
-		_dependencyManager.DependenciesReady += (_, _) => DependenciesReady();
+		_dependencyManager.DependenciesReady += OnDependenciesReady;
 		_dependencyManager.Initialise();
 
 		pluginInterface.UiBuilder.Draw += Render;
@@ -49,18 +51,33 @@ namespace Browsingway;
 
 	public void Dispose()
 	{
+		Services.PluginLog.Info("[BW] BrowserHost.Dispose 开始");
+
+		// 取消 Dalamud 帧渲染回调（否则 Dispose 后 Draw 仍会触发）
+		_pluginInterface.UiBuilder.Draw -= Render;
+
+		// 取消 Win32 消息钩子
+		WndProcHandler.WndProcMessage -= OnWndProc;
+
+		// 取消依赖就绪回调
+		_dependencyManager.DependenciesReady -= OnDependenciesReady;
+
 		foreach (Overlay overlay in _overlays.Values) { overlay.Dispose(); }
 		_overlays.Clear();
+		_overlayByName.Clear();
 
 		_renderProcess?.Dispose();
+		_renderProcess = null;
 
 		WndProcHandler.Shutdown();
 		DxHandler.Shutdown();
 
 		_dependencyManager.Dispose();
+
+		Services.PluginLog.Info("[BW] BrowserHost.Dispose 完成");
 	}
 
-	private void DependenciesReady()
+	private void OnDependenciesReady()
 	{
 		Services.PluginLog.Info("[BW] 依赖就绪, 初始化 DxHandler + WndProcHandler + RenderProcess");
 		DxHandler.Initialise(Services.PluginInterface);

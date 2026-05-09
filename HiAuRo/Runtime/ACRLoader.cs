@@ -194,5 +194,6 @@ public static class ACRLoader
             catch (Exception ex) { DService.Instance().Log.Error($"[ACRLoader] 卸载 ALC 失败: {name}: {ex.Message}"); }
         }
         _authorContexts.Clear();
+        _loadedAcrAssemblies.Clear();
     }
 }

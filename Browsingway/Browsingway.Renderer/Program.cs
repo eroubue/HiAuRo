@@ -70,6 +70,18 @@ internal static class Program
 			_isShuttingDown = true;
 		}
 
+		// 必须先销毁所有 ChromiumWebBrowser，再调 Cef.Shutdown()
+		foreach (var overlay in _overlays.Values)
+			overlay.Dispose();
+		_overlays.Clear();
+
+		// 释放 IPC 共享内存
+		_rpc.Dispose();
+
+		// 释放 keep-alive wait handle
+		_waitHandle.Dispose();
+		_waitHandle = null;
+
 		DxHandler.Shutdown();
 		CefHandler.Shutdown();
 	}
