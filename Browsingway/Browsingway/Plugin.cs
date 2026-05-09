@@ -121,7 +121,7 @@ namespace Browsingway;
 				Name = name,
 				Url = url,
 				Zoom = 100f,
-				Framerate = 30,
+				Framerate = 60,
 				Muted = true,
 				CustomCss = "",
 				Guid = StableGuid(name),

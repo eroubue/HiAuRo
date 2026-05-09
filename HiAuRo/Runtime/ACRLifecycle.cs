@@ -254,17 +254,34 @@ public static class ACRLifecycle
         ACR.MainControlHelper.Reset();
     }
 
+    private static DateTime _lastQtSave = DateTime.MinValue;
+    private const int QtSaveDebounceMs = 1000; // 最多每秒存一次
+
     private static void OnQtChanged(string id, bool value)
     {
         var author = CurrentAuthor;
         var jobId = CurrentJobId;
         if (string.IsNullOrEmpty(author) || jobId == 0) return;
 
-        // 合并现有设置，只更新 QtValues，保留 HkBindings/HkVisible/QtVisible 等
-        var existing = HiAuRo.Setting.SettingMgr.LoadAcrUiSettings(author, jobId);
-        var qtAll = ACR.QTHelper.GetAll();
-        existing.QtValues = qtAll.ToDictionary(q => q.Id, q => q.Value);
-        HiAuRo.Setting.SettingMgr.SaveAcrUiSettings(author, jobId, existing);
+        // 防抖：最多每秒写一次磁盘，避免频繁文件 I/O 导致 UI 卡顿
+        if ((DateTime.UtcNow - _lastQtSave).TotalMilliseconds < QtSaveDebounceMs)
+            return;
+        _lastQtSave = DateTime.UtcNow;
+
+        Task.Run(() =>
+        {
+            try
+            {
+                var existing = HiAuRo.Setting.SettingMgr.LoadAcrUiSettings(author, jobId);
+                var qtAll = ACR.QTHelper.GetAll();
+                existing.QtValues = qtAll.ToDictionary(q => q.Id, q => q.Value);
+                HiAuRo.Setting.SettingMgr.SaveAcrUiSettings(author, jobId, existing);
+            }
+            catch (Exception ex)
+            {
+                DService.Instance().Log.Warning($"[ACR] QtSettings 保存失败: {ex.Message}");
+            }
+        });
     }
 
     private static void OnHkExecuted(string id, string label) { } // 占位，绑定/可见性由前端 saveUiSettings 维护
