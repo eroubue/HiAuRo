@@ -118,7 +118,7 @@ internal class Overlay : IDisposable
 
 	public void Render()
 	{
-		ImGui.SetNextWindowSize(new Vector2(640, 480), ImGuiCond.FirstUseEver);
+		ImGui.SetNextWindowSize(new Vector2(_overlayConfig.Width, _overlayConfig.Height), ImGuiCond.FirstUseEver);
 		ImGui.Begin($"{_overlayConfig.Name}###{_overlayConfig.Guid}", GetWindowFlags());
 
 		HandleWindowSize();

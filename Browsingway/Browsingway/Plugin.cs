@@ -144,6 +144,8 @@ namespace Browsingway;
 				CustomCss = "",
 				Guid = StableGuid(name),
 				Locked = true, // 默认锁定，防止 ImGui 吃掉点击
+				Width = w,
+				Height = h,
 			};
 			var overlay = new Overlay(_renderProcess!, config, _pluginDir);
 			_overlays[config.Guid] = overlay;

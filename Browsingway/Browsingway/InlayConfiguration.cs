@@ -20,4 +20,6 @@ internal class InlayConfiguration
 	public float Zoom = 100f;
 	public string CustomCss = "";
 	public bool Muted;
+	public int Width;
+	public int Height;
 }
