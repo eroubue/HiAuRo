@@ -199,7 +199,7 @@ public static class ACRLifecycle
             {
                 var json = System.Text.Json.JsonSerializer.Serialize(controls,
                     new System.Text.Json.JsonSerializerOptions { PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.CamelCase, WriteIndented = false });
-                DService.Instance().Log.Information($"[ACR] controls JSON ({json.Length} chars): {(json.Length > 400 ? json[..400] + "..." : json)}");
+                DService.Instance().Log.Information($"[ACR] controls JSON ({json.Length} chars): {json}");
             }
             catch (Exception ex) { DService.Instance().Log.Error($"[ACR] controls 序列化异常: {ex.Message}"); }
 

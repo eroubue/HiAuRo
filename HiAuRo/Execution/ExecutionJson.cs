@@ -1,3 +1,4 @@
+using System.Reflection;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 using HiAuRo.ACR;
@@ -522,12 +523,20 @@ public static class ExecutionJsonLoader
             var t = cond.GetType();
             _condTypes[t.FullName!] = t;
             _condTypes[t.Name] = t;
+            // 同时通过 TriggerTypeName 注册，支持 JSON $type 反序列化
+            var attr = t.GetCustomAttribute<TriggerTypeNameAttribute>();
+            if (attr != null)
+                _condTypes[attr.TypeDiscriminator] = t;
         }
         foreach (var action in rotation.TriggerActions)
         {
             var t = action.GetType();
             _actionTypes[t.FullName!] = t;
             _actionTypes[t.Name] = t;
+            // 同时通过 TriggerTypeName 注册，支持 JSON $type 反序列化
+            var attr = t.GetCustomAttribute<TriggerTypeNameAttribute>();
+            if (attr != null)
+                _actionTypes[attr.TypeDiscriminator] = t;
         }
         DService.Instance().Log.Information($"[ExecAxis] ACR 注册: {_condTypes.Count} 条件, {_actionTypes.Count} 动作");
     }

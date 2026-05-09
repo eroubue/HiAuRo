@@ -120,8 +120,19 @@ public static class TriggerCatalogBuilder
     {
         var catalog = new TriggerCatalog();
 
-        var triggerTypes = assembly.GetTypes().Where(t => t is { IsAbstract: false, IsInterface: false }
-                                                          && typeof(ITriggerBase).IsAssignableFrom(t));
+        Type[] types;
+        try
+        {
+            types = assembly.GetTypes();
+        }
+        catch (ReflectionTypeLoadException ex)
+        {
+            types = ex.Types.Where(t => t != null).ToArray()!;
+            DService.Instance().Log.Warning($"[TriggerCatalog] 程序集 {assembly.GetName().Name} 部分类型加载失败: {ex.LoaderExceptions?.Length ?? 0} 错误");
+        }
+
+        var triggerTypes = types.Where(t => t is { IsAbstract: false, IsInterface: false }
+                                               && typeof(ITriggerBase).IsAssignableFrom(t));
 
         foreach (var type in triggerTypes)
         {
