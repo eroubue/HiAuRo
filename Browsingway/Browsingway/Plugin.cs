@@ -139,7 +139,7 @@ namespace Browsingway;
 				Name = name,
 				Url = url,
 				Zoom = 100f,
-				Framerate = 60,
+				Framerate = 30,
 				Muted = true,
 				CustomCss = "",
 				Guid = StableGuid(name),
