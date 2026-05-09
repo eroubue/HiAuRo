@@ -237,7 +237,7 @@ public static class ACRLifecycle
                 }).ToList()
             }
         });
-        DService.Instance().Log.Information($"[ACR] status 消息已发送 (hotkeys={hotkeyList.Count} qts={qtList.Count} wsClients={Plugin.Instance._uiBridge.ClientCount})");
+        DService.Instance().Log.Information($"[ACR] status 消息已发送 (hotkeys={hotkeyList.Count} qts={qtList.Count})");
     }
 
     private static void UnloadRotation()

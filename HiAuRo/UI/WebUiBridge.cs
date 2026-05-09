@@ -19,9 +19,6 @@ public sealed class WebUiBridge : IDisposable
         PropertyNameCaseInsensitive = true
     };
 
-    /// <summary>当前 WebSocket 客户端数量</summary>
-    public int ClientCount { get { lock (_lock) return _clients.Count; } }
-
     private readonly Dictionary<string, Action<JsonElement?>> _handlers = [];
 
     /// <summary>注册消息处理器</summary>

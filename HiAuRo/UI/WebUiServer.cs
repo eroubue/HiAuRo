@@ -1,6 +1,5 @@
 using System.Net;
 using System.Net.WebSockets;
-using System.Threading;
 
 namespace HiAuRo.UI;
 
@@ -73,21 +72,16 @@ public sealed class WebUiServer
         }
     }
 
-    private static int _reqCount = 0;
-
     private async Task HandleRequest(HttpListenerContext ctx, CancellationToken ct)
     {
         try
         {
             var path = ctx.Request.Url?.AbsolutePath ?? "/";
-            var reqNum = Interlocked.Increment(ref _reqCount);
-            if (reqNum <= 10)
-                DService.Instance().Log.Information($"[WebServer] 请求 #{reqNum}: {path}");
 
             // WebSocket
             if (path == "/ws" && ctx.Request.IsWebSocketRequest)
             {
-                DService.Instance().Log.Information($"[WebServer] 请求 #{reqNum}: WebSocket 升级 /ws");
+                DService.Instance().Log.Information($"[WebServer] WebSocket 升级 /ws");
                 var wsCtx = await ctx.AcceptWebSocketAsync(null);
                 await _bridge.HandleConnection(wsCtx.WebSocket, ct);
                 return;
@@ -104,19 +98,17 @@ public sealed class WebUiServer
                 ctx.Response.ContentType = GetContentType(fullPath);
                 ctx.Response.ContentLength64 = data.Length;
                 await ctx.Response.OutputStream.WriteAsync(data, ct);
-                if (reqNum <= 10)
-                    DService.Instance().Log.Information($"[WebServer] 200 {path} ({data.Length} bytes)");
             }
             else
             {
                 ctx.Response.StatusCode = 404;
-                DService.Instance().Log.Warning($"[WebServer] 404 {path} (fullPath={fullPath}, exists={File.Exists(fullPath)})");
+                DService.Instance().Log.Warning($"[WebServer] 404 {path} (fullPath={fullPath})");
             }
         }
         catch (ObjectDisposedException) { }
         catch (Exception ex)
         {
-            DService.Instance().Log.Warning($"[WebServer] 请求处理异常: {ex.Message}");
+            DService.Instance().Log.Warning($"[WebServer] 请求异常: {ex.Message}");
         }
         finally
         {

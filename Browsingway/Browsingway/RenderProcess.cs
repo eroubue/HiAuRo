@@ -228,7 +228,7 @@ internal class RenderProcess : IDisposable
 		process.OutputDataReceived += (_, args) =>
 		{
 			if (args.Data != null)
-				Services.PluginLog.Info($"[BW.Render:stdout] {args.Data}");
+				Services.PluginLog.Verbose($"[BW.Render:stdout] {args.Data}");
 		};
 		process.ErrorDataReceived += (_, args) =>
 		{
