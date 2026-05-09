@@ -66,7 +66,6 @@ public class DependencyManager : IDisposable
 		DependenciesReady = null;
 		_installProgress.Clear();
 		_missingDependencies = null;
-		_texIcon?.Dispose();
 		_texIcon = null;
 	}
 

@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using System.Text.Json.Nodes;
 
 namespace HiAuRo.Execution.Events;
 
@@ -79,25 +80,24 @@ public static class CatalogSync
 
     private static string FilterCloudSync(string catalogJson)
     {
-        using var doc = JsonDocument.Parse(catalogJson);
-        var root = doc.RootElement;
+        var node = JsonNode.Parse(catalogJson);
+        if (node is null) return catalogJson;
 
-        var filtered = new Dictionary<string, object>
+        var root = node.AsObject();
+        foreach (var key in new[] { "conditions", "actions", "scripts" })
         {
-            ["conditions"] = FilterList(root, "conditions"),
-            ["actions"] = FilterList(root, "actions"),
-            ["scripts"] = FilterList(root, "scripts")
-        };
+            if (!root.TryGetPropertyValue(key, out var val) || val is not JsonArray arr) continue;
+            var filtered = new JsonArray();
+            foreach (var item in arr)
+            {
+                var cloudSync = item?["cloudSync"];
+                if (cloudSync is null || cloudSync.GetValue<bool>())
+                    filtered.Add(item?.DeepClone());
+            }
+            root[key] = filtered;
+        }
 
-        return JsonSerializer.Serialize(filtered, new JsonSerializerOptions { WriteIndented = true, PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
-    }
-
-    private static List<JsonElement> FilterList(JsonElement root, string key)
-    {
-        if (!root.TryGetProperty(key, out var arr)) return [];
-        return arr.EnumerateArray()
-            .Where(e => !e.TryGetProperty("cloudSync", out var cs) || cs.GetBoolean())
-            .ToList();
+        return root.ToJsonString(new JsonSerializerOptions { WriteIndented = true });
     }
 
     public sealed record CatalogUploadResult

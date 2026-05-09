@@ -76,8 +76,9 @@ namespace Browsingway;
 
 		Services.PluginLog.Info("[BW] BrowserHost.Dispose 完成");
 	}
+	
 
-	private void OnDependenciesReady()
+	private void OnDependenciesReady(object? sender, EventArgs e)
 	{
 		Services.PluginLog.Info("[BW] 依赖就绪, 初始化 DxHandler + WndProcHandler + RenderProcess");
 		DxHandler.Initialise(Services.PluginInterface);
