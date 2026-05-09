@@ -41,7 +41,7 @@ body {
 
 /* ====== MainWindow — 折叠态胶囊 ====== */
 #main-win {
-    display: flex; flex-direction: column;
+    display: flex; flex-direction: column; max-width: 310px;
     background: var(--glass-bg);
     backdrop-filter: blur(30px) saturate(180%);
     -webkit-backdrop-filter: blur(30px) saturate(180%);
@@ -57,8 +57,11 @@ body {
 }
 #main-win.expanded {
     border-radius: var(--radius-lg);
-    width: 360px;
+    min-width: 360px;
+    max-width: 600px;
+    min-height: 400px;
     max-height: 500px;
+    resize: both;
 }
 
 /* bar-header 固定不滚 */
