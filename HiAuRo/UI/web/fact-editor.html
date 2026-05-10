@@ -19,6 +19,7 @@
       <button class="p-btn" id="btnLoad">加载</button>
       <button class="p-btn p-prim-col" id="btnSave">保存</button>
       <button class="p-btn" id="btnExport">导出</button>
+      <button class="p-btn" id="btnRecording">从录制导入</button>
     </div>
   </header>
 
@@ -38,12 +39,26 @@
     </section>
 
     <aside class="sidebar-right" id="propPanel"></aside>
+
+    <aside class="sidebar-right" id="recordingPanel" style="display:none">
+      <div class="recording-toolbar">
+        <h3>录制数据</h3>
+        <button class="p-btn" id="btnRecordingClose" style="padding:2px 8px;font-size:11px">关闭</button>
+      </div>
+      <div class="recording-info" id="recordingInfo"></div>
+      <div class="recording-filters" id="recordingFilters"></div>
+      <div class="recording-events" id="recordingEvents"></div>
+      <div class="recording-actions">
+        <button class="p-btn p-prim-col" id="btnImportToPhase">导入到当前阶段</button>
+      </div>
+    </aside>
   </main>
 
   <footer class="footer" id="footer"></footer>
 
   <div class="context-menu hide" id="ctxMenu"></div>
   <input type="file" id="fileInput" accept=".json,.txt">
+  <input type="file" id="recordingFileInput" accept=".json" style="display:none">
 </div>
 <script src="fact-editor.js"></script>
 </body>
