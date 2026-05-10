@@ -96,9 +96,8 @@ public sealed class MainWindow : Window
         ImGui.Spacing();
         ImGui.Separator();
         ImGui.Text("游戏内 CEF 悬浮窗（浏览器打开测试）:");
-        ImGui.BulletText("http://localhost:5678/main.html — 主控制栏");
-        ImGui.BulletText("http://localhost:5678/qt.html   — QT 开关");
-        ImGui.BulletText("http://localhost:5678/hotkey.html — 热键按钮");
+        ImGui.BulletText("http://localhost:5678/main.html   — 主控制栏");
+        ImGui.BulletText("http://localhost:5678/action.html — QT + 热键面板");
         ImGui.Spacing();
     }
 
