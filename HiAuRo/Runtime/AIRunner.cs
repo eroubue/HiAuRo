@@ -3,6 +3,7 @@ using HiAuRo.Data;
 using HiAuRo.Decision;
 using HiAuRo.Execution;
 using HiAuRo.FactAxis;
+using HiAuRo.Infrastructure;
 
 namespace HiAuRo.Runtime;
 
@@ -127,6 +128,8 @@ public sealed class AIRunner
                 if (_lastTerritoryId != 0)
                 {
                     DService.Instance().Log.Information($"[AIRunner] 切图: {_lastTerritoryId} → {territoryId}");
+                    Data.Combat.AbilityCountInGcd = 0;
+                    Data.Combat.MaxAbilityTimesInGcd = PluginConfig.Instance.MaxAbilityTimesInGcd;
                     CurrentRotation?.EventHandler?.OnTerritoryChanged();
                 }
                 _lastTerritoryId = territoryId;
@@ -302,6 +305,8 @@ public sealed class AIRunner
         CountDownHandler.Reset();
         Coroutine.Instance.Clear();
         _battleTimeMs = 0;
+        Data.Combat.AbilityCountInGcd = 0;
+        Data.Combat.MaxAbilityTimesInGcd = PluginConfig.Instance.MaxAbilityTimesInGcd;
         CurrentRotation?.EventHandler?.OnResetBattle();
     }
 
