@@ -174,13 +174,12 @@ body {
     display: inline-block;
     border-radius: var(--radius-md);
     pointer-events: auto;
-    contain: layout style paint;
 }
 #action-panel:empty { display: none; }
 #action-panel .drag-dot { display: none; }
 #action-panel .action-body {
     display: flex; flex-direction: row; gap: 8px; padding: 5px;
-    align-items: flex-start;
+    align-items: flex-start; flex-wrap: nowrap;
 }
 #action-panel #qt-grid:empty { display: none; }
 #action-panel #qt-grid {
