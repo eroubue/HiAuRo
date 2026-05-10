@@ -16,7 +16,12 @@ internal unsafe class TextureRenderHandler : IRenderHandler
 
 	private readonly object _lock = new();
 
+	private byte[] _alphaLookupBuffer = Array.Empty<byte>();
+	private int _alphaLookupBufferHeight;
+	private int _alphaLookupBufferWidth;
+
 	private Cursor _cursor;
+	private bool _cursorOnBackground;
 
 	private Rect _popupRect;
 	private ID3D11Texture2D* _popupTexture;
@@ -121,6 +126,21 @@ internal unsafe class TextureRenderHandler : IRenderHandler
 
 		if (targetTexture == null) return;
 
+		// 保留 alpha 缓冲区用于穿透检测
+		if (type == PaintElementType.View)
+		{
+			int requiredBufferSize = width * height * _bytesPerPixel;
+			_alphaLookupBufferWidth = width;
+			_alphaLookupBufferHeight = height;
+			if (_alphaLookupBuffer.Length < requiredBufferSize)
+				_alphaLookupBuffer = new byte[requiredBufferSize];
+
+			fixed (void* dstBuffer = _alphaLookupBuffer)
+			{
+				Buffer.MemoryCopy(buffer.ToPointer(), dstBuffer, _alphaLookupBuffer.Length, requiredBufferSize);
+			}
+		}
+
 		int rowPitch = width * _bytesPerPixel;
 		int depthPitch = rowPitch * height;
 
@@ -209,7 +229,7 @@ internal unsafe class TextureRenderHandler : IRenderHandler
 	public void OnCursorChange(IntPtr cursorPtr, CursorType type, CursorInfo customCursorInfo)
 	{
 		_cursor = EncodeCursor(type);
-		CursorChanged?.Invoke(this, _cursor);
+		if (!_cursorOnBackground) { CursorChanged?.Invoke(this, _cursor); }
 	}
 
 	public bool StartDragging(IDragData dragData, DragOperationsMask mask, int x, int y)
@@ -237,7 +257,32 @@ internal unsafe class TextureRenderHandler : IRenderHandler
 
 	public void SetMousePosition(int x, int y)
 	{
-		// 不再需要 alpha 穿透检测 — 窗口尺寸精确匹配内容后无透明区域
+		byte alpha = GetAlphaAt(x, y);
+
+		bool currentlyOnBackground = alpha == 0;
+		if (currentlyOnBackground != _cursorOnBackground)
+		{
+			_cursorOnBackground = currentlyOnBackground;
+			CursorChanged?.Invoke(this, currentlyOnBackground ? Cursor.BrowsingwayNoCapture : _cursor);
+		}
+	}
+
+	private byte GetAlphaAt(int x, int y)
+	{
+		lock (_lock)
+		{
+			int rowPitch = _alphaLookupBufferWidth * _bytesPerPixel;
+			int cursorAlphaOffset = 0
+				+ (Math.Min(Math.Max(x, 0), _alphaLookupBufferWidth - 1) * _bytesPerPixel)
+				+ (Math.Min(Math.Max(y, 0), _alphaLookupBufferHeight - 1) * rowPitch)
+				+ 3;
+			cursorAlphaOffset = cursorAlphaOffset < 0 ? 0 : cursorAlphaOffset;
+
+			if (cursorAlphaOffset < _alphaLookupBuffer.Length)
+				return _alphaLookupBuffer[cursorAlphaOffset];
+
+			return 255;
+		}
 	}
 
 	private ID3D11Texture2D* BuildViewTexture(Size size, bool isShared)
