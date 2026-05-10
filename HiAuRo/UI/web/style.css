@@ -170,6 +170,32 @@ body {
 .tab-content { display: none; }
 .tab-content.active { display: block; }
 
+/* ====== ActionPanel (QT + 热键合并) ====== */
+#action-panel {
+    display: inline-block;
+    background: var(--bg-elevated);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-sm);
+    pointer-events: auto;
+}
+#action-panel:empty { display: none; }
+#action-panel .drag-dot { display: none; }
+#action-panel .action-body {
+    display: flex; flex-direction: column; gap: 6px; padding: 5px;
+}
+#action-panel #qt-grid:empty { display: none; }
+#action-panel #qt-grid {
+    display: inline-grid; gap: 4px;
+    grid-template-columns: repeat(var(--qt-cols, 4), auto);
+}
+#action-panel #hk-grid:empty { display: none; }
+#action-panel #hk-grid {
+    display: inline-grid; gap: 5px;
+    grid-template-columns: repeat(var(--hk-cols, 4), auto);
+}
+#action-panel .qt-chip, #action-panel .hk-cell { /* 复用现有样式 */ }
+
 /* ====== Qt floating panel ====== */
 #qt-panel {
     display: inline-block;

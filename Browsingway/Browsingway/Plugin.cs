@@ -154,8 +154,7 @@ namespace Browsingway;
 		}
 
 		Add("MainWindow", "http://localhost:5678/main.html", 360, 500);
-		Add("QtWindow", "http://localhost:5678/qt.html", 320, 80);
-		Add("HotkeyWindow", "http://localhost:5678/hotkey.html", 300, 160);
+		Add("ActionPanel", "http://localhost:5678/action.html", 320, 240);
 		Services.PluginLog.Info($"[BW] CreateHiAuRoOverlays 完成 (共{_overlays.Count}个overlay)");
 	}
 
