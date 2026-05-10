@@ -11,7 +11,6 @@ public sealed class AILoop_Normal : IAILoop
 {
     private readonly List<SlotResolverData> _resolvers;
     private readonly List<ResolverDebugInfo> _debugInfos;
-    private int _abilityCount;
 
     /// <summary>ACR Debug 面板数据（每帧刷新，只读访问）</summary>
     public IReadOnlyList<ResolverDebugInfo> DebugResolvers => _debugInfos;
@@ -64,7 +63,6 @@ public sealed class AILoop_Normal : IAILoop
 
         bool isGcdReady = GCDHelper.IsGCDReady();
         bool isOffGcdWindow = GCDHelper.CanUseOffGcd();
-        var maxAbility = 2;
         float gcdRemain = isGcdReady ? 0 : GCDHelper.GetGCDCooldown();
 
         for (int i = 0; i < _resolvers.Count; i++)
@@ -94,7 +92,7 @@ public sealed class AILoop_Normal : IAILoop
             bool canExecute = data.Mode switch
             {
                 SlotMode.Gcd    => isGcdReady,
-                SlotMode.OffGcd => isOffGcdWindow && _abilityCount < maxAbility,
+                SlotMode.OffGcd => isOffGcdWindow && Data.Combat.AbilityCountInGcd < Data.Combat.MaxAbilityTimesInGcd,
                 SlotMode.Always => true,
                 _              => false
             };
@@ -120,12 +118,12 @@ public sealed class AILoop_Normal : IAILoop
                 info.BuiltSlot = true;
                 info.BuiltSkills = string.Join(",", slot.Actions.Select(a => a.Spell.Name));
 
-                DService.Instance().Log.Information($"[AILoop] Build: {resolverName} → {slot.Actions.Count}个技能 = [{string.Join(", ", slot.Actions.Select(a => $"{a.Spell.Name}({a.Spell.Id})"))}] (GCD={isGcdReady} oGCD={isOffGcdWindow} GCDr={gcdRemain:F0}ms ab={_abilityCount}/{maxAbility})");
+                DService.Instance().Log.Information($"[AILoop] Build: {resolverName} → {slot.Actions.Count}个技能 = [{string.Join(", ", slot.Actions.Select(a => $"{a.Spell.Name}({a.Spell.Id})"))}] (GCD={isGcdReady} oGCD={isOffGcdWindow} GCDr={gcdRemain:F0}ms ab={Data.Combat.AbilityCountInGcd}/{Data.Combat.MaxAbilityTimesInGcd})");
 
                 if (data.Mode == SlotMode.Gcd)
-                    _abilityCount = 0; // GCD 重置能力技计数
+                    Data.Combat.AbilityCountInGcd = 0;
                 else if (slot.Actions.Any(a => a.Spell.IsAbility()))
-                    _abilityCount++;
+                    Data.Combat.AbilityCountInGcd++;
 
                 return slot;
             }
