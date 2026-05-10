@@ -396,6 +396,16 @@ public partial class Plugin : IDalamudPlugin
         var config = _pluginInterface.GetPluginConfig() as PluginConfig ?? new PluginConfig();
         PluginConfig.Instance = config;
 
+        // 方向 2 迁移：QtWindow + HotkeyWindow → ActionPanel
+        var oldNames = new[] { "QtWindow", "HotkeyWindow" };
+        if (config.Overlays?.Any(o => oldNames.Contains(o.Name)) == true)
+        {
+            config.Overlays = config.Overlays
+                .Where(o => !oldNames.Contains(o.Name))
+                .Append(new OverlayWindowSetting { Name = "ActionPanel", Url = "http://localhost:5678/action.html", Width = 460, Height = 160 })
+                .ToArray();
+        }
+
         _pluginInterface.SavePluginConfig(config);
 
         DService.Instance().Log.Information(
