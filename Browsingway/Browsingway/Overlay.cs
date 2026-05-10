@@ -231,10 +231,6 @@ internal class Overlay : IDisposable
 		MouseButton up = EncodeMouseButtons(io.MouseReleased);
 		float wheelX = io.MouseWheelH;
 		float wheelY = io.MouseWheel;
-		if (down.HasFlag(MouseButton.Primary) || down.HasFlag(MouseButton.Secondary) || down.HasFlag(MouseButton.Tertiary))
-		{
-			_windowFocused = _mouseInWindow;
-		}
 
 		// If the cursor is outside the window, send a final mouse leave then noop
 		if (!hovered)
