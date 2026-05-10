@@ -14,6 +14,8 @@ internal unsafe class TextureRenderHandler : IRenderHandler
 {
 	private const byte _bytesPerPixel = 4;
 
+	private readonly object _lock = new();
+
 	private Cursor _cursor;
 
 	private Rect _popupRect;
@@ -73,6 +75,8 @@ internal unsafe class TextureRenderHandler : IRenderHandler
 
 	public void OnAcceleratedPaint(PaintElementType type, Rect dirtyRect, AcceleratedPaintInfo info)
 	{
+		lock (_lock)
+		{
 		ID3D11DeviceContext* context;
 		DxHandler.Device->GetImmediateContext(&context);
 
@@ -101,13 +105,54 @@ internal unsafe class TextureRenderHandler : IRenderHandler
 
 		context->Release();
 		// 不需要 Flush — GPU→GPU 拷贝由驱动管线管理
+		}
 	}
 
 	public void OnPaint(PaintElementType type, Rect dirtyRect, IntPtr buffer, int width, int height)
 	{
-		// OnAcceleratedPaint 替代了 OnPaint 的渲染逻辑
-		// 但需要保留此方法以满足 IRenderHandler 接口
-		// CEF 会在 OnAcceleratedPaint 不被支持时回退到 OnPaint
+		lock (_lock)
+		{
+		ID3D11Texture2D* targetTexture = type switch
+		{
+			PaintElementType.View => _viewTexture,
+			PaintElementType.Popup => _popupTexture,
+			_ => throw new Exception($"Unknown paint type {type}")
+		};
+
+		if (targetTexture == null) return;
+
+		int rowPitch = width * _bytesPerPixel;
+		int depthPitch = rowPitch * height;
+
+		D3D11_TEXTURE2D_DESC texDesc;
+		targetTexture->GetDesc(&texDesc);
+
+		IntPtr sourceRegionPtr = buffer + (dirtyRect.X * _bytesPerPixel) + (dirtyRect.Y * rowPitch);
+		D3D11_BOX destinationBox = new()
+		{
+			top = (uint)Math.Min(dirtyRect.Y, (int)texDesc.Height),
+			bottom = (uint)Math.Min(dirtyRect.Y + dirtyRect.Height, (int)texDesc.Height),
+			left = (uint)Math.Min(dirtyRect.X, (int)texDesc.Width),
+			right = (uint)Math.Min(dirtyRect.X + dirtyRect.Width, (int)texDesc.Width),
+			front = 0,
+			back = 1
+		};
+
+		ID3D11DeviceContext* context;
+		DxHandler.Device->GetImmediateContext(&context);
+
+		context->UpdateSubresource((ID3D11Resource*)targetTexture, 0, &destinationBox, sourceRegionPtr.ToPointer(), (uint)rowPitch, (uint)depthPitch);
+
+		context->CopySubresourceRegion((ID3D11Resource*)_sharedTexture, 0, 0, 0, 0, (ID3D11Resource*)_viewTexture, 0, null);
+		if (_popupVisible && _popupTexture != null)
+		{
+			Point popupPos = DpiScaling.ScaleScreenPoint(_popupRect.X, _popupRect.Y);
+			context->CopySubresourceRegion((ID3D11Resource*)_sharedTexture, 0, (uint)popupPos.X, (uint)popupPos.Y, 0, (ID3D11Resource*)_popupTexture, 0, null);
+		}
+
+		context->Flush();
+		context->Release();
+		}
 	}
 
 	public void OnPopupShow(bool show)
@@ -178,6 +223,8 @@ internal unsafe class TextureRenderHandler : IRenderHandler
 
 	public void Resize(Size size)
 	{
+		lock (_lock)
+		{
 		ID3D11Texture2D* oldTexture1 = _sharedTexture;
 		ID3D11Texture2D* oldTexture2 = _viewTexture;
 		_sharedTexture = BuildViewTexture(size, true);
@@ -185,6 +232,7 @@ internal unsafe class TextureRenderHandler : IRenderHandler
 		oldTexture1->Release();
 		oldTexture2->Release();
 		_sharedTextureHandle = IntPtr.Zero;
+		}
 	}
 
 	public void SetMousePosition(int x, int y)
