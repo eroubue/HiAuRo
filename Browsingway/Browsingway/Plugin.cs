@@ -154,7 +154,7 @@ namespace Browsingway;
 		}
 
 		Add("MainWindow", "http://localhost:5678/main.html", 360, 500);
-		Add("ActionPanel", "http://localhost:5678/action.html", 320, 240);
+		Add("ActionPanel", "http://localhost:5678/action.html", 460, 160);
 		Services.PluginLog.Info($"[BW] CreateHiAuRoOverlays 完成 (共{_overlays.Count}个overlay)");
 	}
 

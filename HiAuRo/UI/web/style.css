@@ -182,7 +182,8 @@ body {
 #action-panel:empty { display: none; }
 #action-panel .drag-dot { display: none; }
 #action-panel .action-body {
-    display: flex; flex-direction: column; gap: 6px; padding: 5px;
+    display: flex; flex-direction: row; gap: 8px; padding: 5px;
+    align-items: flex-start;
 }
 #action-panel #qt-grid:empty { display: none; }
 #action-panel #qt-grid {
