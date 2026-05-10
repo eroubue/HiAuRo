@@ -172,8 +172,6 @@ body {
 /* ====== ActionPanel (QT + 热键合并) ====== */
 #action-panel {
     display: inline-block;
-    background: var(--bg-primary);
-    border: 1px solid var(--border);
     border-radius: var(--radius-md);
     pointer-events: auto;
     contain: layout style paint;
