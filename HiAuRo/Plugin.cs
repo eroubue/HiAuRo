@@ -332,6 +332,13 @@ public partial class Plugin : IDalamudPlugin
             var height = data.Value.TryGetProperty("height", out var h) ? h.GetInt32() : 0;
             if (string.IsNullOrEmpty(overlay) || width <= 0 || height <= 0) return;
             Instance._browserHost?.UpdateOverlay(overlay, width: width, height: height);
+            // 持久化到当前 ACR 的 ui_settings.json
+            var s = HiAuRo.Setting.SettingMgr.LoadAcrUiSettings(
+                Runtime.ACRLifecycle.CurrentAuthor, Runtime.ACRLifecycle.CurrentJobId);
+            s.OverlayContentWidth[overlay] = width;
+            s.OverlayContentHeight[overlay] = height;
+            HiAuRo.Setting.SettingMgr.SaveAcrUiSettings(
+                Runtime.ACRLifecycle.CurrentAuthor, Runtime.ACRLifecycle.CurrentJobId, s);
         });
     }
 

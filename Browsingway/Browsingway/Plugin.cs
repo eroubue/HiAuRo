@@ -49,6 +49,8 @@ namespace Browsingway;
 		Services.PluginLog.Info("[BW] BrowserHost 构造完成 (等待依赖就绪...)");
 	}
 
+	public event Action? OverlaysCreated;
+
 	public void Dispose()
 	{
 		Services.PluginLog.Info("[BW] BrowserHost.Dispose 开始");
@@ -143,7 +145,7 @@ namespace Browsingway;
 				Muted = true,
 				CustomCss = "",
 				Guid = StableGuid(name),
-				Locked = true, // 默认锁定，防止 ImGui 吃掉点击
+				Locked = true,
 				Width = w,
 				Height = h,
 			};
@@ -156,6 +158,7 @@ namespace Browsingway;
 		Add("MainWindow", "http://localhost:5678/main.html", 360, 500);
 		Add("ActionPanel", "http://localhost:5678/action.html", 600, 180);
 		Services.PluginLog.Info($"[BW] CreateHiAuRoOverlays 完成 (共{_overlays.Count}个overlay)");
+		OverlaysCreated?.Invoke();
 	}
 
 	/// <summary>更新已有 overlay 的 URL / 尺寸 / 缩放 / 锁定</summary>
