@@ -172,7 +172,13 @@ namespace Browsingway;
 		if (zoom is not null) overlay.Zoom(zoom.Value);
 		if (locked is not null) overlay.SetLocked(locked.Value);
 		if (width is not null && height is not null)
+		{
+			if (!overlay.IsLocked) return;
+			if (!overlay.HasTexture) return; // 纹理未就绪前不执行自适应
+			overlay.Config.Width = width.Value;
+			overlay.Config.Height = height.Value;
 			_ = _renderProcess?.Rpc?.ResizeOverlay(guid, width.Value, height.Value);
+		}
 	}
 
 	/// <summary>打开指定 overlay 的 CEF DevTools 调试窗口</summary>

@@ -12,6 +12,8 @@ dotnet build HiAuRo/HiAuRo.csproj -nologo
 
 No `.sln` — single project. CEF renderer (`HiAuRo.Renderer`) is a separate `.csproj` added in Phase 5.3.
 
+**构建环境**：代码开发在 WSL 中，但 `dotnet build` 需要在 **Windows 环境**中执行（Dalamud SDK 依赖 Windows-only 的 Dalamud Hooks 和 FFXIV 游戏进程）。在 WSL 中直接运行 `dotnet build` 会因缺少 `/home/haiya/dalamud_hooks/` 和 CefSharp 包而失败。通过 WSL 的 `cmd.exe /c "dotnet build ..."` 在 Windows 端执行。
+
 ## Architecture Rules
 
 **These are non-negotiable across all phases:**

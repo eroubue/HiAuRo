@@ -41,6 +41,10 @@ internal class Overlay : IDisposable
 
 	public Guid RenderGuid => _overlayConfig.Guid;
 
+	public bool IsLocked => _overlayConfig.Locked;
+	public bool HasTexture => _textureHandler != null;
+	public InlayConfiguration Config => _overlayConfig;
+
 	public void Dispose()
 	{
 		_textureHandler?.Dispose();

@@ -322,6 +322,17 @@ public partial class Plugin : IDalamudPlugin
                 default: DService.Instance().Log.Information(text); break;
             }
         });
+
+        // 内容尺寸自适应：JS 上报 overlay 内容实际尺寸 → C# 调整 ImGui 窗口
+        bridge.On("contentResize", data =>
+        {
+            if (data is null) return;
+            var overlay = data.Value.TryGetProperty("overlay", out var o) ? o.GetString() : null;
+            var width = data.Value.TryGetProperty("width", out var w) ? w.GetInt32() : 0;
+            var height = data.Value.TryGetProperty("height", out var h) ? h.GetInt32() : 0;
+            if (string.IsNullOrEmpty(overlay) || width <= 0 || height <= 0) return;
+            Instance._browserHost?.UpdateOverlay(overlay, width: width, height: height);
+        });
     }
 
     private static async Task SendStatusState()
