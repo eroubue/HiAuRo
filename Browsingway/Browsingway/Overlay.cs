@@ -11,7 +11,7 @@ internal class Overlay : IDisposable
 	private readonly InlayConfiguration _overlayConfig;
 
 	private readonly RenderProcess _renderProcess;
-	private bool _captureCursor;
+	private bool _captureCursor = true;
 	private ImGuiMouseCursor _cursor;
 	private bool _isTextInput;
 
