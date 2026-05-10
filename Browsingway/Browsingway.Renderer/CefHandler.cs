@@ -28,7 +28,8 @@ internal static class CefHandler
 		}
 
 		settings.EnableAudio();
-		settings.SetOffScreenRenderingBestPerformanceArgs();
+		settings.CefCommandLineArgs["enable-begin-frame-scheduling"] = "1";
+		settings.CefCommandLineArgs["enable-accelerated-paint"] = "1";
 		settings.UserAgentProduct = $"Chrome/{Cef.ChromiumVersion} Browsingway/{Assembly.GetEntryAssembly()?.GetName().Version} (ffxiv_pid {parentPid}; renderer_pid {Environment.ProcessId})";
 
 		Cef.Initialize(settings, false, browserProcessHandler: null);

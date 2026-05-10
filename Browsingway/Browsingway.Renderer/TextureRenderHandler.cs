@@ -5,7 +5,6 @@ using CefSharp.OffScreen;
 using CefSharp.Structs;
 using TerraFX.Interop.DirectX;
 using TerraFX.Interop.Windows;
-using System.Collections.Concurrent;
 using Range = CefSharp.Structs.Range;
 using Size = System.Drawing.Size;
 
@@ -13,23 +12,9 @@ namespace Browsingway.Renderer;
 
 internal unsafe class TextureRenderHandler : IRenderHandler
 {
-	// CEF buffers are 32-bit BGRA
 	private const byte _bytesPerPixel = 4;
 
-	// TODO: replace with lockless implementation
-	private readonly object _renderLock = new();
-
-	// TODO: remove me
-	private byte[] _alphaLookupBuffer = Array.Empty<byte>();
-	private int _alphaLookupBufferHeight;
-	private int _alphaLookupBufferWidth;
-
 	private Cursor _cursor;
-
-	// Transparent background click-through state
-	private bool _cursorOnBackground;
-
-	private ConcurrentBag<IntPtr> _obsoleteTextures = [];
 
 	private Rect _popupRect;
 	private ID3D11Texture2D* _popupTexture;
@@ -77,138 +62,52 @@ internal unsafe class TextureRenderHandler : IRenderHandler
 		{
 			_popupTexture->Release();
 		}
-
-		foreach (IntPtr texturePtr in _obsoleteTextures)
-		{
-			((ID3D11Texture2D*)texturePtr)->Release();
-		}
 	}
 
 	public Rect GetViewRect()
 	{
-		// There's a very small chance that OnPaint's cleanup will delete the current _sharedTexture midway through this function -
-		// Try a few times just in case before failing out with an obviously-wrong value
-		// hi adam
-		// TODO: proper threading model instead of shitty hacks
-		for (int i = 0; i < 5; i++)
-		{
-			try { return GetViewRectInternal(); }
-			catch (NullReferenceException) { }
-		}
-
-		return new Rect(0, 0, 1, 1);
+		D3D11_TEXTURE2D_DESC texDesc;
+		_sharedTexture->GetDesc(&texDesc);
+		return DpiScaling.ScaleViewRect(new Rect(0, 0, (int)texDesc.Width, (int)texDesc.Height));
 	}
 
-	public void OnAcceleratedPaint(PaintElementType type, Rect dirtyRect, AcceleratedPaintInfo acceleratedPaintInfo)
+	public void OnAcceleratedPaint(PaintElementType type, Rect dirtyRect, AcceleratedPaintInfo info)
 	{
-		// TODO: use this instead of manual texture copying
-		throw new NotImplementedException();
+		ID3D11DeviceContext* context;
+		DxHandler.Device->GetImmediateContext(&context);
+
+		// 打开 CEF 提供的 GPU 纹理（handle 直达，无 CPU 拷贝）
+		ID3D11Texture2D* cefTexture;
+		Guid texture2DGuid = typeof(ID3D11Texture2D).GUID;
+		void* texPtr;
+		HRESULT hr = DxHandler.Device->OpenSharedResource((HANDLE)info.SharedTextureHandle, &texture2DGuid, &texPtr);
+		if (hr.FAILED) { context->Release(); return; }
+		cefTexture = (ID3D11Texture2D*)texPtr;
+
+		// GPU→GPU 拷贝：CEF 纹理 → 内部纹理
+		ID3D11Texture2D* target = type == PaintElementType.View ? _viewTexture : _popupTexture;
+		if (target != null)
+			context->CopySubresourceRegion((ID3D11Resource*)target, 0, 0, 0, 0, (ID3D11Resource*)cefTexture, 0, null);
+		cefTexture->Release();
+
+		// 合成到 _sharedTexture
+		context->CopySubresourceRegion((ID3D11Resource*)_sharedTexture, 0, 0, 0, 0, (ID3D11Resource*)_viewTexture, 0, null);
+		if (_popupVisible && _popupTexture != null)
+		{
+			Point popupPos = DpiScaling.ScaleScreenPoint(_popupRect.X, _popupRect.Y);
+			context->CopySubresourceRegion((ID3D11Resource*)_sharedTexture, 0,
+				(uint)popupPos.X, (uint)popupPos.Y, 0, (ID3D11Resource*)_popupTexture, 0, null);
+		}
+
+		context->Release();
+		// 不需要 Flush — GPU→GPU 拷贝由驱动管线管理
 	}
 
 	public void OnPaint(PaintElementType type, Rect dirtyRect, IntPtr buffer, int width, int height)
 	{
-		lock (_renderLock)
-		{
-			ID3D11Texture2D* targetTexture = type switch
-			{
-				PaintElementType.View => _viewTexture,
-				PaintElementType.Popup => _popupTexture,
-				_ => throw new Exception($"Unknown paint type {type}")
-			};
-
-			if (targetTexture == null)
-			{
-				throw new Exception($"Target texture is null for paint type {type}");
-			}
-
-			// keep buffer to make alpha checks later on.
-			// TODO: make this a back and front buffer to atomic swap them
-			if (type == PaintElementType.View)
-			{
-				// check if lookup buffer is big enough
-				int requiredBufferSize = width * height * _bytesPerPixel;
-				_alphaLookupBufferWidth = width;
-				_alphaLookupBufferHeight = height;
-				if (_alphaLookupBuffer.Length < requiredBufferSize)
-				{
-					_alphaLookupBuffer = new byte[width * height * _bytesPerPixel];
-				}
-
-				fixed (void* dstBuffer = _alphaLookupBuffer)
-				{
-					Buffer.MemoryCopy(buffer.ToPointer(), dstBuffer, _alphaLookupBuffer.Length, requiredBufferSize);
-				}
-			}
-
-			// Calculate offset multipliers for the current buffer
-			int rowPitch = width * _bytesPerPixel;
-			int depthPitch = rowPitch * height;
-
-			// Build the destination region for the dirty rect that we'll draw to
-			D3D11_TEXTURE2D_DESC texDesc;
-			targetTexture->GetDesc(&texDesc);
-
-			IntPtr sourceRegionPtr = buffer + (dirtyRect.X * _bytesPerPixel) + (dirtyRect.Y * rowPitch);
-			D3D11_BOX destinationBox = new()
-			{
-				top = (uint)Math.Min(dirtyRect.Y, (int)texDesc.Height),
-				bottom = (uint)Math.Min(dirtyRect.Y + dirtyRect.Height, (int)texDesc.Height),
-				left = (uint)Math.Min(dirtyRect.X, (int)texDesc.Width),
-				right = (uint)Math.Min(dirtyRect.X + dirtyRect.Width, (int)texDesc.Width),
-				front = 0,
-				back = 1
-			};
-
-			// Draw to the target
-			ID3D11DeviceContext* context;
-			DxHandler.Device->GetImmediateContext(&context);
-
-			context->UpdateSubresource(
-				(ID3D11Resource*)targetTexture,
-				0,
-				&destinationBox,
-				sourceRegionPtr.ToPointer(),
-				(uint)rowPitch,
-				(uint)depthPitch);
-
-			// composite final picture
-			// draw view layer, first
-			context->CopySubresourceRegion(
-				(ID3D11Resource*)_sharedTexture,
-				0,
-				0,
-				0,
-				0,
-				(ID3D11Resource*)_viewTexture,
-				0,
-				null);
-
-			// draw popup layer if required
-			if (_popupVisible && _popupTexture != null)
-			{
-				Point popupPos = DpiScaling.ScaleScreenPoint(_popupRect.X, _popupRect.Y);
-				context->CopySubresourceRegion(
-					(ID3D11Resource*)_sharedTexture,
-					0,
-					(uint)popupPos.X,
-					(uint)popupPos.Y,
-					0,
-					(ID3D11Resource*)_popupTexture,
-					0,
-					null);
-			}
-
-			context->Flush();
-			context->Release();
-
-			// Rendering is complete, clean up any obsolete textures
-			ConcurrentBag<IntPtr> textures = _obsoleteTextures;
-			_obsoleteTextures = new ConcurrentBag<IntPtr>();
-			foreach (IntPtr texPtr in textures)
-			{
-				((ID3D11Texture2D*)texPtr)->Release();
-			}
-		}
+		// OnAcceleratedPaint 替代了 OnPaint 的渲染逻辑
+		// 但需要保留此方法以满足 IRenderHandler 接口
+		// CEF 会在 OnAcceleratedPaint 不被支持时回退到 OnPaint
 	}
 
 	public void OnPopupShow(bool show)
@@ -265,14 +164,11 @@ internal unsafe class TextureRenderHandler : IRenderHandler
 	public void OnCursorChange(IntPtr cursorPtr, CursorType type, CursorInfo customCursorInfo)
 	{
 		_cursor = EncodeCursor(type);
-
-		// If we're on background, don't flag a cursor change
-		if (!_cursorOnBackground) { CursorChanged?.Invoke(this, _cursor); }
+		CursorChanged?.Invoke(this, _cursor);
 	}
 
 	public bool StartDragging(IDragData dragData, DragOperationsMask mask, int x, int y)
 	{
-		// Returning false to abort drag operations.
 		return false;
 	}
 
@@ -282,48 +178,22 @@ internal unsafe class TextureRenderHandler : IRenderHandler
 
 	public void Resize(Size size)
 	{
-		lock (_renderLock)
-		{
-			// TODO: make this thread unsafe crap thread safe crap
-			ID3D11Texture2D* oldTexture1 = _sharedTexture;
-			ID3D11Texture2D* oldTexture2 = _viewTexture;
-			_sharedTexture = BuildViewTexture(size, true);
-			_viewTexture = BuildViewTexture(size, false);
-			_obsoleteTextures.Add((IntPtr)oldTexture1);
-			_obsoleteTextures.Add((IntPtr)oldTexture2);
-
-			// Need to clear the cached handle value
-			// TODO: Maybe I should just avoid the lazy cache and do it eagerly on _sharedTexture build.
-			_sharedTextureHandle = IntPtr.Zero;
-		}
+		ID3D11Texture2D* oldTexture1 = _sharedTexture;
+		ID3D11Texture2D* oldTexture2 = _viewTexture;
+		_sharedTexture = BuildViewTexture(size, true);
+		_viewTexture = BuildViewTexture(size, false);
+		oldTexture1->Release();
+		oldTexture2->Release();
+		_sharedTextureHandle = IntPtr.Zero;
 	}
 
-	protected byte GetAlphaAt(int x, int y)
+	public void SetMousePosition(int x, int y)
 	{
-		lock (_renderLock)
-		{
-			int rowPitch = _alphaLookupBufferWidth * _bytesPerPixel;
-
-			// Get the offset for the alpha of the cursor's current position. Bitmap buffer is BGRA, so +3 to get alpha byte
-			int cursorAlphaOffset = 0
-			                        + (Math.Min(Math.Max(x, 0), _alphaLookupBufferWidth - 1) * _bytesPerPixel)
-			                        + (Math.Min(Math.Max(y, 0), _alphaLookupBufferHeight - 1) * rowPitch)
-			                        + 3;
-			cursorAlphaOffset = cursorAlphaOffset < 0 ? 0 : cursorAlphaOffset;
-
-			if (cursorAlphaOffset < _alphaLookupBuffer.Length)
-			{
-				return _alphaLookupBuffer[cursorAlphaOffset];
-			}
-
-			Console.WriteLine("Could not determine alpha value");
-			return 255;
-		}
+		// 不再需要 alpha 穿透检测 — 窗口尺寸精确匹配内容后无透明区域
 	}
 
 	private ID3D11Texture2D* BuildViewTexture(Size size, bool isShared)
 	{
-		// Build _sharedTexture. Most of these properties are defined to match how CEF exposes the render buffer.
 		D3D11_TEXTURE2D_DESC desc = new()
 		{
 			Width = (uint)size.Width,
@@ -346,29 +216,6 @@ internal unsafe class TextureRenderHandler : IRenderHandler
 		}
 
 		return texture;
-	}
-
-	private Rect GetViewRectInternal()
-	{
-		D3D11_TEXTURE2D_DESC texDesc;
-		_sharedTexture->GetDesc(&texDesc);
-		return DpiScaling.ScaleViewRect(new Rect(0, 0, (int)texDesc.Width, (int)texDesc.Height));
-	}
-
-	public void SetMousePosition(int x, int y)
-	{
-		byte alpha = GetAlphaAt(x, y);
-
-		// We treat 0 alpha as click through - if changed, fire off the event
-		bool currentlyOnBackground = alpha == 0;
-		if (currentlyOnBackground != _cursorOnBackground)
-		{
-			_cursorOnBackground = currentlyOnBackground;
-
-			// EDGE CASE: if cursor transitions onto alpha:0 _and_ between two native cursor types, I guess this will be a race cond.
-			// Not sure if should have two separate upstreams for them, or try and prevent the race. consider.
-			CursorChanged?.Invoke(this, currentlyOnBackground ? Cursor.BrowsingwayNoCapture : _cursor);
-		}
 	}
 
 	private Cursor EncodeCursor(CursorType cursor)
