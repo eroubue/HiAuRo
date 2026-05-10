@@ -66,7 +66,7 @@ jobs:
       - name: Archive full build output
         shell: pwsh
         run: |
-          Compress-Archive -Path "HiAuRo/bin/Release/*" -DestinationPath "HiAuRo/bin/Release/HiAuRo-full-build.zip"
+          Get-ChildItem "HiAuRo/bin/Release/*" -Exclude "*.zip" | Compress-Archive -DestinationPath "HiAuRo/bin/Release/HiAuRo-full-build.zip"
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
