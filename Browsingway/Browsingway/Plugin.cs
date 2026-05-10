@@ -49,6 +49,8 @@ namespace Browsingway;
 		Services.PluginLog.Info("[BW] BrowserHost 构造完成 (等待依赖就绪...)");
 	}
 
+	public event Action? OverlaysCreated;
+
 	public void Dispose()
 	{
 		Services.PluginLog.Info("[BW] BrowserHost.Dispose 开始");
@@ -143,7 +145,7 @@ namespace Browsingway;
 				Muted = true,
 				CustomCss = "",
 				Guid = StableGuid(name),
-				Locked = true, // 默认锁定，防止 ImGui 吃掉点击
+				Locked = true,
 				Width = w,
 				Height = h,
 			};
@@ -154,9 +156,9 @@ namespace Browsingway;
 		}
 
 		Add("MainWindow", "http://localhost:5678/main.html", 360, 500);
-		Add("QtWindow", "http://localhost:5678/qt.html", 320, 80);
-		Add("HotkeyWindow", "http://localhost:5678/hotkey.html", 300, 160);
+		Add("ActionPanel", "http://localhost:5678/action.html", 600, 180);
 		Services.PluginLog.Info($"[BW] CreateHiAuRoOverlays 完成 (共{_overlays.Count}个overlay)");
+		OverlaysCreated?.Invoke();
 	}
 
 	/// <summary>更新已有 overlay 的 URL / 尺寸 / 缩放 / 锁定</summary>
@@ -172,7 +174,13 @@ namespace Browsingway;
 		if (zoom is not null) overlay.Zoom(zoom.Value);
 		if (locked is not null) overlay.SetLocked(locked.Value);
 		if (width is not null && height is not null)
+		{
+			if (!overlay.IsLocked) return;
+			if (!overlay.HasTexture) return; // 纹理未就绪前不执行自适应
+			overlay.Config.Width = width.Value;
+			overlay.Config.Height = height.Value;
 			_ = _renderProcess?.Rpc?.ResizeOverlay(guid, width.Value, height.Value);
+		}
 	}
 
 	/// <summary>打开指定 overlay 的 CEF DevTools 调试窗口</summary>

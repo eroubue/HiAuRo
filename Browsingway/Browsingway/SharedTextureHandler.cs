@@ -20,6 +20,11 @@ internal unsafe class SharedTextureHandler : IDisposable
 			throw new Exception("Device is null");
 		}
 
+		if (handle == IntPtr.Zero)
+		{
+			throw new Exception("Shared texture handle is zero");
+		}
+
 		// Open the shared resource
 		Guid texture2DGuid = typeof(ID3D11Texture2D).GUID;
 		void* texturePtr;

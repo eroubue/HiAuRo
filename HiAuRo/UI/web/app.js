@@ -1,9 +1,25 @@
+const OVERLAY_NAME = window.__OVERLAY_NAME__ || 'Default';
 let ws;
 let state = { enabled: false, paused: false, hotkeys: [], qts: [], job: '' };
 let controls = [];
 let activeTab = '';
 let expanded = false;
 let uiSettings = { qtCols:0, qtBtnW:0, qtVisible:{}, hkCols:0, hkBtnSize:52, hkVisible:{}, hkBindings:{} };
+
+let _lastReportedSize = { width: 0, height: 0 };
+
+function reportContentSize() {
+    const w = document.documentElement.scrollWidth;
+    const h = document.documentElement.scrollHeight;
+    if (Math.abs(w - _lastReportedSize.width) < 5 &&
+        Math.abs(h - _lastReportedSize.height) < 5) return;
+    _lastReportedSize = { width: w, height: h };
+    send('contentResize', {
+        overlay: OVERLAY_NAME,
+        width: Math.max(100, w),
+        height: Math.max(50, h),
+    });
+}
 
 // ================ WebSocket ================
 function connect() {
@@ -17,6 +33,7 @@ function connect() {
                 case 'status':
                     Object.assign(state, msg.data);
                     renderAll();
+                    reportContentSize();
                     break;
                 case 'acrState':
                     state.enabled = msg.data.enabled;
@@ -30,6 +47,7 @@ function connect() {
                     const qt = (state.qts || []).find(q => q.id === msg.data.id);
                     if (qt) qt.value = msg.data.value;
                     renderQt();
+                    reportContentSize();
                     break;
                 case 'pauseChanged':
                     state.paused = msg.data.paused;
@@ -39,12 +57,14 @@ function connect() {
                 case 'controls':
                     controls = msg.data || [];
                     if (expanded) renderTabs();
+                    reportContentSize();
                     break;
                 case 'uiSettings':
                     uiSettings = Object.assign(uiSettings, msg.data);
                     if (expanded) renderTabs();
                     renderQt();
                     renderHk();
+                    reportContentSize();
                     break;
             }
         } catch (ex) {}
@@ -237,9 +257,11 @@ function toggleExpand() {
         win.classList.add('expanded');
         btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>';
         renderTabs();
+        reportContentSize();
     } else {
         win.classList.remove('expanded');
         btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 6 15 12 9 18"/></svg>';
+        reportContentSize();
     }
 }
 
@@ -269,6 +291,7 @@ function renderTabs() {
 function switchTab(tabId) {
     activeTab = tabId;
     renderTabs();
+    reportContentSize();
 }
 
 function renderTabBody() {

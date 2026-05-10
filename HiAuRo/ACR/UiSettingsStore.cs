@@ -49,4 +49,8 @@ public sealed class UiSettings
     public int HkBtnSize { get; set; } = 52;
     public Dictionary<string, bool> HkVisible { get; set; } = [];
     public Dictionary<string, string> HkBindings { get; set; } = [];
+
+    // 方向 1 持久化：每个 overlay 上次自适应后的尺寸
+    public Dictionary<string, int> OverlayContentWidth { get; set; } = [];
+    public Dictionary<string, int> OverlayContentHeight { get; set; } = [];
 }

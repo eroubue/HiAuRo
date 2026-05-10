@@ -13,6 +13,7 @@ public static class ACRLifecycle
     public static string CurrentAcrName => CurrentEntry?.AuthorName ?? "无ACR";
     public static string CurrentAuthor => CurrentEntry?.AuthorName ?? "";
     public static uint CurrentJobId { get; private set; }
+    public static bool IsLoadingRotation { get; private set; }
 
     /// <summary>外部 ACR: JobId → (Factory, SettingDir)</summary>
     private static readonly Dictionary<uint, (Func<IRotationEntry> Factory, string SettingDir)> _acrRegistry = [];
@@ -156,6 +157,7 @@ public static class ACRLifecycle
 
     private static void LoadRotation(IRotationEntry entry, string settingFolder)
     {
+        IsLoadingRotation = true;
         UnloadRotation();
         CurrentJobId = _lastJob;
         DService.Instance().Log.Information($"[ACR] LoadRotation 开始: author={entry.AuthorName}, jobId={CurrentJobId}, settingFolder={settingFolder}");
@@ -275,6 +277,18 @@ public static class ACRLifecycle
             }
         });
         DService.Instance().Log.Information($"[ACR] status 消息已发送 (hotkeys={hotkeyList.Count} qts={qtList.Count})");
+
+        // 恢复上次持久化的 overlay 尺寸（避免每次 resize）
+        if (settings.OverlayContentWidth.Count > 0)
+        {
+            foreach (var kv in settings.OverlayContentWidth)
+            {
+                var h = settings.OverlayContentHeight.GetValueOrDefault(kv.Key);
+                if (h > 0)
+                    Plugin.BrowserHost?.UpdateOverlay(kv.Key, width: kv.Value, height: h);
+            }
+        }
+        IsLoadingRotation = false;
     }
 
     private static void UnloadRotation()

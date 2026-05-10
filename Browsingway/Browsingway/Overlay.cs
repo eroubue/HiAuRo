@@ -11,8 +11,9 @@ internal class Overlay : IDisposable
 	private readonly InlayConfiguration _overlayConfig;
 
 	private readonly RenderProcess _renderProcess;
-	private bool _captureCursor;
+	private bool _captureCursor = true;
 	private ImGuiMouseCursor _cursor;
+	private bool _isTextInput;
 
 	private bool _mouseInWindow;
 
@@ -40,6 +41,10 @@ internal class Overlay : IDisposable
 	}
 
 	public Guid RenderGuid => _overlayConfig.Guid;
+
+	public bool IsLocked => _overlayConfig.Locked;
+	public bool HasTexture => _textureHandler != null;
+	public InlayConfiguration Config => _overlayConfig;
 
 	public void Dispose()
 	{
@@ -76,6 +81,7 @@ internal class Overlay : IDisposable
 	{
 		_captureCursor = cursor != Cursor.BrowsingwayNoCapture;
 		_cursor = DecodeCursor(cursor);
+		_isTextInput = cursor == Cursor.Text;
 	}
 
 	public void SetLocked(bool locked)
@@ -191,17 +197,21 @@ internal class Overlay : IDisposable
 		_hasRenderError = false;
 
 		SharedTextureHandler? oldTextureHandler = _textureHandler;
+		_textureHandler = null; // 先清空，构造失败时避免悬垂引用
 		try
 		{
 			_textureHandler = new SharedTextureHandler(handle);
+			_hasRenderError = false;
 		}
 		catch (Exception e)
 		{
 			_textureRenderException = e;
+			_hasRenderError = true;
+			_textureHandler = null; // 确保不持有已释放的资源
 			Services.PluginLog.Error($"[BW.Overlay] {_overlayConfig.Name} 纹理创建异常: {e.Message}");
 		}
 
-		if (oldTextureHandler != null) { oldTextureHandler.Dispose(); }
+		oldTextureHandler?.Dispose();
 	}
 
 	private void HandleMouseEvent()
@@ -229,7 +239,7 @@ internal class Overlay : IDisposable
 		float wheelY = io.MouseWheel;
 		if (down.HasFlag(MouseButton.Primary) || down.HasFlag(MouseButton.Secondary) || down.HasFlag(MouseButton.Tertiary))
 		{
-			_windowFocused = _mouseInWindow;
+			_windowFocused = _isTextInput && _mouseInWindow;
 		}
 
 		// If the cursor is outside the window, send a final mouse leave then noop
