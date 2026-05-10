@@ -12,10 +12,12 @@ public sealed class EncounterRecorder
     public static EncounterRecorder Instance { get; } = new();
 
     private readonly CombatClock _clock = new();
+    private readonly Dictionary<Type, Func<ITriggerCondParams, long, EncounterEvent>> _serializers = [];
+    private readonly HashSet<uint> _bossNpcIds = [];
+    private readonly object _lock = new();
     private EncounterRecord? _current;
     private bool _initialized;
     private string _saveDir = "";
-    private readonly HashSet<uint> _bossNpcIds = [];
 
     private EncounterRecorder() { }
 
@@ -45,11 +47,16 @@ public sealed class EncounterRecorder
         GameEventHook.Instance.OnEventFired -= OnGameEvent;
         CombatContext.StateChanged -= OnCombatStateChanged;
 
-        if (_current != null && _current.Events.Count > 0)
+        bool hasPending;
+        lock (_lock)
+        {
+            hasPending = _current != null && _current.Events.Count > 0;
+        }
+        if (hasPending)
             SaveRecord();
 
         _serializers.Clear();
-        _bossNpcIds.Clear();
+        lock (_lock) { _bossNpcIds.Clear(); }
     }
 
     #endregion
@@ -62,10 +69,15 @@ public sealed class EncounterRecorder
         {
             StartRecording();
         }
-        else if (newState == CombatContext.State.OutOfCombat && _current != null)
+        else if (newState == CombatContext.State.OutOfCombat)
         {
-            _clock.Pause();
-            SaveRecord();
+            bool shouldSave;
+            lock (_lock) { shouldSave = _current != null; }
+            if (shouldSave)
+            {
+                _clock.Pause();
+                SaveRecord();
+            }
         }
     }
 
@@ -73,7 +85,7 @@ public sealed class EncounterRecorder
     {
         _clock.Reset();
 
-        _current = new EncounterRecord
+        var rec = new EncounterRecord
         {
             TerritoryId = GameState.TerritoryType,
             TerritoryName = GetTerritoryName(),
@@ -81,13 +93,15 @@ public sealed class EncounterRecorder
             Events = []
         };
 
+        lock (_lock) { _current = rec; }
+
         // 采集队伍信息
         try
         {
             var pt = DService.Instance().PartyList;
             if (pt != null)
             {
-                _current.PartySize = pt.Length;
+                rec.PartySize = pt.Length;
                 var jobs = new List<string>();
                 foreach (var member in pt)
                 {
@@ -98,10 +112,13 @@ public sealed class EncounterRecorder
                             jobs.Add(name);
                     }
                 }
-                _current.JobComposition = jobs;
+                rec.JobComposition = jobs;
             }
         }
-        catch { }
+        catch (Exception ex)
+        {
+            DService.Instance().Log.Debug($"[Recording] 队伍信息采集异常: {ex.Message}");
+        }
     }
 
     private string GetTerritoryName()
@@ -116,16 +133,32 @@ public sealed class EncounterRecorder
                 return placeName.Name.ToString();
             }
         }
-        catch { }
+        catch (Exception ex)
+        {
+            DService.Instance().Log.Debug($"[Recording] Territory名称获取异常: {ex.Message}");
+        }
         return $"Territory_{GameState.TerritoryType}";
     }
 
     private void SaveRecord()
     {
-        if (_current == null) return;
+        if (!_initialized) return;
 
-        _current.TotalTimeMs = _clock.Now;
-        _current.Bosses = _bossNpcIds.Select(id =>
+        EncounterRecord? record;
+        uint[] bossIds;
+
+        lock (_lock)
+        {
+            if (_current == null) return;
+
+            _current.TotalTimeMs = _clock.Now;
+            bossIds = _bossNpcIds.ToArray();
+            record = _current;
+            _current = null;
+            _bossNpcIds.Clear();
+        }
+
+        record.Bosses = bossIds.Select(id =>
         {
             var obj = DService.Instance().ObjectTable
                 .FirstOrDefault(o => o != null && o.EntityID == id);
@@ -138,18 +171,15 @@ public sealed class EncounterRecorder
             };
         }).ToList();
 
-        var json = JsonSerializer.Serialize(_current,
+        var json = JsonSerializer.Serialize(record,
             new JsonSerializerOptions { WriteIndented = true, PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
 
-        var safeName = SanitizeFileName(_current.TerritoryName) + "_" +
+        var safeName = SanitizeFileName(record.TerritoryName) + "_" +
                        DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".json";
         var path = Path.Combine(_saveDir, safeName);
 
         File.WriteAllText(path, json);
-        DService.Instance().Log.Information($"[Recording] 已保存: {path} ({_current.Events.Count} 事件)");
-
-        _current = null;
-        _bossNpcIds.Clear();
+        DService.Instance().Log.Information($"[Recording] 已保存: {path} ({record.Events.Count} 事件)");
     }
 
     private static string SanitizeFileName(string name)
@@ -163,7 +193,10 @@ public sealed class EncounterRecorder
 
     #region Public properties (for ImGui panel)
 
-    public bool IsRecording => _current != null;
+    public bool IsRecording
+    {
+        get { lock (_lock) { return _current != null; } }
+    }
 
     public int ElapsedSeconds => (int)(_clock.Now / 1000);
 
@@ -171,10 +204,13 @@ public sealed class EncounterRecorder
     {
         get
         {
-            if (_current == null) return "";
-            var safe = SanitizeFileName(_current.TerritoryName) + "_" +
-                       DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".json";
-            return safe;
+            lock (_lock)
+            {
+                if (_current == null) return "";
+                var safe = SanitizeFileName(_current.TerritoryName) + "_" +
+                           DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".json";
+                return safe;
+            }
         }
     }
 
@@ -190,8 +226,6 @@ public sealed class EncounterRecorder
     #endregion
 
     #region 事件序列化
-
-    private readonly Dictionary<Type, Func<ITriggerCondParams, long, EncounterEvent>> _serializers = [];
 
     private void RegisterSerializers()
     {
@@ -598,34 +632,40 @@ public sealed class EncounterRecorder
 
     private void OnGameEvent(ITriggerCondParams condParams)
     {
-        if (_current == null) return;
-
-        // 尝试识别 Boss NPC (来自 cast 事件的高HP敌人)
-        if (condParams is ActorCastParams acp && acp.SourceID != 0)
+        lock (_lock)
         {
-            try
+            if (_current == null) return;
+
+            // 尝试识别 Boss NPC (来自 cast 事件的高HP敌人)
+            if (condParams is ActorCastParams acp && acp.SourceID != 0)
             {
-                var obj = DService.Instance().ObjectTable
-                    .FirstOrDefault(o => o != null && o.EntityID == acp.SourceID);
-                if (obj is IBattleNPC bn && bn.MaxHp > 1000)
+                try
                 {
-                    _bossNpcIds.Add(acp.SourceID);
+                    var obj = DService.Instance().ObjectTable
+                        .FirstOrDefault(o => o != null && o.EntityID == acp.SourceID);
+                    if (obj is IBattleNPC bn && bn.MaxHp > 1000)
+                    {
+                        _bossNpcIds.Add(acp.SourceID);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    DService.Instance().Log.Debug($"[Recording] Boss检测异常: {ex.Message}");
                 }
             }
-            catch { }
-        }
 
-        var type = condParams.GetType();
-        if (!_serializers.TryGetValue(type, out var serializer)) return;
+            var type = condParams.GetType();
+            if (!_serializers.TryGetValue(type, out var serializer)) return;
 
-        try
-        {
-            var evt = serializer(condParams, _clock.Now);
-            _current.Events.Add(evt);
-        }
-        catch (Exception ex)
-        {
-            DService.Instance().Log.Warning($"[Recording] 序列化失败 {type.Name}: {ex}");
+            try
+            {
+                var evt = serializer(condParams, _clock.Now);
+                _current.Events.Add(evt);
+            }
+            catch (Exception ex)
+            {
+                DService.Instance().Log.Warning($"[Recording] 序列化失败 {type.Name}: {ex}");
+            }
         }
     }
 
