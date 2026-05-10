@@ -327,6 +327,8 @@ public partial class Plugin : IDalamudPlugin
         bridge.On("contentResize", data =>
         {
             if (data is null) return;
+            // LoadRotation 期间跳过——等 ACR 完全加载后再触发 resize
+            if (Runtime.ACRLifecycle.IsLoadingRotation) return;
             var overlay = data.Value.TryGetProperty("overlay", out var o) ? o.GetString() : null;
             var width = data.Value.TryGetProperty("width", out var w) ? w.GetInt32() : 0;
             var height = data.Value.TryGetProperty("height", out var h) ? h.GetInt32() : 0;
