@@ -34,3 +34,4 @@ appsettings.local.json
 # HiAuRo.Helper — separate public repo
 HiAuRo.Helper/
 
+.superpowers/
