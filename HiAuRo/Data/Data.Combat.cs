@@ -8,6 +8,12 @@ namespace HiAuRo.Data;
 /// </summary>
 public static class Combat
 {
+    /// <summary>当前 GCD 窗口已使用的能力技数量（框架内部设置，ACR 只读）</summary>
+    public static int AbilityCountInGcd { get; internal set; }
+
+    /// <summary>当前 GCD 窗口能力技上限（ACR 可读写，框架仅在生命周期事件时重置为 PluginConfig 默认值）</summary>
+    public static int MaxAbilityTimesInGcd { get; set; } = 2;
+
     public static bool IsLoggedIn => GameState.IsLoggedIn;
 
     public static bool IsInInstanceArea => GameState.IsInInstanceArea;
