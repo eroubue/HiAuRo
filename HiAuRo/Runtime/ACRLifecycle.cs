@@ -1,5 +1,6 @@
 using System.Runtime.Loader;
 using HiAuRo.ACR;
+using HiAuRo.Infrastructure;
 
 namespace HiAuRo.Runtime;
 
@@ -159,6 +160,11 @@ public static class ACRLifecycle
     {
         IsLoadingRotation = true;
         UnloadRotation();
+
+        // 切换 ACR 时重置 GCD 能力技计数和上限
+        Data.Combat.AbilityCountInGcd = 0;
+        Data.Combat.MaxAbilityTimesInGcd = PluginConfig.Instance.MaxAbilityTimesInGcd;
+
         CurrentJobId = _lastJob;
         DService.Instance().Log.Information($"[ACR] LoadRotation 开始: author={entry.AuthorName}, jobId={CurrentJobId}, settingFolder={settingFolder}");
         Runner.Load(entry, settingFolder);
