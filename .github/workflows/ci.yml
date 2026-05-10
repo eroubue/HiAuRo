@@ -63,12 +63,18 @@ jobs:
           Invoke-WebRequest https://dist.nuget.org/win-x86-commandline/latest/nuget.exe -OutFile nuget.exe
           .\nuget.exe pack sdk\HiAuRo.Sdk.nuspec -OutputDirectory nupkg -BasePath sdk
 
+      - name: Archive full build output
+        shell: pwsh
+        run: |
+          Compress-Archive -Path "HiAuRo/bin/Release/*" -DestinationPath "HiAuRo/bin/Release/HiAuRo-full-build.zip"
+
       - name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
           name: HiAuRo-release
           path: |
             HiAuRo/bin/Release/HiAuRo-*.zip
+            HiAuRo/bin/Release/HiAuRo-full-build.zip
             nupkg/*.nupkg
 
       - name: Commit & Tag
@@ -89,6 +95,7 @@ jobs:
           tag_name: v${{ env.NEW_VERSION }}
           files: |
             HiAuRo/bin/Release/HiAuRo-*.zip
+            HiAuRo/bin/Release/HiAuRo-full-build.zip
             nupkg/*.nupkg
           generate_release_notes: true
 
@@ -130,5 +137,6 @@ jobs:
         with:
           files: |
             HiAuRo/bin/Release/HiAuRo-*.zip
+            HiAuRo/bin/Release/HiAuRo-full-build.zip
             nupkg/*.nupkg
           generate_release_notes: true
