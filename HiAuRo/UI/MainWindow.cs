@@ -2,6 +2,7 @@ using System.Numerics;
 using Dalamud.Interface.Windowing;
 using HiAuRo.Infrastructure;
 using HiAuRo.Runtime;
+using HiAuRo.Recording;
 
 namespace HiAuRo.UI;
 
@@ -48,6 +49,11 @@ public sealed class MainWindow : Window
             if (ImGui.BeginTabItem("ACR Debug"))
             {
                 DrawAcrDebug();
+                ImGui.EndTabItem();
+            }
+            if (ImGui.BeginTabItem("录制"))
+            {
+                DrawRecording();
                 ImGui.EndTabItem();
             }
             ImGui.EndTabBar();
@@ -359,5 +365,66 @@ public sealed class MainWindow : Window
         }
 
         if (changed) _saveConfig();
+    }
+
+    private static void DrawRecording()
+    {
+        ImGui.Spacing();
+        ImGui.Text("副本录制状态");
+
+        var recorder = EncounterRecorder.Instance;
+        var isRecording = recorder.IsRecording;
+
+        if (isRecording)
+        {
+            var seconds = recorder.ElapsedSeconds;
+            ImGui.TextColored(new Vector4(1, 0.3f, 0.3f, 1),
+                $"● 录制中 ({seconds / 60:D2}:{seconds % 60:D2})");
+            ImGui.Text($"文件名: {recorder.CurrentFileName}");
+        }
+        else
+        {
+            ImGui.TextColored(new Vector4(0.6f, 0.6f, 0.6f, 1), "○ 就绪");
+        }
+
+        ImGui.Spacing();
+        ImGui.Separator();
+
+        ImGui.Text("录制历史:");
+        ImGui.Spacing();
+
+        var files = recorder.GetRecordFiles();
+        if (files.Length == 0)
+        {
+            ImGui.TextDisabled("暂无录制记录");
+        }
+        else
+        {
+            ImGui.PushStyleVar(ImGuiStyleVar.ChildBorderSize, 1);
+            ImGui.BeginChild("##RecordingList",
+                new Vector2(-1, 80), true);
+
+            foreach (var (name, path) in files.TakeLast(20).Reverse())
+            {
+                ImGui.Text(name);
+                ImGui.SameLine();
+                ImGui.TextDisabled($"({path})");
+            }
+
+            ImGui.EndChild();
+            ImGui.PopStyleVar();
+        }
+
+        ImGui.Spacing();
+        if (ImGui.Button("打开录制目录"))
+        {
+            var dir = Path.Combine(
+                DService.Instance().PI.ConfigDirectory.FullName, "Recordings");
+            try
+            {
+                System.Diagnostics.Process.Start("explorer.exe", dir);
+            }
+            catch { }
+        }
     }
 }

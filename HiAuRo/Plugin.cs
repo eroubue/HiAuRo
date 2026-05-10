@@ -9,6 +9,7 @@ using HiAuRo.Runtime;
 using HiAuRo.Setting;
 using HiAuRo.UI;
 using HiAuRo.Decision;
+using HiAuRo.Recording;
 using OmenTools;
 
 namespace HiAuRo;
@@ -56,6 +57,7 @@ public partial class Plugin : IDalamudPlugin
             CommandMgr.Init();
             EventSystem.Init();
             GameEventHook.Instance.Init();
+            EncounterRecorder.Instance.Init();
             ExecutionAxis.Instance.Init();
             RuntimeCore.Start();
             DecisionEngine.Instance.Init();
@@ -139,6 +141,7 @@ public partial class Plugin : IDalamudPlugin
         CombatContext.Reset();
         ExecutionAxis.Instance.Shutdown();
         AssistAxis.Instance.Shutdown();
+        EncounterRecorder.Instance.Shutdown();
         GameEventHook.Instance.Shutdown();
         EventSystem.Shutdown();
         CommandMgr.Shutdown();
@@ -209,6 +212,7 @@ public partial class Plugin : IDalamudPlugin
         CombatContext.Reset();
         ExecutionAxis.Instance.Shutdown();
         AssistAxis.Instance.Shutdown();
+        EncounterRecorder.Instance.Shutdown();
         GameEventHook.Instance.Shutdown();
         EventSystem.Shutdown();
         CommandMgr.Shutdown();
