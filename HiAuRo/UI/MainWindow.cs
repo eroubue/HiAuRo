@@ -404,7 +404,7 @@ public sealed class MainWindow : Window
             ImGui.BeginChild("##RecordingList",
                 new Vector2(-1, 80), true);
 
-            foreach (var (name, path) in files.TakeLast(20).Reverse())
+            foreach (var (name, path) in files.Take(20))
             {
                 ImGui.Text(name);
                 ImGui.SameLine();
@@ -424,7 +424,10 @@ public sealed class MainWindow : Window
             {
                 System.Diagnostics.Process.Start("explorer.exe", dir);
             }
-            catch { }
+            catch (Exception ex)
+            {
+                DService.Instance().Log.Debug($"[Recording] 无法打开目录: {ex.Message}");
+            }
         }
     }
 }
