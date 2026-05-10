@@ -49,6 +49,16 @@ var currentPhaseIdx = 0;       // 当前编辑的阶段索引
 var collapsedPhases = {};      // 左侧面板阶段折叠状态
 var collapsedBranches = {};    // 左侧面板分支折叠状态
 
+// ---- 录制数据 ----
+var recordingData = null;
+var recordingChecked = {};
+var recordingFilters = {
+    cast: true, ability: true, buff: true, tether: true,
+    spawn: true, death: true, target: true, combat: true,
+    environment: true, npc: true, director: true,
+    actorControl: false, chat: false
+};
+
 function setStatus(msg, type) {
     var el = document.getElementById('footer');
     if (!el) return;
@@ -1412,6 +1422,17 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('btnLoad').addEventListener('click', loadFile);
     document.getElementById('btnSave').addEventListener('click', saveFile);
     document.getElementById('btnExport').addEventListener('click', exportFile);
+    document.getElementById('btnRecording').addEventListener('click', function() {
+        document.getElementById('recordingFileInput').click();
+    });
+    document.getElementById('recordingFileInput').addEventListener('change', function() {
+        if (this.files && this.files[0]) {
+            loadRecordingFile(this.files[0]);
+            this.value = '';
+        }
+    });
+    document.getElementById('btnRecordingClose').addEventListener('click', hideRecordingPanel);
+    document.getElementById('btnImportToPhase').addEventListener('click', importRecordingToPhase);
     document.getElementById('fileInput').addEventListener('change', function() {
         if (this.files && this.files[0]) {
             readFileObj(this.files[0]);
@@ -1595,3 +1616,186 @@ document.addEventListener('DOMContentLoaded', function() {
         }
     });
 });
+
+// ==================== 录制导入 ====================
+
+function loadRecordingFile(file) {
+    showLoading('加载录制文件...');
+    var reader = new FileReader();
+    reader.onload = function() {
+        try {
+            recordingData = JSON.parse(reader.result);
+            recordingChecked = {};
+            for (var i = 0; i < (recordingData.events || []).length; i++) {
+                recordingChecked[i] = false;
+            }
+            showRecordingPanel();
+            setStatus('已加载: ' + esc(recordingData.territoryName || '未知'), 'success');
+        } catch (ex) {
+            setStatus('录制文件解析失败: ' + esc(ex.message), 'error');
+        }
+    };
+    reader.onerror = function() {
+        setStatus('文件读取失败', 'error');
+    };
+    reader.readAsText(file);
+}
+
+function showRecordingPanel() {
+    if (!recordingData) return;
+    var propPanel = document.getElementById('propPanel');
+    var recPanel = document.getElementById('recordingPanel');
+    if (propPanel) propPanel.style.display = 'none';
+    if (recPanel) recPanel.style.display = '';
+    renderRecordingContent();
+}
+
+function renderRecordingContent() {
+    if (!recordingData) return;
+
+    var info = document.getElementById('recordingInfo');
+    if (info) {
+        var durationSec = (recordingData.totalTimeMs || 0) / 1000;
+        info.innerHTML =
+            '<div><strong>' + esc(recordingData.territoryName || '未知副本') + '</strong></div>' +
+            '<div style="font-size:10px;color:var(--tx2)">' +
+            '时长: ' + formatTime(durationSec) +
+            ' | 事件: ' + (recordingData.events ? recordingData.events.length : 0) +
+            ' | 队伍: ' + (recordingData.jobComposition || []).join(', ') +
+            '</div>';
+    }
+
+    var filtersEl = document.getElementById('recordingFilters');
+    if (filtersEl) {
+        var catNames = {
+            cast: '读条技能', ability: '技能效果', buff: 'Buff',
+            tether: '连线', spawn: '生成/消失', death: '死亡',
+            target: '点名标记', combat: '战斗状态',
+            environment: '环境特效', npc: 'NPC喊话',
+            director: '时间轴/导演', actorControl: 'ActorControl', chat: '聊天'
+        };
+        var html = '<div style="font-size:11px;margin-bottom:4px;color:var(--tx1)">按分类过滤:</div>';
+        for (var cat in recordingFilters) {
+            var checked = recordingFilters[cat] ? ' checked' : '';
+            html += '<label style="margin-right:8px;font-size:10px;cursor:pointer;white-space:nowrap">' +
+                '<input type="checkbox" ' + checked +
+                ' onchange="toggleRecordingFilter(\'' + cat + '\')">' +
+                (catNames[cat] || cat) + '</label>';
+        }
+        filtersEl.innerHTML = html;
+    }
+
+    var eventsEl = document.getElementById('recordingEvents');
+    if (eventsEl) {
+        var filtered = filterRecordingEvents();
+        if (filtered.length === 0) {
+            eventsEl.innerHTML = '<div class="hint">没有匹配的事件</div>';
+        } else {
+            var listHtml = '';
+            for (var i = 0; i < filtered.length; i++) {
+                var ev = filtered[i];
+                var origIdx = recordingData.events.indexOf(ev);
+                var chk = recordingChecked[origIdx] ? ' checked' : '';
+                var actionId = ev.data.actionId || ev.data.spellId || ev.data.statusId || ev.data.tetherId || '';
+                var label = ev.category + (actionId ? ' #' + actionId : '') + ' @' + formatTime(ev.timeMs / 1000);
+                if (ev.data.sourceName) label += ' [' + esc(String(ev.data.sourceName).substring(0, 15)) + ']';
+
+                listHtml += '<div class="rec-event-row">' +
+                    '<input type="checkbox"' + chk +
+                    ' onchange="recordingChecked[' + origIdx + '] = this.checked">' +
+                    '<span class="rec-event-label">' + esc(label) + '</span></div>';
+            }
+            eventsEl.innerHTML = listHtml;
+        }
+    }
+}
+
+function toggleRecordingFilter(cat) {
+    recordingFilters[cat] = !recordingFilters[cat];
+    renderRecordingContent();
+}
+
+function filterRecordingEvents() {
+    if (!recordingData || !recordingData.events) return [];
+    return recordingData.events.filter(function(ev) {
+        return recordingFilters[ev.category];
+    });
+}
+
+function hideRecordingPanel() {
+    recordingData = null;
+    recordingChecked = {};
+    var propPanel = document.getElementById('propPanel');
+    var recPanel = document.getElementById('recordingPanel');
+    if (propPanel) propPanel.style.display = '';
+    if (recPanel) recPanel.style.display = 'none';
+    renderProps();
+    updateFooter();
+}
+
+function importRecordingToPhase() {
+    if (!recordingData) return;
+    var phase = getPhase(currentPhaseIdx);
+    if (!phase) { setStatus('请先选择一个阶段', 'error'); return; }
+
+    var selected = [];
+    for (var idx in recordingChecked) {
+        if (recordingChecked[idx]) {
+            selected.push(recordingData.events[parseInt(idx)]);
+        }
+    }
+    if (selected.length === 0) {
+        setStatus('请先勾选要导入的事件', 'error');
+        return;
+    }
+
+    selected.sort(function(a, b) { return a.timeMs - b.timeMs; });
+
+    var imported = 0;
+    for (var s = 0; s < selected.length; s++) {
+        var ev = selected[s];
+        var timeSec = ev.timeMs / 1000;
+
+        var actionId = ev.data.actionId || ev.data.spellId ||
+                       ev.data.statusId || ev.data.abilityId || 0;
+
+        var name = '[' + ev.category + '] ';
+        if (ev.data.sourceName) name += esc(String(ev.data.sourceName).substring(0, 20)) + ' ';
+        if (actionId) name += '#' + actionId;
+
+        var fe = {
+            id: 'rec_' + (phase.events.length + imported + 1),
+            name: name,
+            time: timeSec,
+            duration: 0,
+            actions: []
+        };
+
+        if (actionId) {
+            fe.startSync = {
+                type: 'ability',
+                abilityIds: [parseInt(actionId)]
+            };
+        }
+
+        var dup = false;
+        for (var ei = 0; ei < phase.events.length; ei++) {
+            var existing = phase.events[ei];
+            if (Math.abs(existing.time - timeSec) < 0.01 && existing.name === name) {
+                dup = true;
+                break;
+            }
+        }
+        if (dup) continue;
+
+        phase.events.push(fe);
+        imported++;
+    }
+
+    phase.events.sort(function(a, b) { return a.time - b.time; });
+
+    setStatus('已导入 ' + imported + ' 个事件, 跳过 ' +
+              (selected.length - imported) + ' 个重复', 'success');
+    hideRecordingPanel();
+    markDirty();
+}
