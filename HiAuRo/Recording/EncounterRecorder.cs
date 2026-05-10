@@ -1,0 +1,633 @@
+using System.Text.Json;
+using HiAuRo.ACR;
+using HiAuRo.Execution.Events;
+using HiAuRo.Runtime;
+using OmenTools.OmenService;
+using OmenTools.Dalamud.Services.ObjectTable.Abstractions.ObjectKinds;
+
+namespace HiAuRo.Recording;
+
+public sealed class EncounterRecorder
+{
+    public static EncounterRecorder Instance { get; } = new();
+
+    private readonly CombatClock _clock = new();
+    private EncounterRecord? _current;
+    private bool _initialized;
+    private string _saveDir = "";
+    private readonly HashSet<uint> _bossNpcIds = [];
+
+    private EncounterRecorder() { }
+
+    #region 生命周期
+
+    public void Init()
+    {
+        if (_initialized) return;
+        _initialized = true;
+
+        _saveDir = Path.Combine(
+            DService.Instance().PI.ConfigDirectory.FullName, "Recordings");
+        Directory.CreateDirectory(_saveDir);
+
+        GameEventHook.Instance.OnEventFired += OnGameEvent;
+        CombatContext.StateChanged += OnCombatStateChanged;
+        RegisterSerializers();
+
+        _bossNpcIds.Clear();
+    }
+
+    public void Shutdown()
+    {
+        if (!_initialized) return;
+        _initialized = false;
+
+        GameEventHook.Instance.OnEventFired -= OnGameEvent;
+        CombatContext.StateChanged -= OnCombatStateChanged;
+
+        if (_current != null && _current.Events.Count > 0)
+            SaveRecord();
+
+        _serializers.Clear();
+        _bossNpcIds.Clear();
+    }
+
+    #endregion
+
+    #region 战斗状态回调
+
+    private void OnCombatStateChanged(CombatContext.State oldState, CombatContext.State newState)
+    {
+        if (newState == CombatContext.State.InCombat)
+        {
+            StartRecording();
+        }
+        else if (newState == CombatContext.State.OutOfCombat && _current != null)
+        {
+            _clock.Pause();
+            SaveRecord();
+        }
+    }
+
+    private void StartRecording()
+    {
+        _clock.Reset();
+
+        _current = new EncounterRecord
+        {
+            TerritoryId = GameState.TerritoryType,
+            TerritoryName = GetTerritoryName(),
+            RecordedAt = DateTime.UtcNow.ToString("O"),
+            Events = []
+        };
+
+        // 采集队伍信息
+        try
+        {
+            var pt = DService.Instance().PartyList;
+            if (pt != null)
+            {
+                _current.PartySize = pt.Length;
+                var jobs = new List<string>();
+                foreach (var member in pt)
+                {
+                    if (member?.ClassJob != null)
+                    {
+                        var name = member.ClassJob.ToString();
+                        if (!string.IsNullOrEmpty(name))
+                            jobs.Add(name);
+                    }
+                }
+                _current.JobComposition = jobs;
+            }
+        }
+        catch { }
+    }
+
+    private string GetTerritoryName()
+    {
+        try
+        {
+            var sheet = DService.Instance().Data.GetExcelSheet<Lumina.Excel.Sheets.TerritoryType>();
+            if (sheet != null)
+            {
+                var row = sheet.GetRow(GameState.TerritoryType);
+                var placeName = row.PlaceName.Value;
+                return placeName.Name.ToString();
+            }
+        }
+        catch { }
+        return $"Territory_{GameState.TerritoryType}";
+    }
+
+    private void SaveRecord()
+    {
+        if (_current == null) return;
+
+        _current.TotalTimeMs = _clock.Now;
+        _current.Bosses = _bossNpcIds.Select(id =>
+        {
+            var obj = DService.Instance().ObjectTable
+                .FirstOrDefault(o => o != null && o.EntityID == id);
+            var bn = obj as IBattleNPC;
+            return new BossInfo
+            {
+                NpcId = bn?.DataID ?? 0,
+                Name = obj?.Name.ToString() ?? "",
+                HpMax = bn?.MaxHp ?? 0
+            };
+        }).ToList();
+
+        var json = JsonSerializer.Serialize(_current,
+            new JsonSerializerOptions { WriteIndented = true, PropertyNamingPolicy = JsonNamingPolicy.CamelCase });
+
+        var safeName = SanitizeFileName(_current.TerritoryName) + "_" +
+                       DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".json";
+        var path = Path.Combine(_saveDir, safeName);
+
+        File.WriteAllText(path, json);
+        DService.Instance().Log.Information($"[Recording] 已保存: {path} ({_current.Events.Count} 事件)");
+
+        _current = null;
+        _bossNpcIds.Clear();
+    }
+
+    private static string SanitizeFileName(string name)
+    {
+        var invalid = Path.GetInvalidFileNameChars();
+        var arr = name.Where(c => !invalid.Contains(c)).ToArray();
+        return new string(arr);
+    }
+
+    #endregion
+
+    #region Public properties (for ImGui panel)
+
+    public bool IsRecording => _current != null;
+
+    public int ElapsedSeconds => (int)(_clock.Now / 1000);
+
+    public string CurrentFileName
+    {
+        get
+        {
+            if (_current == null) return "";
+            var safe = SanitizeFileName(_current.TerritoryName) + "_" +
+                       DateTime.Now.ToString("yyyyMMdd_HHmmss") + ".json";
+            return safe;
+        }
+    }
+
+    public (string Name, string Path)[] GetRecordFiles()
+    {
+        if (!Directory.Exists(_saveDir)) return [];
+        return Directory.GetFiles(_saveDir, "*.json")
+            .Select(f => (Path.GetFileName(f), f))
+            .OrderByDescending(x => x.Item2)
+            .ToArray();
+    }
+
+    #endregion
+
+    #region 事件序列化
+
+    private readonly Dictionary<Type, Func<ITriggerCondParams, long, EncounterEvent>> _serializers = [];
+
+    private void RegisterSerializers()
+    {
+        // ---- cast ----
+        _serializers[typeof(ActorCastParams)] = (p, t) =>
+        {
+            var cp = (ActorCastParams)p;
+            return new EncounterEvent
+            {
+                TimeMs = t,
+                Type = nameof(ActorCastParams),
+                Category = "cast",
+                Data = new()
+                {
+                    ["actionId"] = cp.ActionID,
+                    ["castTime"] = cp.CastTime,
+                    ["targetId"] = cp.TargetID,
+                    ["sourceId"] = cp.SourceID,
+                    ["posX"] = cp.PosX,
+                    ["posY"] = cp.PosY,
+                    ["posZ"] = cp.PosZ,
+                }
+            };
+        };
+
+        _serializers[typeof(AfterSpellParams)] = (p, t) =>
+        {
+            var ap = (AfterSpellParams)p;
+            return new EncounterEvent
+            {
+                TimeMs = t,
+                Type = nameof(AfterSpellParams),
+                Category = "cast",
+                Data = new() { ["spellId"] = ap.SpellID }
+            };
+        };
+
+        // ---- ability ----
+        _serializers[typeof(ActionEffectParams)] = (p, t) =>
+        {
+            var ap = (ActionEffectParams)p;
+            return new EncounterEvent
+            {
+                TimeMs = t,
+                Type = nameof(ActionEffectParams),
+                Category = "ability",
+                Data = new()
+                {
+                    ["actionId"] = ap.ActionID,
+                    ["sourceId"] = ap.SourceID,
+                    ["targetOid"] = ap.TargetOID,
+                    ["animationId"] = ap.AnimationID,
+                    ["effectType"] = ap.EffectType,
+                }
+            };
+        };
+
+        _serializers[typeof(NoTargetAbilityEffectParams)] = (p, t) =>
+        {
+            var np = (NoTargetAbilityEffectParams)p;
+            return new EncounterEvent
+            {
+                TimeMs = t,
+                Type = nameof(NoTargetAbilityEffectParams),
+                Category = "ability",
+                Data = new()
+                {
+                    ["sourceId"] = np.SourceID,
+                    ["actionId"] = np.ActionID,
+                    ["posX"] = np.PosX,
+                    ["posY"] = np.PosY,
+                    ["posZ"] = np.PosZ,
+                }
+            };
+        };
+
+        // ---- buff ----
+        _serializers[typeof(BuffGainParams)] = (p, t) =>
+        {
+            var bp = (BuffGainParams)p;
+            return new EncounterEvent
+            {
+                TimeMs = t,
+                Type = nameof(BuffGainParams),
+                Category = "buff",
+                Data = new()
+                {
+                    ["sourceId"] = bp.SourceID,
+                    ["statusId"] = bp.StatusID,
+                    ["stackCount"] = bp.StackCount,
+                }
+            };
+        };
+
+        _serializers[typeof(BuffRemoveParams)] = (p, t) =>
+        {
+            var bp = (BuffRemoveParams)p;
+            return new EncounterEvent
+            {
+                TimeMs = t,
+                Type = nameof(BuffRemoveParams),
+                Category = "buff",
+                Data = new()
+                {
+                    ["sourceId"] = bp.SourceID,
+                    ["statusId"] = bp.StatusID,
+                }
+            };
+        };
+
+        // ---- tether ----
+        _serializers[typeof(TetherCreateParams)] = (p, t) =>
+        {
+            var tp = (TetherCreateParams)p;
+            return new EncounterEvent
+            {
+                TimeMs = t,
+                Type = nameof(TetherCreateParams),
+                Category = "tether",
+                Data = new()
+                {
+                    ["tetherId"] = tp.TetherID,
+                    ["sourceId"] = tp.SourceID,
+                    ["targetOid"] = tp.TargetOID,
+                    ["param2"] = tp.Param2,
+                    ["param3"] = tp.Param3,
+                    ["param5"] = tp.Param5,
+                }
+            };
+        };
+
+        _serializers[typeof(TetherRemoveParams)] = (p, t) =>
+        {
+            var tp = (TetherRemoveParams)p;
+            return new EncounterEvent
+            {
+                TimeMs = t,
+                Type = nameof(TetherRemoveParams),
+                Category = "tether",
+                Data = new()
+                {
+                    ["sourceId"] = tp.SourceID,
+                    ["param2"] = tp.Param2,
+                    ["param3"] = tp.Param3,
+                    ["param5"] = tp.Param5,
+                }
+            };
+        };
+
+        // ---- spawn ----
+        _serializers[typeof(UnitCreateParams)] = (p, t) =>
+        {
+            var up = (UnitCreateParams)p;
+            return new EncounterEvent
+            {
+                TimeMs = t,
+                Type = nameof(UnitCreateParams),
+                Category = "spawn",
+                Data = new()
+                {
+                    ["entityId"] = up.EntityId,
+                    ["dataId"] = up.DataId,
+                    ["name"] = up.Name,
+                }
+            };
+        };
+
+        _serializers[typeof(UnitDeleteParams)] = (p, t) =>
+        {
+            var up = (UnitDeleteParams)p;
+            return new EncounterEvent
+            {
+                TimeMs = t,
+                Type = nameof(UnitDeleteParams),
+                Category = "spawn",
+                Data = new()
+                {
+                    ["entityId"] = up.EntityId,
+                    ["dataId"] = up.DataId,
+                    ["name"] = up.Name,
+                }
+            };
+        };
+
+        // ---- death ----
+        _serializers[typeof(ActorControlDeathParams)] = (p, t) =>
+        {
+            var dp = (ActorControlDeathParams)p;
+            return new EncounterEvent
+            {
+                TimeMs = t,
+                Type = nameof(ActorControlDeathParams),
+                Category = "death",
+                Data = new()
+                {
+                    ["sourceId"] = dp.SourceID,
+                    ["targetId"] = dp.TargetID,
+                }
+            };
+        };
+
+        // ---- target ----
+        _serializers[typeof(ActorControlTargetIconParams)] = (p, t) =>
+        {
+            var tp = (ActorControlTargetIconParams)p;
+            return new EncounterEvent
+            {
+                TimeMs = t,
+                Type = nameof(ActorControlTargetIconParams),
+                Category = "target",
+                Data = new()
+                {
+                    ["sourceId"] = tp.SourceID,
+                    ["targetId"] = tp.TargetID,
+                    ["iconId"] = tp.IconID,
+                }
+            };
+        };
+
+        _serializers[typeof(ActorControlTargetableParams)] = (p, t) =>
+        {
+            var tp = (ActorControlTargetableParams)p;
+            return new EncounterEvent
+            {
+                TimeMs = t,
+                Type = nameof(ActorControlTargetableParams),
+                Category = "target",
+                Data = new()
+                {
+                    ["sourceId"] = tp.SourceID,
+                    ["targetId"] = tp.TargetID,
+                    ["isTargetable"] = tp.IsTargetable,
+                }
+            };
+        };
+
+        // ---- combat ----
+        _serializers[typeof(CombatStateParams)] = (p, t) =>
+        {
+            var cp = (CombatStateParams)p;
+            return new EncounterEvent
+            {
+                TimeMs = t,
+                Type = nameof(CombatStateParams),
+                Category = "combat",
+                Data = new() { ["isEntering"] = cp.IsEntering }
+            };
+        };
+
+        _serializers[typeof(ActorControlCombatParams)] = (p, t) =>
+        {
+            var cp = (ActorControlCombatParams)p;
+            return new EncounterEvent
+            {
+                TimeMs = t,
+                Type = nameof(ActorControlCombatParams),
+                Category = "combat",
+                Data = new() { ["isEntering"] = cp.IsEntering }
+            };
+        };
+
+        // ---- environment ----
+        _serializers[typeof(MapEffectParams)] = (p, t) =>
+        {
+            var mp = (MapEffectParams)p;
+            return new EncounterEvent
+            {
+                TimeMs = t,
+                Type = nameof(MapEffectParams),
+                Category = "environment",
+                Data = new()
+                {
+                    ["positionIndex"] = mp.PositionIndex,
+                    ["param1"] = mp.Param1,
+                    ["param2"] = mp.Param2,
+                }
+            };
+        };
+
+        _serializers[typeof(EnvControlParams)] = (p, t) =>
+        {
+            var ep = (EnvControlParams)p;
+            return new EncounterEvent
+            {
+                TimeMs = t,
+                Type = nameof(EnvControlParams),
+                Category = "environment",
+                Data = new()
+                {
+                    ["index"] = ep.Index,
+                    ["flag"] = ep.Flag,
+                }
+            };
+        };
+
+        _serializers[typeof(WeatherChangedParams)] = (p, t) =>
+        {
+            var wp = (WeatherChangedParams)p;
+            return new EncounterEvent
+            {
+                TimeMs = t,
+                Type = nameof(WeatherChangedParams),
+                Category = "environment",
+                Data = new() { ["newWeatherId"] = wp.NewWeatherId }
+            };
+        };
+
+        // ---- npc ----
+        _serializers[typeof(NpcYellParams)] = (p, t) =>
+        {
+            var np = (NpcYellParams)p;
+            return new EncounterEvent
+            {
+                TimeMs = t,
+                Type = nameof(NpcYellParams),
+                Category = "npc",
+                Data = new()
+                {
+                    ["sourceId"] = np.SourceID,
+                    ["sourceName"] = np.SourceName,
+                    ["yellId"] = np.YellID,
+                    ["yellMsg"] = np.YellMsg,
+                }
+            };
+        };
+
+        // ---- director ----
+        _serializers[typeof(DirectorUpdateParams)] = (p, t) =>
+        {
+            var dp = (DirectorUpdateParams)p;
+            return new EncounterEvent
+            {
+                TimeMs = t,
+                Type = nameof(DirectorUpdateParams),
+                Category = "director",
+                Data = new()
+                {
+                    ["category"] = dp.Category.ToString(),
+                    ["param1"] = dp.Param1,
+                    ["param2"] = dp.Param2,
+                    ["param3"] = dp.Param3,
+                    ["param4"] = dp.Param4,
+                    ["a6"] = dp.A6,
+                    ["a7"] = dp.A7,
+                    ["a8"] = dp.A8,
+                    ["a9"] = dp.A9,
+                }
+            };
+        };
+
+        _serializers[typeof(ActorControlTimelineParams)] = (p, t) =>
+        {
+            var tp = (ActorControlTimelineParams)p;
+            return new EncounterEvent
+            {
+                TimeMs = t,
+                Type = nameof(ActorControlTimelineParams),
+                Category = "director",
+                Data = new()
+                {
+                    ["sourceId"] = tp.SourceID,
+                    ["timelineId"] = tp.TimelineID,
+                }
+            };
+        };
+
+        // ---- actorControl ----
+        _serializers[typeof(ActorControlParams)] = (p, t) =>
+        {
+            var ap = (ActorControlParams)p;
+            return new EncounterEvent
+            {
+                TimeMs = t,
+                Type = nameof(ActorControlParams),
+                Category = "actorControl",
+                Data = new()
+                {
+                    ["sourceId"] = ap.SourceID,
+                    ["command"] = ap.Command,
+                    ["p1"] = ap.P1,
+                    ["p2"] = ap.P2,
+                    ["p3"] = ap.P3,
+                    ["p4"] = ap.P4,
+                    ["p5"] = ap.P5,
+                    ["p6"] = ap.P6,
+                    ["targetId"] = ap.TargetID,
+                }
+            };
+        };
+
+        // ---- chat ----
+        _serializers[typeof(ChatMessageParams)] = (p, t) =>
+        {
+            var cp = (ChatMessageParams)p;
+            return new EncounterEvent
+            {
+                TimeMs = t,
+                Type = nameof(ChatMessageParams),
+                Category = "chat",
+                Data = new() { ["message"] = cp.Message }
+            };
+        };
+    }
+
+    private void OnGameEvent(ITriggerCondParams condParams)
+    {
+        if (_current == null) return;
+
+        // 尝试识别 Boss NPC (来自 cast 事件的高HP敌人)
+        if (condParams is ActorCastParams acp && acp.SourceID != 0)
+        {
+            try
+            {
+                var obj = DService.Instance().ObjectTable
+                    .FirstOrDefault(o => o != null && o.EntityID == acp.SourceID);
+                if (obj is IBattleNPC bn && bn.MaxHp > 1000)
+                {
+                    _bossNpcIds.Add(acp.SourceID);
+                }
+            }
+            catch { }
+        }
+
+        var type = condParams.GetType();
+        if (!_serializers.TryGetValue(type, out var serializer)) return;
+
+        try
+        {
+            var evt = serializer(condParams, _clock.Now);
+            _current.Events.Add(evt);
+        }
+        catch (Exception ex)
+        {
+            DService.Instance().Log.Warning($"[Recording] 序列化失败 {type.Name}: {ex}");
+        }
+    }
+
+    #endregion
+}
