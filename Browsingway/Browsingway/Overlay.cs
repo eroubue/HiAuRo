@@ -197,17 +197,21 @@ internal class Overlay : IDisposable
 		_hasRenderError = false;
 
 		SharedTextureHandler? oldTextureHandler = _textureHandler;
+		_textureHandler = null; // 先清空，构造失败时避免悬垂引用
 		try
 		{
 			_textureHandler = new SharedTextureHandler(handle);
+			_hasRenderError = false;
 		}
 		catch (Exception e)
 		{
 			_textureRenderException = e;
+			_hasRenderError = true;
+			_textureHandler = null; // 确保不持有已释放的资源
 			Services.PluginLog.Error($"[BW.Overlay] {_overlayConfig.Name} 纹理创建异常: {e.Message}");
 		}
 
-		if (oldTextureHandler != null) { oldTextureHandler.Dispose(); }
+		oldTextureHandler?.Dispose();
 	}
 
 	private void HandleMouseEvent()

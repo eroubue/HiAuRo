@@ -126,7 +126,9 @@ internal static class Program
 			if (_overlays.TryGetValue(guid, out var overlay))
 			{
 				overlay.Resize(new Size(msg.Width, msg.Height));
-				_ = _rpc.UpdateTexture(guid, overlay.RenderHandler.SharedTextureHandle);
+				var texHandle = overlay.RenderHandler.SharedTextureHandle;
+				if (texHandle != IntPtr.Zero)
+					_ = _rpc.UpdateTexture(guid, texHandle);
 			}
 		}
 	}
@@ -167,12 +169,11 @@ internal static class Program
 			overlay.Initialise();
 			_overlays.Add(guid, overlay);
 
-			renderHandler.CursorChanged += (o, cursor) =>
-			{
-				_ = _rpc.SetCursor(new SetCursorMessage() {Guid = msg.Guid, Cursor = cursor});
-			};
-
-			_ = _rpc.UpdateTexture(guid, renderHandler.SharedTextureHandle);
+			var texHandle = renderHandler.SharedTextureHandle;
+			if (texHandle != IntPtr.Zero)
+				_ = _rpc.UpdateTexture(guid, texHandle);
+			else
+				Console.Error.WriteLine($"SharedTextureHandle was zero for new overlay {msg.Id}");
 		}
 	}
 
