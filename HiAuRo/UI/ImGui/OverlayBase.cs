@@ -123,8 +123,8 @@ public abstract class OverlayBase : Window
                 newSize.Y = _dragStartSize.Y + delta.Y;
 
             // 最小尺寸
-            if (newSize.X < 260) { newSize.X = 260; if (_resizeEdge.HasFlag(ResizeEdge.Left)) newPos.X = _dragStartPos.X + _dragStartSize.X - 260; }
-            if (newSize.Y < 48) { newSize.Y = 48; if (_resizeEdge.HasFlag(ResizeEdge.Top)) newPos.Y = _dragStartPos.Y + _dragStartSize.Y - 48; }
+            if (newSize.X < 320) { newSize.X = 320; if (_resizeEdge.HasFlag(ResizeEdge.Left)) newPos.X = _dragStartPos.X + _dragStartSize.X - 320; }
+            if (newSize.Y < 52) { newSize.Y = 52; if (_resizeEdge.HasFlag(ResizeEdge.Top)) newPos.Y = _dragStartPos.Y + _dragStartSize.Y - 52; }
 
             ImGui.SetWindowPos(newPos);
             ImGui.SetWindowSize(newSize);
