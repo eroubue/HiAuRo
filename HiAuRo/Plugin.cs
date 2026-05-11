@@ -369,6 +369,7 @@ public partial class Plugin : IDalamudPlugin
 
     private static async Task SendStatusState()
     {
+        if (Instance._uiBridge == null) return;
         await Instance._uiBridge.SendAsync(new
         {
             type = "acrState",
@@ -378,6 +379,7 @@ public partial class Plugin : IDalamudPlugin
 
     private static async Task SendUiSettings(HiAuRo.ACR.UiSettings s)
     {
+        if (Instance._uiBridge == null) return;
         await Instance._uiBridge.SendAsync(new
         {
             type = "uiSettings",
@@ -396,6 +398,7 @@ public partial class Plugin : IDalamudPlugin
 
     private static async Task SendPauseState()
     {
+        if (Instance._uiBridge == null) return;
         await Instance._uiBridge.SendAsync(new
         {
             type = "pauseChanged",
@@ -405,6 +408,7 @@ public partial class Plugin : IDalamudPlugin
 
     private static void OnHotkeyExecuted(string id, string label)
     {
+        if (Instance._uiBridge == null) return;
         _ = Instance._uiBridge.SendAsync(new
         {
             type = "hotkeyExecuted",
@@ -414,6 +418,7 @@ public partial class Plugin : IDalamudPlugin
 
     private static void OnQtChanged(string id, bool value)
     {
+        if (Instance._uiBridge == null) return;
         _ = Instance._uiBridge.SendAsync(new
         {
             type = "qtChanged",
