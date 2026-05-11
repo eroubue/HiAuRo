@@ -5,7 +5,7 @@ using HiAuRo.Infrastructure;
 namespace HiAuRo.ImGuiLib;
 
 /// <summary>
-/// 状态栏 + ACR 控制面板（折叠=36px单行 / 展开=完整面板）
+/// 状态栏 + ACR 控制面板（折叠=36px / 展开=左侧Tab+右侧内容）
 /// </summary>
 public sealed class OverlayStatusBar : OverlayBase
 {
@@ -25,13 +25,14 @@ public sealed class OverlayStatusBar : OverlayBase
 
     protected override void DrawContent()
     {
-        DrawBar(false);
+        DrawBar();
 
         if (!_config.OverlayStatusBarExpanded) return;
 
         var controls = ImGuiOverlayState.Controls;
         if (controls.Count == 0)
         {
+            ImGui.Spacing();
             ImGui.TextColored(Theme.Colors.TextSecondary, "  等待 ACR 加载...");
             return;
         }
@@ -39,28 +40,75 @@ public sealed class OverlayStatusBar : OverlayBase
         ImGui.Spacing();
 
         var tabs = controls.Where(c => c.Type == "tab").ToList();
-        if (tabs.Count > 0)
+
+        if (tabs.Count == 0)
         {
-            var tabNames = tabs.Select(t => t.Label).ToArray();
-            var activeIdx = tabs.FindIndex(t => t.Id == ImGuiOverlayState.ActiveTab);
-            if (activeIdx < 0) activeIdx = 0;
-            if (ComponentLibrary.Tabs("statusbar", ref activeIdx, tabNames))
-                ImGuiOverlayState.ActiveTab = tabs[activeIdx].Id;
-            ImGui.Spacing();
+            // 无 Tab — 直接渲染
+            ImGuiWidgetRenderer.Render(controls, ImGuiOverlayState.ActiveTab);
+            return;
         }
 
-        ImGuiWidgetRenderer.Render(controls, ImGuiOverlayState.ActiveTab);
+        // ── 左侧垂直 Tab 栏 ──
+        var sidebarW = 72f;
+        var contentHeight = ImGui.GetContentRegionAvail().Y - 4;
+
+        ImGui.BeginChild("##sidebar", new Vector2(sidebarW, contentHeight), true,
+            ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoBackground);
+
+        var activeTabId = ImGuiOverlayState.ActiveTab;
+        var dl = ImGui.GetWindowDrawList();
+
+        foreach (var tab in tabs)
+        {
+            var isActive = tab.Id == activeTabId;
+            var label = tab.Label;
+            var cursor = ImGui.GetCursorScreenPos();
+
+            // 选中态：背景高亮 + 左侧蓝色竖线
+            if (isActive)
+            {
+                var rowMax = cursor + new Vector2(sidebarW, ImGui.GetTextLineHeight() + 6);
+                dl.AddRectFilled(cursor, rowMax,
+                    ImGui.ColorConvertFloat4ToU32(new Vector4(1, 1, 1, 0.06f)));
+                dl.AddLine(
+                    cursor + new Vector2(1, 2),
+                    cursor + new Vector2(1, ImGui.GetTextLineHeight() + 4),
+                    ImGui.ColorConvertFloat4ToU32(Theme.Colors.AccentBlue), 2f);
+            }
+
+            ImGui.SetCursorPosX(12);
+            ImGui.SetCursorPosY(cursor.Y + 3);
+            ImGui.PushStyleColor(ImGuiCol.Text,
+                isActive ? Theme.Colors.AccentBlue : Theme.Colors.TextSecondary);
+            if (ImGui.Selectable(label, isActive, ImGuiSelectableFlags.None,
+                    new Vector2(sidebarW - 16, 0)))
+            {
+                ImGuiOverlayState.ActiveTab = tab.Id;
+            }
+            ImGui.PopStyleColor();
+        }
+
+        ImGui.EndChild();
+        ImGui.SameLine(0, 4);
+
+        // ── 右侧内容区 ──
+        ImGui.BeginChild("##content", new Vector2(-1, contentHeight), false,
+            ImGuiWindowFlags.NoBackground);
+        ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, Theme.PaddingSM);
+        ImGuiWidgetRenderer.Render(controls, activeTabId);
+        ImGui.PopStyleVar();
+        ImGui.EndChild();
     }
 
-    private void DrawBar(bool compact)
+    private void DrawBar()
     {
         var isRunning = ImGuiOverlayState.IsRunning;
         var isPaused = ImGuiOverlayState.IsPaused;
         var acrName = ImGuiOverlayState.AcrName;
 
         // ── 状态段 ──
-        Vector4 statusColor;
         string statusText;
+        Vector4 statusColor;
         if (isRunning && !isPaused) { statusColor = Theme.Colors.AccentGreen; statusText = "运行中"; }
         else if (isPaused) { statusColor = Theme.Colors.AccentOrange; statusText = "已暂停"; }
         else { statusColor = Theme.Colors.TextTertiary; statusText = "已停止"; }
@@ -71,8 +119,6 @@ public sealed class OverlayStatusBar : OverlayBase
         ImGui.AlignTextToFramePadding();
         ImGui.TextColored(statusColor, statusText);
         ImGui.SameLine(0, 4);
-
-        // ── 分割 1 ──
         ComponentLibrary.VSplit();
         ImGui.SameLine(0, 4);
 
@@ -80,15 +126,12 @@ public sealed class OverlayStatusBar : OverlayBase
         ImGui.AlignTextToFramePadding();
         ImGui.TextColored(Theme.Colors.TextSecondary, acrName);
         ImGui.SameLine(0, 4);
-
-        // ── 分割 2 ──
         ComponentLibrary.VSplit();
         ImGui.SameLine(0, 4);
 
         // ── 操作按钮段 ──
         if (isRunning && !isPaused)
         {
-            // 运行中: [■ 停止] [⏸ 暂停] [💾]
             if (ComponentLibrary.AccentButton("■", Theme.Colors.AccentRed * 0.8f, new Vector2(24, 0)))
                 Runtime.RuntimeCore.Stop();
             ImGui.SameLine(0, 2);
@@ -97,7 +140,6 @@ public sealed class OverlayStatusBar : OverlayBase
         }
         else if (isPaused)
         {
-            // 已暂停: [■ 停止] [▶ 继续] [💾]
             if (ComponentLibrary.AccentButton("■", Theme.Colors.AccentRed * 0.8f, new Vector2(24, 0)))
                 Runtime.RuntimeCore.Stop();
             ImGui.SameLine(0, 2);
@@ -106,7 +148,6 @@ public sealed class OverlayStatusBar : OverlayBase
         }
         else
         {
-            // 已停止: [▶ 启动] [⏸] [💾]
             if (ComponentLibrary.AccentButton("▶", Theme.Colors.AccentGreen, new Vector2(24, 0)))
                 Runtime.RuntimeCore.Start();
             ImGui.SameLine(0, 2);
@@ -120,8 +161,6 @@ public sealed class OverlayStatusBar : OverlayBase
             HiAuRo.ACR.MainControlHelper.Save();
 
         ImGui.SameLine(0, 4);
-
-        // ── 折叠箭头 ──
         ComponentLibrary.VSplit();
         ImGui.SameLine(0, 4);
         if (ImGui.ArrowButton("##sbFold", _config.OverlayStatusBarExpanded ? ImGuiDir.Up : ImGuiDir.Down))
