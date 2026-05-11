@@ -15,7 +15,7 @@ public static class CommandMgr
     {
         DService.Instance().Command.AddHandler(MainCommand, new CommandInfo(OnCommand)
         {
-            HelpMessage = "HiAuRo: /hi on|off|toggle|status|panel|reload|fact|assist"
+            HelpMessage = "HiAuRo: /hi on|off|toggle|status|panel|reload|fact|assist [load|unload]|gallery|catalog [export|upload]"
         });
     }
 
@@ -72,6 +72,11 @@ public static class CommandMgr
             case "assist unload":
                 AssistAxis.Instance.UnloadAssistTimeline();
                 DService.Instance().Chat.Print("[HiAuRo] 辅助轴已卸载");
+                break;
+            case "gallery":
+            case "demo":
+                Plugin.Instance.ShowDemoWindow();
+                DService.Instance().Chat.Print("[HiAuRo] 组件展示窗口已打开");
                 break;
             case "catalog export":
                 {

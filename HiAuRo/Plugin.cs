@@ -11,6 +11,7 @@ using HiAuRo.UI;
 using HiAuRo.Decision;
 using HiAuRo.Recording;
 using OmenTools;
+using HiAuRo.ImGuiLib;
 
 namespace HiAuRo;
 
@@ -18,9 +19,12 @@ public partial class Plugin : IDalamudPlugin
 {
     private readonly IDalamudPluginInterface _pluginInterface;
     private readonly PluginConfig _config;
-    internal readonly WebUiBridge _uiBridge;
+    internal readonly WebUiBridge? _uiBridge;
     internal IDalamudPluginInterface PluginInterface => _pluginInterface;
-    private readonly WebUiServer _uiServer;
+    private readonly WebUiServer? _uiServer;
+    private OverlayStatusBar? _overlayStatusBar;
+    private OverlayActionPanel? _overlayActionPanel;
+    private DemoWindow? _demoWindow;
     private readonly MainWindow _mainWindow;
     private readonly WindowSystem _windowSystem;
 
@@ -35,7 +39,8 @@ public partial class Plugin : IDalamudPlugin
 
             DService.Init(pluginInterface);
             _config = LoadConfig();
-            BrowsingwayPluginInit(pluginInterface);
+            if (_config.UIMode == Infrastructure.UIMode.WebUI)
+                BrowsingwayPluginInit(pluginInterface);
 
             _ = HelperUpdater.CheckAndUpdateAsync();
 
@@ -65,11 +70,14 @@ public partial class Plugin : IDalamudPlugin
             ModeSwitch.TryAutoSwitchToExecutionAxis();
             CombatContext.StateChanged += OnCombatStateChanged;
 
-            _uiBridge = new WebUiBridge();
-            RegisterUiHandlers(_uiBridge);
-            AuthoringServer.Instance.Register(_uiBridge);
-            _uiServer = new WebUiServer(webRoot, _uiBridge);
-            _uiServer.Start();
+            if (_config.UIMode == Infrastructure.UIMode.WebUI)
+            {
+                _uiBridge = new WebUiBridge();
+                RegisterUiHandlers(_uiBridge);
+                AuthoringServer.Instance.Register(_uiBridge);
+                _uiServer = new WebUiServer(webRoot, _uiBridge);
+                _uiServer.Start();
+            }
 
             ACR.HotkeyHelper.OnExecuted += OnHotkeyExecuted;
             ACR.QTHelper.OnChanged += OnQtChanged;
@@ -80,6 +88,16 @@ public partial class Plugin : IDalamudPlugin
             _pluginInterface.UiBuilder.Draw += _windowSystem.Draw;
             _pluginInterface.UiBuilder.OpenMainUi += () => _mainWindow.IsOpen = !_mainWindow.IsOpen;
             _pluginInterface.UiBuilder.OpenConfigUi += () => _mainWindow.IsOpen = !_mainWindow.IsOpen;
+
+            if (_config.UIMode == Infrastructure.UIMode.ImGui)
+            {
+                _demoWindow = new DemoWindow();
+                _overlayStatusBar = new OverlayStatusBar(_config, () => _pluginInterface.SavePluginConfig(_config));
+                _overlayActionPanel = new OverlayActionPanel(_config, () => _pluginInterface.SavePluginConfig(_config));
+                _windowSystem.AddWindow(_demoWindow);
+                _windowSystem.AddWindow(_overlayStatusBar);
+                _windowSystem.AddWindow(_overlayActionPanel);
+            }
 
             // 加载外部 ACR
             DService.Instance().Log.Information("[ACR] 开始扫描外部 ACR...");
@@ -111,9 +129,10 @@ public partial class Plugin : IDalamudPlugin
                 DService.Instance().Log.Warning($"[TriggerCatalog] 生成失败: {ex.Message}");
             }
 
-            DService.Instance().Chat.Print("[HiAuRo] /hi on|off|toggle|status|panel|reload  悬浮窗: localhost:5678/jobview.html");
-            DService.Instance().Log.Information($"[Lifecycle] HiAuRo 初始化完成。版本: {_config.LastSeenPluginVersion}");
-            DService.Instance().Log.Information($"[Lifecycle] 状态: BW={_browserHost != null} WS={_uiServer != null} ACR={ACRLifecycle.CurrentAcrName}");
+            var modeText = _config.UIMode == Infrastructure.UIMode.WebUI ? "WebUI" : "ImGui";
+            DService.Instance().Chat.Print($"[HiAuRo] /hi on|off|toggle|status|panel|reload  UI模式: {modeText}  悬浮窗: localhost:5678/jobview.html");
+            DService.Instance().Log.Information($"[Lifecycle] HiAuRo 初始化完成。版本: {_config.LastSeenPluginVersion}  模式: {modeText}");
+            DService.Instance().Log.Information($"[Lifecycle] 状态: Mode={modeText} ACR={ACRLifecycle.CurrentAcrName}");
         }
         catch (Exception ex)
         {
@@ -220,8 +239,8 @@ public partial class Plugin : IDalamudPlugin
         _pluginInterface.UiBuilder.Draw -= _windowSystem.Draw;
         _windowSystem.RemoveAllWindows();
 
-        _uiServer.Stop();
-        _uiBridge.Dispose();
+            _uiServer?.Stop();
+            _uiBridge?.Dispose();
         BrowsingwayDispose();
 
         // 清除静态缓存（避免下次加载残留）
@@ -400,6 +419,20 @@ public partial class Plugin : IDalamudPlugin
             type = "qtChanged",
             data = new { id, value }
         });
+    }
+
+    public void ShowDemoWindow()
+    {
+        if (_demoWindow != null)
+        {
+            _demoWindow.IsOpen = true;
+        }
+        else
+        {
+            _demoWindow = new DemoWindow();
+            _windowSystem.AddWindow(_demoWindow);
+            _demoWindow.IsOpen = true;
+        }
     }
 
     #region 配置

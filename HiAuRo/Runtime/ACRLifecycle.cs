@@ -1,6 +1,7 @@
 using System.Runtime.Loader;
 using HiAuRo.ACR;
 using HiAuRo.Infrastructure;
+using HiAuRo.ImGuiLib;
 
 namespace HiAuRo.Runtime;
 
@@ -102,34 +103,42 @@ public static class ACRLifecycle
             UnloadRotation();
         }
 
-        _ = Plugin.Instance._uiBridge.SendAsync(new
+        if (Plugin.Instance._uiBridge != null)
         {
-            type = "status",
-            data = new
+            _ = Plugin.Instance._uiBridge.SendAsync(new
             {
-                job = CurrentAcrName,
-                enabled = RuntimeCore.IsRunning,
-                paused = ACR.MainControlHelper.IsPaused,
-                hotkeys = ACR.HotkeyHelper.GetAll().Select(r => new
+                type = "status",
+                data = new
                 {
-                    id = r.Id,
-                    label = r.Label,
-                    iconId = r.IconId,
-                    iconUrl = HiAuRo.UI.IconServer.GetIconUrl(r.IconId),
-                    available = r.Check() >= 0,
-                    binding = ACR.HotkeyHelper.GetBinding(r.Id)
-                }).ToList(),
-                qts = ACR.QTHelper.GetAll().Select(q => new
-                {
-                    id = q.Id,
-                    label = q.Label,
-                    value = q.Value,
-                    tooltip = q.Tooltip,
-                    color = q.Color,
-                    binding = q.HotkeyBinding
-                }).ToList()
-            }
-        });
+                    job = CurrentAcrName,
+                    enabled = RuntimeCore.IsRunning,
+                    paused = ACR.MainControlHelper.IsPaused,
+                    hotkeys = ACR.HotkeyHelper.GetAll().Select(r => new
+                    {
+                        id = r.Id,
+                        label = r.Label,
+                        iconId = r.IconId,
+                        iconUrl = HiAuRo.UI.IconServer.GetIconUrl(r.IconId),
+                        available = r.Check() >= 0,
+                        binding = ACR.HotkeyHelper.GetBinding(r.Id)
+                    }).ToList(),
+                    qts = ACR.QTHelper.GetAll().Select(q => new
+                    {
+                        id = q.Id,
+                        label = q.Label,
+                        value = q.Value,
+                        tooltip = q.Tooltip,
+                        color = q.Color,
+                        binding = q.HotkeyBinding
+                    }).ToList()
+                }
+            });
+        }
+        else
+        {
+            ImGuiOverlayState.UpdateStatus(CurrentAcrName, RuntimeCore.IsRunning,
+                ACR.MainControlHelper.IsPaused, ACR.HotkeyHelper.GetAll(), ACR.QTHelper.GetAll());
+        }
     }
 
     /// <summary>热重载</summary>
@@ -211,12 +220,19 @@ public static class ACRLifecycle
             }
             catch (Exception ex) { DService.Instance().Log.Error($"[ACR] controls 序列化异常: {ex.Message}"); }
 
-            _ = Plugin.Instance._uiBridge.SendAsync(new
+            if (Plugin.Instance._uiBridge != null)
             {
-                type = "controls",
-                data = controls
-            });
-            Plugin.Instance._uiBridge.CacheControls(controls);
+                _ = Plugin.Instance._uiBridge.SendAsync(new
+                {
+                    type = "controls",
+                    data = controls
+                });
+                Plugin.Instance._uiBridge.CacheControls(controls);
+            }
+            else
+            {
+                ImGuiOverlayState.UpdateControls(controls);
+            }
             DService.Instance().Log.Information("[ACR] controls 消息已发送 + 已缓存");
         }
         else
@@ -225,10 +241,23 @@ public static class ACRLifecycle
         }
 
         // 推送 UI 设置
-        _ = Plugin.Instance._uiBridge.SendAsync(new
+        if (Plugin.Instance._uiBridge != null)
         {
-            type = "uiSettings",
-            data = new
+            _ = Plugin.Instance._uiBridge.SendAsync(new
+            {
+                type = "uiSettings",
+                data = new
+                {
+                    qtCols = settings.QtCols,
+                    qtBtnW = settings.QtBtnW,
+                    qtVisible = settings.QtVisible,
+                    hkCols = settings.HkCols,
+                    hkBtnSize = settings.HkBtnSize,
+                    hkVisible = settings.HkVisible,
+                    hkBindings = settings.HkBindings
+                }
+            });
+            Plugin.Instance._uiBridge.CacheUiSettings(new
             {
                 qtCols = settings.QtCols,
                 qtBtnW = settings.QtBtnW,
@@ -237,51 +266,53 @@ public static class ACRLifecycle
                 hkBtnSize = settings.HkBtnSize,
                 hkVisible = settings.HkVisible,
                 hkBindings = settings.HkBindings
-            }
-        });
-        Plugin.Instance._uiBridge.CacheUiSettings(new
+            });
+        }
+        else
         {
-            qtCols = settings.QtCols,
-            qtBtnW = settings.QtBtnW,
-            qtVisible = settings.QtVisible,
-            hkCols = settings.HkCols,
-            hkBtnSize = settings.HkBtnSize,
-            hkVisible = settings.HkVisible,
-            hkBindings = settings.HkBindings
-        });
+            ImGuiOverlayState.UiSettings = settings;
+        }
         DService.Instance().Log.Information($"[ACR] uiSettings 消息已发送 + 已缓存 (qtVisible={settings.QtVisible?.Count ?? 0} hkVisible={settings.HkVisible?.Count ?? 0})");
 
         // 推送完整状态（qt + hotkey 数据）
         var hotkeyList = ACR.HotkeyHelper.GetAll();
         var qtList = ACR.QTHelper.GetAll();
-        _ = Plugin.Instance._uiBridge.SendAsync(new
+        if (Plugin.Instance._uiBridge != null)
         {
-            type = "status",
-            data = new
+            _ = Plugin.Instance._uiBridge.SendAsync(new
             {
-                job = CurrentAcrName,
-                enabled = RuntimeCore.IsRunning,
-                paused = ACR.MainControlHelper.IsPaused,
-                hotkeys = hotkeyList.Select(r => new
+                type = "status",
+                data = new
                 {
-                    id = r.Id,
-                    label = r.Label,
-                    iconId = r.IconId,
-                    iconUrl = HiAuRo.UI.IconServer.GetIconUrl(r.IconId),
-                    available = r.Check() >= 0,
-                    binding = ACR.HotkeyHelper.GetBinding(r.Id)
-                }).ToList(),
-                qts = qtList.Select(q => new
-                {
-                    id = q.Id,
-                    label = q.Label,
-                    value = q.Value,
-                    tooltip = q.Tooltip,
-                    color = q.Color,
-                    binding = q.HotkeyBinding
-                }).ToList()
-            }
-        });
+                    job = CurrentAcrName,
+                    enabled = RuntimeCore.IsRunning,
+                    paused = ACR.MainControlHelper.IsPaused,
+                    hotkeys = hotkeyList.Select(r => new
+                    {
+                        id = r.Id,
+                        label = r.Label,
+                        iconId = r.IconId,
+                        iconUrl = HiAuRo.UI.IconServer.GetIconUrl(r.IconId),
+                        available = r.Check() >= 0,
+                        binding = ACR.HotkeyHelper.GetBinding(r.Id)
+                    }).ToList(),
+                    qts = qtList.Select(q => new
+                    {
+                        id = q.Id,
+                        label = q.Label,
+                        value = q.Value,
+                        tooltip = q.Tooltip,
+                        color = q.Color,
+                        binding = q.HotkeyBinding
+                    }).ToList()
+                }
+            });
+        }
+        else
+        {
+            ImGuiOverlayState.UpdateStatus(CurrentAcrName, RuntimeCore.IsRunning,
+                ACR.MainControlHelper.IsPaused, hotkeyList, qtList);
+        }
         DService.Instance().Log.Information($"[ACR] status 消息已发送 (hotkeys={hotkeyList.Count} qts={qtList.Count})");
 
         // 恢复上次持久化的 overlay 尺寸（避免每次 resize）

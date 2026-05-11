@@ -1,6 +1,7 @@
 using System.Numerics;
 using Dalamud.Interface.Windowing;
 using HiAuRo.Infrastructure;
+using HiAuRo.ImGuiLib;
 using HiAuRo.Runtime;
 using HiAuRo.Recording;
 
@@ -62,6 +63,29 @@ public sealed class MainWindow : Window
 
     private void DrawStatus()
     {
+        ImGui.TextColored(Theme.Colors.AccentBlue, "UI 渲染模式:");
+        ImGui.SameLine();
+        var isWebUI = _config.UIMode == Infrastructure.UIMode.WebUI;
+        if (ImGui.RadioButton("WebUI", isWebUI))
+        {
+            _config.UIMode = Infrastructure.UIMode.WebUI;
+            _saveConfig();
+        }
+        ImGui.SameLine();
+        if (ImGui.RadioButton("ImGui", !isWebUI))
+        {
+            _config.UIMode = Infrastructure.UIMode.ImGui;
+            _saveConfig();
+        }
+
+        if (_config.UIMode == Infrastructure.UIMode.ImGui)
+        {
+            ImGui.PushStyleColor(ImGuiCol.Text, Theme.Colors.AccentOrange);
+            ImGui.TextWrapped("⚠ 切换后请重启插件生效 (Disable/Enable)");
+            ImGui.PopStyleColor();
+        }
+
+        ImGui.Separator();
         ImGui.Spacing();
         ImGui.Text("ACR 运行状态");
 
