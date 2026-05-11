@@ -1,6 +1,6 @@
 using System.Numerics;
 
-namespace HiAuRo.UI.ImGui;
+namespace HiAuRo.ImGuiLib;
 
 /// <summary>
 /// Ant Design 5.0 设计令牌 — 色彩/间距/圆角/字体
