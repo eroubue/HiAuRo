@@ -17,7 +17,6 @@ public abstract class OverlayBase : Window
     {
         _config = config;
         Flags = ImGuiWindowFlags.NoTitleBar
-              | ImGuiWindowFlags.NoResize
               | ImGuiWindowFlags.NoScrollbar
               | ImGuiWindowFlags.NoFocusOnAppearing
               | ImGuiWindowFlags.NoBackground;
