@@ -10,10 +10,13 @@ namespace HiAuRo.ImGuiLib;
 public sealed class OverlayStatusBar : OverlayBase
 {
     private readonly Action _saveConfig;
+    private Vector2 _savedExpandedSize;
+    private bool _wasExpanded;
 
     public OverlayStatusBar(PluginConfig config, Action saveConfig) : base("HiAuRoStatusBar##Overlay", config)
     {
         _saveConfig = saveConfig;
+        _wasExpanded = config.OverlayStatusBarExpanded;
         Position = new Vector2(config.OverlayStatusBarX, config.OverlayStatusBarY);
         PositionCondition = ImGuiCond.FirstUseEver;
         SizeConstraints = new WindowSizeConstraints
@@ -21,6 +24,107 @@ public sealed class OverlayStatusBar : OverlayBase
             MinimumSize = new Vector2(320, 52),
             MaximumSize = new Vector2(float.MaxValue, float.MaxValue)
         };
+    }
+
+    public override void PreDraw()
+    {
+        var expanded = _config.OverlayStatusBarExpanded;
+
+        if (!expanded && _wasExpanded)
+        {
+            // 刚折叠：保存当前尺寸，然后缩小
+            var pos = Position ?? Vector2.Zero;
+            _savedExpandedSize = ImGui.GetWindowSize();
+            ImGui.SetNextWindowSize(new Vector2(Math.Max(_savedExpandedSize.X, 320), 52), ImGuiCond.Always);
+            _wasExpanded = false;
+        }
+        else if (expanded && !_wasExpanded)
+        {
+            // 刚展开：恢复之前保存的尺寸
+            var restore = _savedExpandedSize.X > 0 ? _savedExpandedSize : new Vector2(380, 280);
+            ImGui.SetNextWindowSize(restore, ImGuiCond.Always);
+            _wasExpanded = true;
+        }
+        else if (!expanded)
+        {
+            // 持续折叠：保持小尺寸
+            ImGui.SetNextWindowSize(new Vector2(
+                Math.Max(ImGui.GetWindowSize().X, 320), 52), ImGuiCond.Always);
+        }
+    }
+
+    protected override void DrawContent()
+    {
+        DrawBar();
+
+        if (!_config.OverlayStatusBarExpanded) return;
+
+        var controls = ImGuiOverlayState.Controls;
+        if (controls.Count == 0)
+        {
+            ImGui.Spacing();
+            ImGui.TextColored(Theme.Colors.TextSecondary, "  等待 ACR 加载...");
+            return;
+        }
+
+        ImGui.Spacing();
+
+        var tabs = controls.Where(c => c.Type == "tab").ToList();
+
+        if (tabs.Count == 0)
+        {
+            ImGuiWidgetRenderer.Render(controls, ImGuiOverlayState.ActiveTab);
+            return;
+        }
+
+        // 左侧垂直 Tab 栏
+        var sidebarW = 72f;
+        var contentHeight = ImGui.GetContentRegionAvail().Y - 4;
+
+        ImGui.BeginChild("##sidebar", new Vector2(sidebarW, contentHeight), true,
+            ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoBackground);
+
+        var activeTabId = ImGuiOverlayState.ActiveTab;
+        var dl = ImGui.GetWindowDrawList();
+
+        foreach (var tab in tabs)
+        {
+            var isActive = tab.Id == activeTabId;
+            var cursor = ImGui.GetCursorScreenPos();
+
+            if (isActive)
+            {
+                var rowMax = cursor + new Vector2(sidebarW, ImGui.GetTextLineHeight() + 6);
+                dl.AddRectFilled(cursor, rowMax,
+                    ImGui.ColorConvertFloat4ToU32(new Vector4(1, 1, 1, 0.06f)));
+                dl.AddLine(
+                    cursor + new Vector2(1, 2),
+                    cursor + new Vector2(1, ImGui.GetTextLineHeight() + 4),
+                    ImGui.ColorConvertFloat4ToU32(Theme.Colors.AccentBlue), 2f);
+            }
+
+            ImGui.SetCursorPosX(12);
+            ImGui.SetCursorPosY(cursor.Y + 3);
+            ImGui.PushStyleColor(ImGuiCol.Text,
+                isActive ? Theme.Colors.AccentBlue : Theme.Colors.TextSecondary);
+            if (ImGui.Selectable(tab.Label, isActive, ImGuiSelectableFlags.None,
+                    new Vector2(sidebarW - 16, 0)))
+            {
+                ImGuiOverlayState.ActiveTab = tab.Id;
+            }
+            ImGui.PopStyleColor();
+        }
+
+        ImGui.EndChild();
+        ImGui.SameLine(0, 4);
+
+        // 右侧内容区
+        ImGui.BeginChild("##content", new Vector2(-1, contentHeight), false,
+            ImGuiWindowFlags.NoBackground);
+        ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, Theme.PaddingSM);
+        ImGuiWidgetRenderer.Render(controls, activeTabId);
+        ImGui.PopStyleVar();
+        ImGui.EndChild();
     }
 
     protected override void DrawContent()
