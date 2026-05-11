@@ -5,13 +5,21 @@ using HiAuRo.Infrastructure;
 namespace HiAuRo.ImGuiLib;
 
 /// <summary>
-/// 无边框 Overlay 窗口基类 — 毛玻璃背景 + 拖动 + 位置持久化
+/// 无边框 Overlay 窗口基类 — 毛玻璃背景 + 拖动 + 边缘缩放 + 位置持久化
 /// </summary>
 public abstract class OverlayBase : Window
 {
     protected readonly PluginConfig _config;
     private bool _isDragging;
-    private Vector2 _dragOffset;
+    private bool _isResizing;
+    private Vector2 _dragStartMouse;
+    private Vector2 _dragStartPos;
+    private Vector2 _dragStartSize;
+    private ResizeEdge _resizeEdge;
+    private const float EdgeThickness = 6f;
+
+    [Flags]
+    private enum ResizeEdge { None = 0, Left = 1, Right = 2, Top = 4, Bottom = 8 }
 
     protected OverlayBase(string name, PluginConfig config) : base(name)
     {
@@ -29,38 +37,109 @@ public abstract class OverlayBase : Window
 
     public override void Draw()
     {
-        HandleDrag();
+        HandleInteraction();
 
-        // 绘制毛玻璃背景
+        // 毛玻璃背景（先画，内容叠在上方）
         ComponentLibrary.GlassBackground(Theme.RadiusSM);
 
-        // 紧凑内边距
         ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, Theme.PaddingXS);
         ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(4, 2));
 
         DrawContent();
 
         ImGui.PopStyleVar(2);
+
+        // 右下角 resize 指示器
+        if (!_isDragging && !_isResizing)
+        {
+            var min = ImGui.GetWindowPos() + ImGui.GetWindowSize() - new Vector2(12, 12);
+            ImGui.GetWindowDrawList().AddTriangleFilled(
+                min + new Vector2(10, 10),
+                min + new Vector2(10, 4),
+                min + new Vector2(4, 10),
+                ImGui.ColorConvertFloat4ToU32(Theme.Colors.Border));
+        }
     }
 
-    private void HandleDrag()
+    private void HandleInteraction()
     {
         var mousePos = ImGui.GetMousePos();
-        var windowPos = ImGui.GetWindowPos();
-        var windowSize = ImGui.GetWindowSize();
+        var winPos = ImGui.GetWindowPos();
+        var winSize = ImGui.GetWindowSize();
 
-        if (!_isDragging && ImGui.IsMouseDragging(ImGuiMouseButton.Left) &&
-            mousePos.X >= windowPos.X && mousePos.X <= windowPos.X + windowSize.X &&
-            mousePos.Y >= windowPos.Y && mousePos.Y <= windowPos.Y + windowSize.Y)
+        if (!_isDragging && !_isResizing)
         {
-            _isDragging = true;
-            _dragOffset = mousePos - windowPos;
+            // 检测边缘 hover
+            _resizeEdge = ResizeEdge.None;
+            if (mousePos.X >= winPos.X && mousePos.X <= winPos.X + EdgeThickness)
+                _resizeEdge |= ResizeEdge.Left;
+            if (mousePos.X >= winPos.X + winSize.X - EdgeThickness && mousePos.X <= winPos.X + winSize.X)
+                _resizeEdge |= ResizeEdge.Right;
+            if (mousePos.Y >= winPos.Y && mousePos.Y <= winPos.Y + EdgeThickness)
+                _resizeEdge |= ResizeEdge.Top;
+            if (mousePos.Y >= winPos.Y + winSize.Y - EdgeThickness && mousePos.Y <= winPos.Y + winSize.Y)
+                _resizeEdge |= ResizeEdge.Bottom;
+
+            // 鼠标不在窗口内 → 不处理
+            var inside = mousePos.X >= winPos.X && mousePos.X <= winPos.X + winSize.X
+                      && mousePos.Y >= winPos.Y && mousePos.Y <= winPos.Y + winSize.Y;
+            if (!inside) return;
+
+            if (_resizeEdge != ResizeEdge.None && ImGui.IsMouseClicked(ImGuiMouseButton.Left))
+            {
+                _isResizing = true;
+                _dragStartMouse = mousePos;
+                _dragStartPos = winPos;
+                _dragStartSize = winSize;
+            }
+            else if (_resizeEdge == ResizeEdge.None && ImGui.IsMouseClicked(ImGuiMouseButton.Left))
+            {
+                _isDragging = true;
+                _dragStartMouse = mousePos;
+                _dragStartPos = winPos;
+                _dragStartSize = winSize;
+            }
+        }
+
+        if (_isResizing)
+        {
+            var delta = mousePos - _dragStartMouse;
+            var newPos = _dragStartPos;
+            var newSize = _dragStartSize;
+
+            if (_resizeEdge.HasFlag(ResizeEdge.Left))
+            {
+                newPos.X = _dragStartPos.X + delta.X;
+                newSize.X = _dragStartSize.X - delta.X;
+            }
+            if (_resizeEdge.HasFlag(ResizeEdge.Right))
+                newSize.X = _dragStartSize.X + delta.X;
+            if (_resizeEdge.HasFlag(ResizeEdge.Top))
+            {
+                newPos.Y = _dragStartPos.Y + delta.Y;
+                newSize.Y = _dragStartSize.Y - delta.Y;
+            }
+            if (_resizeEdge.HasFlag(ResizeEdge.Bottom))
+                newSize.Y = _dragStartSize.Y + delta.Y;
+
+            // 最小尺寸
+            if (newSize.X < 200) { newSize.X = 200; if (_resizeEdge.HasFlag(ResizeEdge.Left)) newPos.X = _dragStartPos.X + _dragStartSize.X - 200; }
+            if (newSize.Y < 36) { newSize.Y = 36; if (_resizeEdge.HasFlag(ResizeEdge.Top)) newPos.Y = _dragStartPos.Y + _dragStartSize.Y - 36; }
+
+            ImGui.SetWindowPos(newPos);
+            ImGui.SetWindowSize(newSize);
+
+            if (!ImGui.IsMouseDown(ImGuiMouseButton.Left))
+            {
+                _isResizing = false;
+                SavePosition(ImGui.GetWindowPos());
+            }
         }
 
         if (_isDragging)
         {
             if (ImGui.IsMouseDragging(ImGuiMouseButton.Left))
-                ImGui.SetWindowPos(mousePos - _dragOffset);
+                ImGui.SetWindowPos(_dragStartPos + (mousePos - _dragStartMouse));
             else
             {
                 _isDragging = false;
