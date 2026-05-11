@@ -5,7 +5,7 @@ using HiAuRo.Infrastructure;
 namespace HiAuRo.ImGuiLib;
 
 /// <summary>
-/// 无边框 Overlay 窗口基类 — 拖动 + 位置持久化
+/// 无边框 Overlay 窗口基类 — 毛玻璃背景 + 拖动 + 位置持久化
 /// </summary>
 public abstract class OverlayBase : Window
 {
@@ -19,27 +19,28 @@ public abstract class OverlayBase : Window
         Flags = ImGuiWindowFlags.NoTitleBar
               | ImGuiWindowFlags.NoResize
               | ImGuiWindowFlags.NoScrollbar
-              | ImGuiWindowFlags.NoFocusOnAppearing;
+              | ImGuiWindowFlags.NoFocusOnAppearing
+              | ImGuiWindowFlags.NoBackground;
         IsOpen = true;
         RespectCloseHotkey = false;
         ShowCloseButton = false;
     }
 
-    /// <summary>子类重写此方法提供自定义渲染</summary>
     protected abstract void DrawContent();
 
     public override void Draw()
     {
         HandleDrag();
 
-        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, Theme.PaddingMD);
-        ImGui.PushStyleVar(ImGuiStyleVar.WindowRounding, Theme.RadiusMD);
-        ImGui.PushStyleColor(ImGuiCol.WindowBg, Theme.Colors.BgLayout);
-        ImGui.PushStyleColor(ImGuiCol.Border, Theme.Colors.Border);
+        // 绘制毛玻璃背景
+        ComponentLibrary.GlassBackground(Theme.RadiusSM);
+
+        // 紧凑内边距
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, Theme.PaddingXS);
+        ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(4, 2));
 
         DrawContent();
 
-        ImGui.PopStyleColor(2);
         ImGui.PopStyleVar(2);
     }
 
@@ -48,13 +49,6 @@ public abstract class OverlayBase : Window
         var mousePos = ImGui.GetMousePos();
         var windowPos = ImGui.GetWindowPos();
         var windowSize = ImGui.GetWindowSize();
-
-        if (ImGui.IsMouseClicked(ImGuiMouseButton.Left) &&
-            mousePos.X >= windowPos.X && mousePos.X <= windowPos.X + windowSize.X &&
-            mousePos.Y >= windowPos.Y && mousePos.Y <= windowPos.Y + windowSize.Y)
-        {
-            _isDragging = false;
-        }
 
         if (!_isDragging && ImGui.IsMouseDragging(ImGuiMouseButton.Left) &&
             mousePos.X >= windowPos.X && mousePos.X <= windowPos.X + windowSize.X &&
@@ -67,9 +61,7 @@ public abstract class OverlayBase : Window
         if (_isDragging)
         {
             if (ImGui.IsMouseDragging(ImGuiMouseButton.Left))
-            {
                 ImGui.SetWindowPos(mousePos - _dragOffset);
-            }
             else
             {
                 _isDragging = false;
@@ -78,6 +70,5 @@ public abstract class OverlayBase : Window
         }
     }
 
-    /// <summary>子类实现：保存当前位置到 config</summary>
     protected abstract void SavePosition(Vector2 pos);
 }

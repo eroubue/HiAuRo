@@ -16,10 +16,6 @@ public static class ImGuiWidgetRenderer
     {
         if (controls.Count == 0) return;
 
-        // 渲染 mainControl
-        var mainCtrl = controls.FirstOrDefault(c => c.Type == "mainControl");
-        if (mainCtrl != null) RenderMainControl(mainCtrl);
-
         // 渲染该 Tab 下的 Groups
         var groups = controls.Where(c => c.Type == "group" && c.ParentId == activeTab).ToList();
         if (groups.Count == 0)
@@ -66,43 +62,6 @@ public static class ImGuiWidgetRenderer
                     ImGui.SameLine();
                     break;
             }
-        }
-    }
-
-    private static void RenderMainControl(UiControlDef ctrl)
-    {
-        var meta = ctrl.Meta as JsonElement?;
-        var showPause = true;
-        var showSave = true;
-        if (meta.HasValue)
-        {
-            showPause = meta.Value.TryGetProperty("showPause", out var p) ? p.GetBoolean() : true;
-            showSave = meta.Value.TryGetProperty("showSave", out var s) ? s.GetBoolean() : true;
-        }
-
-        ComponentLibrary.Badge(ImGuiOverlayState.IsRunning, Theme.Colors.AccentGreen);
-        ImGui.SameLine();
-        ComponentLibrary.Label(ImGuiOverlayState.AcrName);
-
-        ImGui.SameLine();
-        if (ComponentLibrary.Button(ImGuiOverlayState.IsRunning ? "停止" : "启动"))
-        {
-            if (HiAuRo.Runtime.RuntimeCore.IsRunning) HiAuRo.Runtime.RuntimeCore.Stop();
-            else HiAuRo.Runtime.RuntimeCore.Start();
-        }
-
-        if (showPause && ImGuiOverlayState.IsRunning)
-        {
-            ImGui.SameLine();
-            if (ComponentLibrary.Button(ImGuiOverlayState.IsPaused ? "继续" : "暂停"))
-                HiAuRo.ACR.MainControlHelper.TogglePause();
-        }
-
-        if (showSave)
-        {
-            ImGui.SameLine();
-            if (ComponentLibrary.Button("保存"))
-                HiAuRo.ACR.MainControlHelper.Save();
         }
     }
 
