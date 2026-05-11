@@ -2,6 +2,9 @@ using Dalamud.Configuration;
 
 namespace HiAuRo.Infrastructure;
 
+/// <summary>UI 渲染模式</summary>
+public enum UIMode { WebUI = 0, ImGui = 1 }
+
 /// <summary>
 /// HiAuRo 主配置对象 —— 走 Dalamud 原生 IPluginConfiguration 序列化
 /// </summary>
@@ -26,6 +29,24 @@ public sealed class PluginConfig : IPluginConfiguration
 
     /// <summary>攻击距离</summary>
     public float AttackRange { get; set; } = 25f;
+
+    /// <summary>UI 渲染模式</summary>
+    public UIMode UIMode { get; set; } = UIMode.WebUI;
+
+    /// <summary>ImGui 模式 — StatusBar overlay X 位置</summary>
+    public float OverlayStatusBarX { get; set; } = 100f;
+
+    /// <summary>ImGui 模式 — StatusBar overlay Y 位置</summary>
+    public float OverlayStatusBarY { get; set; } = 100f;
+
+    /// <summary>ImGui 模式 — StatusBar 展开状态</summary>
+    public bool OverlayStatusBarExpanded { get; set; } = true;
+
+    /// <summary>ImGui 模式 — ActionPanel overlay X 位置</summary>
+    public float OverlayActionPanelX { get; set; } = 100f;
+
+    /// <summary>ImGui 模式 — ActionPanel overlay Y 位置</summary>
+    public float OverlayActionPanelY { get; set; } = 300f;
 
     /// <summary>CEF 悬浮窗设置</summary>
     public OverlayWindowSetting[] Overlays { get; set; } =
