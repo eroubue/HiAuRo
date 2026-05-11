@@ -83,6 +83,25 @@ public sealed class MainWindow : Window
             ImGui.PushStyleColor(ImGuiCol.Text, Theme.Colors.AccentOrange);
             ImGui.TextWrapped("⚠ 切换后请重启插件生效 (Disable/Enable)");
             ImGui.PopStyleColor();
+
+            // ImGui 主题模式切换
+            ImGui.Spacing();
+            var isLight = _config.ImGuiThemeMode == ImGuiThemeMode.Light;
+            ImGui.TextColored(Theme.Colors.AccentBlue, "ImGui 主题:");
+            ImGui.SameLine();
+            if (ImGui.RadioButton("亮色", isLight))
+            {
+                _config.ImGuiThemeMode = ImGuiThemeMode.Light;
+                Theme.Mode = Theme.ThemeMode.Light;
+                _saveConfig();
+            }
+            ImGui.SameLine();
+            if (ImGui.RadioButton("暗色", !isLight))
+            {
+                _config.ImGuiThemeMode = ImGuiThemeMode.Dark;
+                Theme.Mode = Theme.ThemeMode.Dark;
+                _saveConfig();
+            }
         }
 
         ImGui.Separator();

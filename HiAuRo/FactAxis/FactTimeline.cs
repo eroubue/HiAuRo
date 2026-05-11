@@ -1,5 +1,6 @@
-using System.Diagnostics;
 using System.Text.Json;
+using HiAuRo.ACR;
+using HiAuRo.Execution.Events;
 
 namespace HiAuRo.FactAxis;
 
@@ -16,8 +17,10 @@ public sealed class FactTimeline
     public FactState State { get; } = new();
 
     private readonly Dictionary<string, bool> _variables = [];
-    private readonly Stopwatch _phaseClock = new();     // 本阶段经过秒数
-    private readonly Stopwatch _totalClock = new();     // 战斗总秒数
+    private long _timebase;
+    private double _phaseStartTime;
+    private readonly List<FactSyncDef> _activeSyncs = [];
+    private int _nextSyncEnd;
     private FactPhase? _currentPhase;
     private List<FactEvent> _currentEvents = [];
     private int _eventIndex;
@@ -28,6 +31,9 @@ public sealed class FactTimeline
     private uint _previousTerritoryId;
 
     private FactTimeline() { }
+
+    private double FightNow =>
+        (DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - _timebase) / 1000.0;
 
     #region 生命周期
 
@@ -41,30 +47,33 @@ public sealed class FactTimeline
     public void Start()
     {
         if (!Initialized || Data == null) return;
+        if (IsRunning) return;
         Reset();
         IsRunning = true;
 
-        // 进入第一个阶段
+        _timebase = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+        BuildSyncWindows();
+
         if (Data.Phases.Count > 0)
             EnterPhase(Data.Phases[0]);
 
-        _phaseClock.Restart();
-        _totalClock.Restart();
+        GameEventHook.Instance.OnEventFired += OnGameEvent;
 
-        DService.Instance().Log.Information($"[FactAxis] 启动: {Data.Name}");
+        DService.Instance().Log.Information($"[FactAxis] 启动 (timebase): {Data.Name}");
     }
 
     public void Stop()
     {
         if (!IsRunning) return;
         IsRunning = false;
-        _phaseClock.Stop();
-        _totalClock.Stop();
-        DService.Instance().Log.Information($"[FactAxis] 停止: {State.PhaseName}, 阶段 {State.PhaseTime:F1}s");
+        GameEventHook.Instance.OnEventFired -= OnGameEvent;
+        DService.Instance().Log.Information($"[FactAxis] 停止: {State.PhaseName}, 战斗 {FightNow:F1}s");
     }
 
     public void Shutdown()
     {
+        GameEventHook.Instance.OnEventFired -= OnGameEvent;
         Stop();
         Reset();
         Data = null;
@@ -73,8 +82,10 @@ public sealed class FactTimeline
 
     private void Reset()
     {
-        _phaseClock.Reset();
-        _totalClock.Reset();
+        _timebase = 0;
+        _phaseStartTime = 0;
+        _activeSyncs.Clear();
+        _nextSyncEnd = 0;
         _currentPhase = null;
         _currentEvents = [];
         _eventIndex = 0;
@@ -115,6 +126,7 @@ public sealed class FactTimeline
         e.ActualStart = 0;
         e.ActualEnd = 0;
         e.ActionsDone = false;
+        e.SyncFired = false;
     }
 
     #endregion
@@ -128,7 +140,7 @@ public sealed class FactTimeline
         _eventIndex = 0;
         _pendingSwitch = phase.Switch;
         _waitingSwitch = false;
-        _phaseClock.Restart();
+        _phaseStartTime = FightNow;
 
         DService.Instance().Log.Debug($"[FactAxis] 进入阶段: {phase.Name} ({phase.Events.Count} 事件)");
     }
@@ -173,9 +185,30 @@ public sealed class FactTimeline
         _eventIndex = 0;
         _pendingSwitch = selected.Switch;
         _waitingSwitch = false;
-        _phaseClock.Restart();
+        _phaseStartTime = FightNow;
 
         return true;
+    }
+
+    #endregion
+
+    #region 事件订阅
+
+    private void OnGameEvent(ITriggerCondParams e)
+    {
+        if (!IsRunning) return;
+        var fightNow = FightNow;
+
+        switch (e)
+        {
+            case ActorCastParams cast:
+                MatchActiveSyncs("startsUsing", cast.ActionID, fightNow);
+                break;
+
+            case ActionEffectParams effect:
+                MatchActiveSyncs("ability", effect.ActionID, fightNow);
+                break;
+        }
     }
 
     #endregion
@@ -209,81 +242,34 @@ public sealed class FactTimeline
         return BuildState();
     }
 
-    /// <summary>
-    /// 推送同步事件 — 检查是否匹配当前等待的 Sync
-    /// </summary>
-    public void PushSyncEvent(SyncContext ctx)
-    {
-        if (!IsRunning) return;
-
-        // 等待阶段切换 Sync
-        if (_waitingSwitch && _pendingSwitch != null)
-        {
-            if (_pendingSwitch.Sync.Match(ctx))
-            {
-                _waitingSwitch = false;
-                if (TrySwitchBranch())
-                {
-                    _waitingStartSync = null;
-                    _waitingEndSync = null;
-                }
-                return;
-            }
-        }
-
-        // 等待事件开始 Sync
-        if (_waitingStartSync?.StartSync != null)
-        {
-            if (_waitingStartSync.StartSync.Match(ctx))
-            {
-                var ev = _waitingStartSync;
-                ev.ActualStart = _totalClock.Elapsed.TotalSeconds;
-                RunActions(ev);
-                ev.Reached = true;
-                _waitingStartSync = null;
-
-                // 如果事件有持续时间，等结束
-                if (ev.EndSync != null)
-                    _waitingEndSync = ev;
-                else if (ev.Duration.HasValue && ev.Duration.Value > 0)
-                    _waitingEndSync = ev;
-                else
-                    ev.ActualEnd = ev.ActualStart; // 瞬间事件
-                return;
-            }
-        }
-
-        // 等待事件结束 Sync
-        if (_waitingEndSync?.EndSync != null)
-        {
-            if (_waitingEndSync.EndSync.Match(ctx))
-            {
-                _waitingEndSync.ActualEnd = _totalClock.Elapsed.TotalSeconds;
-                _waitingEndSync = null;
-                return;
-            }
-        }
-    }
-
     /// <summary>构建当前状态快照</summary>
     private FactState BuildState()
     {
-        double phaseTime = _currentPhase != null ? _phaseClock.Elapsed.TotalSeconds : 0;
+        var fightNow = FightNow;
+        double phaseTime = _phaseStartTime > 0 ? fightNow - _phaseStartTime : fightNow;
+
+        // 检查 forcejump：时间到即跳
+        if (_waitingStartSync?.StartSync is { ForceJump: true } sync
+            && fightNow >= sync.AnchorTime)
+        {
+            SyncTo(sync.ForceJumpTarget ?? sync.AnchorTime);
+            return BuildState();
+        }
 
         State.IsRunning = true;
         State.TimelineName = Data?.Name ?? "";
         State.PhaseName = _currentPhase?.Name ?? "";
         State.PhaseTime = phaseTime;
-        State.TotalTime = _totalClock.Elapsed.TotalSeconds;
+        State.TotalTime = fightNow;
         State.Variables = new Dictionary<string, bool>(_variables);
 
-        // 先推进时间触发事件
         if (_waitingStartSync == null && _waitingEndSync == null && !_waitingSwitch)
         {
-            AdvanceEvents(phaseTime);
+            AdvanceTimedEvents(fightNow);
         }
 
-        // 当前状态描述
+        CollectActiveWindows(fightNow);
+
         if (_waitingSwitch)
             State.Status = "waiting_sync";
         else if (_waitingStartSync != null)
@@ -294,11 +280,10 @@ public sealed class FactTimeline
             State.Status = "running";
 
         State.CurrentEvent = _waitingStartSync ?? _waitingEndSync;
-        State.NextEventTime = GetNextEventTime(phaseTime);
+        State.NextEventTime = GetNextEventTime(fightNow);
 
-        // 收集 SkillSuggestion
         State.Suggestions.Clear();
-        var next = GetNextEvent(phaseTime);
+        var next = GetNextEvent(fightNow);
         if (next != null)
         {
             foreach (var action in next.Actions)
@@ -312,46 +297,38 @@ public sealed class FactTimeline
     }
 
     /// <summary>推进到当前时间的下一个事件</summary>
-    private void AdvanceEvents(double phaseTime)
+    private void AdvanceTimedEvents(double fightNow)
     {
         while (_eventIndex < _currentEvents.Count)
         {
             var ev = _currentEvents[_eventIndex];
 
-            if (!ev.Reached && phaseTime >= ev.Time)
+            if (!ev.Reached && fightNow >= ev.Time)
             {
-                // 检查是否切换点之前的事件都已处理
                 if (ev.StartSync != null)
                 {
                     _waitingStartSync = ev;
-                    break; // 等 Sync 事件
+                    _eventIndex++;
+                    break;
                 }
                 else
                 {
-                    // 无 Sync，直接触发
-                    ev.ActualStart = _totalClock.Elapsed.TotalSeconds;
+                    ev.ActualStart = fightNow;
                     RunActions(ev);
                     ev.Reached = true;
 
                     if (ev.Duration.HasValue && ev.Duration.Value > 0)
-                    {
                         ev.ActualEnd = ev.ActualStart + ev.Duration.Value;
-                    }
                     else
-                    {
                         ev.ActualEnd = ev.ActualStart;
-                    }
                 }
             }
 
             _eventIndex++;
         }
 
-        // 所有事件处理完 → 检查是否在等待切换
         if (_eventIndex >= _currentEvents.Count && _pendingSwitch != null)
-        {
             _waitingSwitch = true;
-        }
     }
 
     private void RunActions(FactEvent ev)
@@ -365,21 +342,126 @@ public sealed class FactTimeline
         ev.ActionsDone = true;
     }
 
-    private double? GetNextEventTime(double phaseTime)
+    #region Sync 窗口系统
+
+    private void BuildSyncWindows()
+    {
+        _activeSyncs.Clear();
+        _nextSyncEnd = 0;
+
+        foreach (var phase in Data!.Phases)
+            BuildPhaseSyncWindows(phase);
+    }
+
+    private void BuildPhaseSyncWindows(FactPhase phase)
+    {
+        foreach (var e in phase.Events)
+        {
+            if (e.StartSync != null)
+            {
+                e.StartSync.AnchorTime = e.Time;
+                e.StartSync.Start = e.Time - e.StartSync.WindowBefore;
+                e.StartSync.End = e.Time + e.StartSync.WindowAfter;
+                _activeSyncs.Add(e.StartSync);
+            }
+        }
+        if (phase.Switch != null)
+        {
+            phase.Switch.Sync.AnchorTime = double.MaxValue;
+            phase.Switch.Sync.Start = 0;
+            phase.Switch.Sync.End = double.MaxValue;
+            _activeSyncs.Add(phase.Switch.Sync);
+        }
+        _activeSyncs.Sort((a, b) => a.Start.CompareTo(b.Start));
+    }
+
+    private void CollectActiveWindows(double fightNow)
+    {
+        while (_nextSyncEnd < _activeSyncs.Count)
+        {
+            var sync = _activeSyncs[_nextSyncEnd];
+            if (sync.Start <= fightNow)
+                _nextSyncEnd++;
+            else
+                break;
+        }
+    }
+
+    private void MatchActiveSyncs(string type, uint abilityId, double fightNow)
+    {
+        for (int i = 0; i < _nextSyncEnd; i++)
+        {
+            var sync = _activeSyncs[i];
+            if (sync.Start > fightNow) break;
+            if (sync.End <= fightNow) continue;
+
+            if (!sync.Match(type, abilityId)) continue;
+
+            var targetTime = sync.Jump ?? sync.AnchorTime;
+            if (targetTime >= double.MaxValue - 1) continue;
+
+            SyncTo(targetTime);
+            return;
+        }
+    }
+
+    #endregion
+
+    #region Sync 校准
+
+    private void SyncTo(double eventTime)
+    {
+        var now = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        var newTimebase = now - (long)(eventTime * 1000);
+
+        if (Math.Abs(newTimebase - _timebase) <= 2) return;
+
+        var oldDelta = (newTimebase - _timebase) / 1000.0;
+        _timebase = newTimebase;
+
+        DService.Instance().Log.Debug(
+            $"[FactAxis] SyncTo: eventTime={eventTime:F2}s, drift={oldDelta:F3}s");
+
+        AdvancePastExpired(FightNow);
+        _nextSyncEnd = 0;
+        CollectActiveWindows(FightNow);
+    }
+
+    private void AdvancePastExpired(double fightNow)
+    {
+        _eventIndex = 0;
+        _waitingStartSync = null;
+        _waitingEndSync = null;
+        _waitingSwitch = false;
+
+        while (_eventIndex < _currentEvents.Count)
+        {
+            var ev = _currentEvents[_eventIndex];
+            if (ev.Time > fightNow) break;
+            _eventIndex++;
+        }
+
+        if (_eventIndex >= _currentEvents.Count && _pendingSwitch != null)
+            _waitingSwitch = true;
+    }
+
+    #endregion
+
+    private double? GetNextEventTime(double fightNow)
     {
         for (int i = _eventIndex; i < _currentEvents.Count; i++)
         {
-            if (!_currentEvents[i].Reached && _currentEvents[i].Time > phaseTime)
+            if (!_currentEvents[i].Reached && _currentEvents[i].Time > fightNow)
                 return _currentEvents[i].Time;
         }
         return null;
     }
 
-    private FactEvent? GetNextEvent(double phaseTime)
+    private FactEvent? GetNextEvent(double fightNow)
     {
         for (int i = _eventIndex; i < _currentEvents.Count; i++)
         {
-            if (!_currentEvents[i].Reached && _currentEvents[i].Time > phaseTime)
+            if (!_currentEvents[i].Reached && _currentEvents[i].Time > fightNow)
                 return _currentEvents[i];
         }
         return null;

@@ -23,12 +23,16 @@ public partial class Plugin : IDalamudPlugin
     internal IDalamudPluginInterface PluginInterface => _pluginInterface;
     private readonly WebUiServer? _uiServer;
     private OverlayStatusBar? _overlayStatusBar;
-    private OverlayActionPanel? _overlayActionPanel;
+    private OverlayQtPanel? _overlayQtPanel;
+    private OverlayHotkeyPanel? _overlayHotkeyPanel;
     private DemoWindow? _demoWindow;
     private readonly MainWindow _mainWindow;
     private readonly WindowSystem _windowSystem;
 
     public static Plugin Instance { get; private set; } = null!;
+
+    /// <summary>保存配置到磁盘</summary>
+    public static void SaveConfig() => Instance?._pluginInterface.SavePluginConfig(Instance._config);
 
     public Plugin(IDalamudPluginInterface pluginInterface)
     {
@@ -39,6 +43,7 @@ public partial class Plugin : IDalamudPlugin
 
             DService.Init(pluginInterface);
             _config = LoadConfig();
+            Theme.Mode = _config.ImGuiThemeMode == ImGuiThemeMode.Dark ? Theme.ThemeMode.Dark : Theme.ThemeMode.Light;
             if (_config.UIMode == Infrastructure.UIMode.WebUI)
                 BrowsingwayPluginInit(pluginInterface);
 
@@ -93,10 +98,12 @@ public partial class Plugin : IDalamudPlugin
             {
                 _demoWindow = new DemoWindow();
                 _overlayStatusBar = new OverlayStatusBar(_config, () => _pluginInterface.SavePluginConfig(_config));
-                _overlayActionPanel = new OverlayActionPanel(_config, () => _pluginInterface.SavePluginConfig(_config));
+                _overlayQtPanel = new OverlayQtPanel(_config, () => _pluginInterface.SavePluginConfig(_config));
+                _overlayHotkeyPanel = new OverlayHotkeyPanel(_config, () => _pluginInterface.SavePluginConfig(_config));
                 _windowSystem.AddWindow(_demoWindow);
                 _windowSystem.AddWindow(_overlayStatusBar);
-                _windowSystem.AddWindow(_overlayActionPanel);
+                _windowSystem.AddWindow(_overlayQtPanel);
+                _windowSystem.AddWindow(_overlayHotkeyPanel);
             }
 
             // 加载外部 ACR

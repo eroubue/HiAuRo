@@ -370,20 +370,6 @@ public sealed class AIRunner
 
         if (state != CombatContext.State.InCombat) return;
 
-        // 推送同步事件
-        var lastAction = EventSystem.LastCompletedActionId;
-        if (lastAction != 0)
-        {
-            FactTimeline.Instance.PushSyncEvent(new FactAxis.SyncContext
-            {
-                EventType = "ability",
-                AbilityId = lastAction
-            });
-        }
-
-        // 检测 Boss 读条（StartsUsing 同步）
-        UpdateFactAxisStartsUsing();
-
         // 推进时间轴
         FactTimeline.Instance.Update(_battleTimeMs);
 
@@ -425,31 +411,6 @@ public sealed class AIRunner
                 slot.Add(new ACR.Spell { Id = skillId, Name = "决策技能", Type = ACR.SpellType.Ability, TargetType = ACR.SpellTargetType.Self });
                 SlotExecutor.ExecuteSlot(slot);
             }
-        }
-    }
-
-    /// <summary>
-    /// 检测敌方单位读条变化，推送 StartsUsing 同步事件
-    /// </summary>
-    private void UpdateFactAxisStartsUsing()
-    {
-        var enemies = global::HiAuRo.Data.Objects.Enemies;
-        if (enemies == null) return;
-
-        foreach (var enemy in enemies)
-        {
-            if (enemy is not IBattleChara battleChara) continue;
-            if (!battleChara.IsCasting) continue;
-
-            var castId = battleChara.CastActionID;
-            if (castId == 0) continue;
-
-            FactTimeline.Instance.PushSyncEvent(new FactAxis.SyncContext
-            {
-                EventType = "startsUsing",
-                AbilityId = castId
-            });
-            break; // 一次只推送一个
         }
     }
 

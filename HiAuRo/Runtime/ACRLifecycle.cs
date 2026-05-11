@@ -229,10 +229,7 @@ public static class ACRLifecycle
                 });
                 Plugin.Instance._uiBridge.CacheControls(controls);
             }
-            else
-            {
-                ImGuiOverlayState.UpdateControls(controls);
-            }
+            ImGuiOverlayState.UpdateControls(controls);
             DService.Instance().Log.Information("[ACR] controls 消息已发送 + 已缓存");
         }
         else

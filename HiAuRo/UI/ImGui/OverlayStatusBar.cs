@@ -1,16 +1,33 @@
 using System.Numerics;
 using Dalamud.Interface.Windowing;
 using HiAuRo.Infrastructure;
+using HiAuRo.UI;
 
 namespace HiAuRo.ImGuiLib;
 
 /// <summary>
-/// 状态栏 + ACR 控制面板（折叠=紧凑条 / 展开=左侧Tab+右侧内容）
+/// 紧凑状态栏 + ACR 控制面板
+/// 按钮即状态指示: Play=已停, Stop/Pause=运行中, Stop/Play=已暂停
+/// 最小尺寸: 280×56 (紧凑到只放按钮)
 /// </summary>
 public sealed class OverlayStatusBar : OverlayBase
 {
     private readonly Action _saveConfig;
-    private Vector2 _lastExpandedSize = new(420, 300);
+    private Vector2 _lastExpandedSize = new(400, 320);
+    private string _activeTabId = string.Empty;
+    private int _tabBarVersion;
+    private bool _wasExpanded;
+
+    protected override Vector2 ContentPadding => Vector2.Zero;
+    protected override Vector2 ContentOffset => new(12, 10);
+
+    private static readonly Vector2 _minExpandedSize = new(320, 180);
+
+    private static readonly UiControlDef[] _builtinTabs =
+    [
+        new("__qt_setup__", "tab", null, "QT设置", null),
+        new("__hk_setup__", "tab", null, "热键设置", null),
+    ];
 
     public OverlayStatusBar(PluginConfig config, Action saveConfig) : base("HiAuRoStatusBar##Overlay", config)
     {
@@ -19,9 +36,27 @@ public sealed class OverlayStatusBar : OverlayBase
         PositionCondition = ImGuiCond.FirstUseEver;
         SizeConstraints = new WindowSizeConstraints
         {
-            MinimumSize = new Vector2(320, 52),
+            MinimumSize = new Vector2(320, 56),
             MaximumSize = new Vector2(float.MaxValue, float.MaxValue)
         };
+    }
+
+    protected override void OnPreDraw()
+    {
+        if (!_config.OverlayStatusBarExpanded)
+        {
+            _wasExpanded = false;
+            ImGui.SetNextWindowSize(new Vector2(320, 56));
+        }
+        else if (!_wasExpanded)
+        {
+            // 折叠→展开转场：取 Max(上次保存, 最小) 设一次，之后帧不再设允许用户自由调整
+            _wasExpanded = true;
+            var size = new Vector2(
+                Math.Max(_lastExpandedSize.X, _minExpandedSize.X),
+                Math.Max(_lastExpandedSize.Y, _minExpandedSize.Y));
+            ImGui.SetNextWindowSize(size);
+        }
     }
 
     protected override void DrawContent()
@@ -29,17 +64,20 @@ public sealed class OverlayStatusBar : OverlayBase
         var expanded = _config.OverlayStatusBarExpanded;
         var currentSize = ImGui.GetWindowSize();
 
-        // 折叠：保存当前尺寸，缩小到紧凑条
+        SizeConstraints = new WindowSizeConstraints
+        {
+            MinimumSize = expanded ? _minExpandedSize : new Vector2(320, 56),
+            MaximumSize = new Vector2(float.MaxValue, float.MaxValue)
+        };
+
         if (!expanded)
         {
-            if (currentSize.Y > 60) _lastExpandedSize = currentSize;
             DrawBar();
-            ImGui.SetWindowSize(new Vector2(420, 52));
             return;
         }
 
-        // 展开：保存当前尺寸用于下次折叠恢复
-        if (currentSize.Y > 60) _lastExpandedSize = currentSize;
+        // 用户每次手动调整大小都保存，下次展开恢复
+        _lastExpandedSize = currentSize;
 
         DrawBar();
         ImGui.Spacing();
@@ -47,133 +85,174 @@ public sealed class OverlayStatusBar : OverlayBase
         var controls = ImGuiOverlayState.Controls;
         if (controls.Count == 0)
         {
-            ImGui.TextColored(Theme.Colors.TextSecondary, "  等待 ACR 加载...");
+            ImGui.SetCursorPosX(ContentOffset.X);
+            ImGui.TextColored(Theme.Colors.TextSecondary, "等待 ACR 加载...");
             return;
         }
 
         var tabs = controls.Where(c => c.Type == "tab").ToList();
+        var allTabs = new List<UiControlDef>(tabs);
+        allTabs.AddRange(_builtinTabs);
+        var activeTab = ImGuiOverlayState.ActiveTab;
 
-        if (tabs.Count == 0)
+        if (activeTab != _activeTabId)
+            _tabBarVersion++;
+
+        ImGui.SetCursorPosX(ContentOffset.X);
+        if (ImGui.BeginTabBar($"##statusTabs_{_tabBarVersion}"))
         {
-            ImGuiWidgetRenderer.Render(controls, ImGuiOverlayState.ActiveTab);
-            return;
-        }
-
-        var sidebarW = 72f;
-        var contentHeight = ImGui.GetContentRegionAvail().Y - 4;
-
-        ImGui.BeginChild("##sidebar", new Vector2(sidebarW, contentHeight), true,
-            ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoBackground);
-
-        var activeTabId = ImGuiOverlayState.ActiveTab;
-        var dl = ImGui.GetWindowDrawList();
-
-        foreach (var tab in tabs)
-        {
-            var isActive = tab.Id == activeTabId;
-            var cursor = ImGui.GetCursorScreenPos();
-
-            if (isActive)
+            foreach (var tab in allTabs)
             {
-                var rowMax = cursor + new Vector2(sidebarW, ImGui.GetTextLineHeight() + 6);
-                dl.AddRectFilled(cursor, rowMax,
-                    ImGui.ColorConvertFloat4ToU32(new Vector4(1, 1, 1, 0.06f)));
-                dl.AddLine(
-                    cursor + new Vector2(1, 2),
-                    cursor + new Vector2(1, ImGui.GetTextLineHeight() + 4),
-                    ImGui.ColorConvertFloat4ToU32(Theme.Colors.AccentBlue), 2f);
+                if (!ImGui.BeginTabItem(tab.Label))
+                    continue;
+
+                _activeTabId = tab.Id;
+                if (activeTab != tab.Id)
+                    ImGuiOverlayState.ActiveTab = tab.Id;
+
+                ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, Theme.PaddingSM);
+                ImGui.Indent(ContentOffset.X);
+
+                if (tab.Id == "__qt_setup__")
+                    DrawQtSetup();
+                else if (tab.Id == "__hk_setup__")
+                    DrawHotkeySetup();
+                else
+                    ImGuiWidgetRenderer.Render(controls, tab.Id);
+
+                ImGui.Unindent(ContentOffset.X);
+                ImGui.PopStyleVar();
+                ImGui.EndTabItem();
             }
-
-            ImGui.SetCursorPosX(12);
-            ImGui.SetCursorPosY(cursor.Y + 3);
-            ImGui.PushStyleColor(ImGuiCol.Text,
-                isActive ? Theme.Colors.AccentBlue : Theme.Colors.TextSecondary);
-            if (ImGui.Selectable(tab.Label, isActive, ImGuiSelectableFlags.None,
-                    new Vector2(sidebarW - 16, 0)))
-                ImGuiOverlayState.ActiveTab = tab.Id;
-            ImGui.PopStyleColor();
+            ImGui.EndTabBar();
         }
+    }
 
-        ImGui.EndChild();
-        ImGui.SameLine(0, 4);
+    private static void DrawQtSetup()
+    {
+        var settings = ImGuiOverlayState.UiSettings;
+        var cols = settings.QtCols;
+        if (cols <= 0) cols = 4;
+        if (ComponentLibrary.SliderInt("__qtcols", "每行列数", ref cols, 1, 10))
+            settings.QtCols = cols;
 
-        ImGui.BeginChild("##content", new Vector2(-1, contentHeight), false,
-            ImGuiWindowFlags.NoBackground);
-        ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, Theme.PaddingSM);
-        ImGuiWidgetRenderer.Render(controls, activeTabId);
-        ImGui.PopStyleVar();
-        ImGui.EndChild();
+        ImGui.Spacing();
+        ComponentLibrary.Label("可见性");
+        ImGui.PushStyleColor(ImGuiCol.Text, Theme.Colors.TextPrimary);
+        foreach (var qt in ImGuiOverlayState.Qts)
+        {
+            var vis = settings.QtVisible.GetValueOrDefault(qt.Id, true);
+            if (ImGui.Checkbox(qt.Label, ref vis))
+                settings.QtVisible[qt.Id] = vis;
+        }
+        ImGui.PopStyleColor();
+    }
+
+    private static void DrawHotkeySetup()
+    {
+        var settings = ImGuiOverlayState.UiSettings;
+        var cols = settings.HkCols;
+        if (cols <= 0) cols = 5;
+        if (ComponentLibrary.SliderInt("__hkcols", "每行列数", ref cols, 1, 10))
+            settings.HkCols = cols;
+
+        var btnSize = settings.HkBtnSize > 0 ? settings.HkBtnSize : 50;
+        var btnSz = (int)btnSize;
+        if (ComponentLibrary.SliderInt("__hkbtnsz", "按钮大小(px)", ref btnSz, 28, 80))
+            settings.HkBtnSize = btnSz;
+
+        ImGui.Spacing();
+        ComponentLibrary.Label("可见性");
+        ImGui.PushStyleColor(ImGuiCol.Text, Theme.Colors.TextPrimary);
+        foreach (var hk in ImGuiOverlayState.Hotkeys)
+        {
+            var vis = settings.HkVisible.GetValueOrDefault(hk.Id, true);
+            if (ImGui.Checkbox(hk.Label, ref vis))
+                settings.HkVisible[hk.Id] = vis;
+        }
+        ImGui.PopStyleColor();
     }
 
     private void DrawBar()
     {
+        ImGui.SetCursorPos(ContentOffset);
+
         var isRunning = ImGuiOverlayState.IsRunning;
         var isPaused = ImGuiOverlayState.IsPaused;
         var acrName = ImGuiOverlayState.AcrName;
 
-        string statusText;
-        Vector4 statusColor;
-        if (isRunning && !isPaused) { statusColor = Theme.Colors.AccentGreen; statusText = "运行中"; }
-        else if (isPaused) { statusColor = Theme.Colors.AccentOrange; statusText = "已暂停"; }
-        else { statusColor = Theme.Colors.TextTertiary; statusText = "已停止"; }
+        var btnSize = new Vector2(56, 38);
 
-        ComponentLibrary.Badge(isRunning && !isPaused, isPaused ? Theme.Colors.AccentOrange :
-            isRunning ? Theme.Colors.AccentGreen : null);
-        ImGui.SameLine(0, 4);
-        ImGui.AlignTextToFramePadding();
-        ImGui.TextColored(statusColor, statusText);
-        ImGui.SameLine(0, 4);
-        ComponentLibrary.VSplit();
-        ImGui.SameLine(0, 4);
-
+        // ── 左侧: ACR 名称 ──
         ImGui.AlignTextToFramePadding();
         ImGui.TextColored(Theme.Colors.TextSecondary, acrName);
-        ImGui.SameLine(0, 4);
-        ComponentLibrary.VSplit();
-        ImGui.SameLine(0, 4);
+        ImGui.SameLine(0, 10);
 
-        var btnSize = new Vector2(44, 30);
+        // ── 按钮组 ──
         if (isRunning && !isPaused)
         {
+            // 运行中 → Stop(红) + Pause(橙)
             if (ComponentLibrary.IconButton(ComponentLibrary.IconType.Stop,
-                    Theme.Colors.AccentRed * 0.85f, btnSize))
+                    Theme.Colors.AccentRed, btnSize,
+                    ComponentLibrary.IconButtonStyle.Fill))
                 Runtime.RuntimeCore.Stop();
-            ImGui.SameLine(0, 2);
+
+            ImGui.SameLine(0, 6);
+
             if (ComponentLibrary.IconButton(ComponentLibrary.IconType.Pause,
-                    Theme.Colors.AccentOrange, btnSize))
+                    Theme.Colors.AccentOrange, btnSize,
+                    ComponentLibrary.IconButtonStyle.Fill))
                 HiAuRo.ACR.MainControlHelper.TogglePause();
         }
         else if (isPaused)
         {
+            // 已暂停 → Stop(红) + Play(绿)
             if (ComponentLibrary.IconButton(ComponentLibrary.IconType.Stop,
-                    Theme.Colors.AccentRed * 0.85f, btnSize))
+                    Theme.Colors.AccentRed, btnSize,
+                    ComponentLibrary.IconButtonStyle.Fill))
                 Runtime.RuntimeCore.Stop();
-            ImGui.SameLine(0, 2);
+
+            ImGui.SameLine(0, 6);
+
             if (ComponentLibrary.IconButton(ComponentLibrary.IconType.Play,
-                    Theme.Colors.AccentOrange, btnSize))
+                    Theme.Colors.AccentGreen, btnSize,
+                    ComponentLibrary.IconButtonStyle.Fill))
                 HiAuRo.ACR.MainControlHelper.TogglePause();
         }
         else
         {
+            // 已停止 → Play(绿) + Pause(占位/禁用)
             if (ComponentLibrary.IconButton(ComponentLibrary.IconType.Play,
-                    Theme.Colors.AccentGreen, btnSize))
+                    Theme.Colors.AccentGreen, btnSize,
+                    ComponentLibrary.IconButtonStyle.Fill))
                 Runtime.RuntimeCore.Start();
-            ImGui.SameLine(0, 2);
+
+            ImGui.SameLine(0, 6);
+
             ImGui.BeginDisabled();
             ComponentLibrary.IconButton(ComponentLibrary.IconType.Pause,
-                Theme.Colors.TextTertiary, btnSize, outline: true);
+                Theme.Colors.TextTertiary, btnSize,
+                ComponentLibrary.IconButtonStyle.Outline);
             ImGui.EndDisabled();
         }
 
-        ImGui.SameLine(0, 2);
+        ImGui.SameLine(0, 6);
+
+        // 保存 (边框样式)
         if (ComponentLibrary.IconButton(ComponentLibrary.IconType.Save,
-                Theme.Colors.Border, btnSize, outline: true))
+                Theme.Colors.TextSecondary, btnSize,
+                ComponentLibrary.IconButtonStyle.Outline))
             HiAuRo.ACR.MainControlHelper.Save();
 
-        ImGui.SameLine(0, 4);
-        ComponentLibrary.VSplit();
-        ImGui.SameLine(0, 4);
-        if (ImGui.ArrowButton("##sbFold", _config.OverlayStatusBarExpanded ? ImGuiDir.Up : ImGuiDir.Down))
+        ImGui.SameLine(0, 6);
+
+        // 折叠/展开 (边框样式，毛玻璃上可见)
+        var foldIcon = _config.OverlayStatusBarExpanded
+            ? ComponentLibrary.IconType.ChevronUp
+            : ComponentLibrary.IconType.ChevronDown;
+        if (ComponentLibrary.IconButton(foldIcon,
+                Theme.Colors.AccentOrange, new Vector2(56, 38),
+                ComponentLibrary.IconButtonStyle.Outline))
         {
             _config.OverlayStatusBarExpanded = !_config.OverlayStatusBarExpanded;
             _saveConfig();

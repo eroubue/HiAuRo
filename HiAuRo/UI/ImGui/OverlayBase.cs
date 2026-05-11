@@ -5,7 +5,8 @@ using HiAuRo.Infrastructure;
 namespace HiAuRo.ImGuiLib;
 
 /// <summary>
-/// 无边框 Overlay 窗口基类 — 毛玻璃背景 + 拖动 + 边缘缩放 + 位置持久化
+/// 无边框 Overlay 窗口基类 — 半透明圆角背景 + 拖动 + 边缘缩放 + 位置持久化
+/// 不依赖 ImGui WindowRounding，用 DrawList 手动绘制圆角背景铺满整个窗口
 /// </summary>
 public abstract class OverlayBase : Window
 {
@@ -21,13 +22,18 @@ public abstract class OverlayBase : Window
     [Flags]
     private enum ResizeEdge { None = 0, Left = 1, Right = 2, Top = 4, Bottom = 8 }
 
+    protected virtual bool AllowResize => true;
+    protected virtual Vector2 ContentPadding => Theme.PaddingSM;
+
     protected OverlayBase(string name, PluginConfig config) : base(name)
     {
         _config = config;
         Flags = ImGuiWindowFlags.NoTitleBar
               | ImGuiWindowFlags.NoScrollbar
               | ImGuiWindowFlags.NoFocusOnAppearing
-              | ImGuiWindowFlags.NoBackground;
+              | ImGuiWindowFlags.NoBackground; // 禁用 ImGui 默认背景绘制
+        if (!AllowResize)
+            Flags |= ImGuiWindowFlags.NoResize;
         IsOpen = true;
         RespectCloseHotkey = false;
         ShowCloseButton = false;
@@ -35,30 +41,92 @@ public abstract class OverlayBase : Window
 
     protected abstract void DrawContent();
 
+    /// <summary>网格内容起始偏移（子类可覆写，默认 0）</summary>
+    protected virtual Vector2 ContentOffset => Vector2.Zero;
+
+    /// <summary>将光标设到 ContentOffset 位置</summary>
+    protected void BeginContent() => ImGui.SetCursorPos(ContentOffset);
+
+    /// <summary>列前进：未到末列调 SameLine，换行则重置 X 到 offset</summary>
+    protected void SameLineOrWrap(ref int col, int cols)
+    {
+        col++;
+        if (col < cols)
+            ImGui.SameLine();
+        else
+        {
+            col = 0;
+            ImGui.SetCursorPosX(ContentOffset.X);
+        }
+    }
+
+    public override void PreDraw()
+    {
+        // 子类在下一帧 Begin 前设定尺寸
+        OnPreDraw();
+
+        // 去掉默认边框（我们自己用 DrawList 画圆角边框）
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowBorderSize, 0f);
+
+        // 关键：WindowPadding 用子类指定的 ContentPadding
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, ContentPadding);
+    }
+
+    public override void PostDraw()
+    {
+        ImGui.PopStyleVar(2);
+    }
+
+    /// <summary>在 PreDraw 中设置窗口尺寸（SetNextWindowSize）</summary>
+    protected virtual void OnPreDraw() { }
+
     public override void Draw()
     {
         HandleInteraction();
 
-        // 毛玻璃背景（先画，内容叠在上方）
-        ComponentLibrary.GlassBackground(Theme.RadiusSM);
+        // 绘制铺满整个窗口的圆角半透明背景
+        DrawWindowBackground();
 
-        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, Theme.PaddingSM);
+        // 内容区域间距
         ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(6, 4));
 
         DrawContent();
 
-        ImGui.PopStyleVar(2);
+        ImGui.PopStyleVar(1);
 
-        // 右下角 resize 指示器
-        if (!_isDragging && !_isResizing)
+        // 右下角 resize 指示器（仅可缩放窗口）
+        if (AllowResize && !_isDragging && !_isResizing)
         {
             var min = ImGui.GetWindowPos() + ImGui.GetWindowSize() - new Vector2(12, 12);
             ImGui.GetWindowDrawList().AddTriangleFilled(
                 min + new Vector2(10, 10),
                 min + new Vector2(10, 4),
                 min + new Vector2(4, 10),
-                ImGui.ColorConvertFloat4ToU32(Theme.Colors.Border));
+                ImGui.ColorConvertFloat4ToU32(Theme.Colors.TextTertiary));
         }
+    }
+
+    /// <summary>
+    /// 绘制窗口背景 — 铺满整个窗口，圆角6px
+    /// </summary>
+    private void DrawWindowBackground()
+    {
+        var dl = ImGui.GetWindowDrawList();
+        var min = ImGui.GetWindowPos();
+        var max = min + ImGui.GetWindowSize();
+        const float radius = Theme.RadiusMD;
+
+        // ① 底层投影
+        dl.AddRectFilled(min + new Vector2(0, 2), max + new Vector2(0, 2),
+            ImGui.ColorConvertFloat4ToU32(Theme.Colors.GlassShadow), radius);
+
+        // ② 主背景（半透明底色）
+        dl.AddRectFilled(min, max,
+            ImGui.ColorConvertFloat4ToU32(Theme.Colors.GlassBg), radius);
+
+        // ③ 1px 细边框
+        dl.AddRect(min, max,
+            ImGui.ColorConvertFloat4ToU32(Theme.Colors.GlassBorder), radius, 0, 1.0f);
     }
 
     private void HandleInteraction()
@@ -69,16 +137,19 @@ public abstract class OverlayBase : Window
 
         if (!_isDragging && !_isResizing)
         {
-            // 检测边缘 hover
-            _resizeEdge = ResizeEdge.None;
-            if (mousePos.X >= winPos.X && mousePos.X <= winPos.X + EdgeThickness)
-                _resizeEdge |= ResizeEdge.Left;
-            if (mousePos.X >= winPos.X + winSize.X - EdgeThickness && mousePos.X <= winPos.X + winSize.X)
-                _resizeEdge |= ResizeEdge.Right;
-            if (mousePos.Y >= winPos.Y && mousePos.Y <= winPos.Y + EdgeThickness)
-                _resizeEdge |= ResizeEdge.Top;
-            if (mousePos.Y >= winPos.Y + winSize.Y - EdgeThickness && mousePos.Y <= winPos.Y + winSize.Y)
-                _resizeEdge |= ResizeEdge.Bottom;
+            // 检测边缘 hover（仅可缩放窗口）
+            if (AllowResize)
+            {
+                _resizeEdge = ResizeEdge.None;
+                if (mousePos.X >= winPos.X && mousePos.X <= winPos.X + EdgeThickness)
+                    _resizeEdge |= ResizeEdge.Left;
+                if (mousePos.X >= winPos.X + winSize.X - EdgeThickness && mousePos.X <= winPos.X + winSize.X)
+                    _resizeEdge |= ResizeEdge.Right;
+                if (mousePos.Y >= winPos.Y && mousePos.Y <= winPos.Y + EdgeThickness)
+                    _resizeEdge |= ResizeEdge.Top;
+                if (mousePos.Y >= winPos.Y + winSize.Y - EdgeThickness && mousePos.Y <= winPos.Y + winSize.Y)
+                    _resizeEdge |= ResizeEdge.Bottom;
+            }
 
             // 鼠标不在窗口内 → 不处理
             var inside = mousePos.X >= winPos.X && mousePos.X <= winPos.X + winSize.X
@@ -122,9 +193,12 @@ public abstract class OverlayBase : Window
             if (_resizeEdge.HasFlag(ResizeEdge.Bottom))
                 newSize.Y = _dragStartSize.Y + delta.Y;
 
-            // 最小尺寸
-            if (newSize.X < 320) { newSize.X = 320; if (_resizeEdge.HasFlag(ResizeEdge.Left)) newPos.X = _dragStartPos.X + _dragStartSize.X - 320; }
-            if (newSize.Y < 52) { newSize.Y = 52; if (_resizeEdge.HasFlag(ResizeEdge.Top)) newPos.Y = _dragStartPos.Y + _dragStartSize.Y - 52; }
+            // 使用 SizeConstraints 做最小尺寸限制（子类每帧更新它）
+            float minW = SizeConstraints?.MinimumSize.X ?? 320;
+            float minH = SizeConstraints?.MinimumSize.Y ?? 56;
+
+            if (newSize.X < minW) { newSize.X = minW; if (_resizeEdge.HasFlag(ResizeEdge.Left)) newPos.X = _dragStartPos.X + _dragStartSize.X - minW; }
+            if (newSize.Y < minH) { newSize.Y = minH; if (_resizeEdge.HasFlag(ResizeEdge.Top)) newPos.Y = _dragStartPos.Y + _dragStartSize.Y - minH; }
 
             ImGui.SetWindowPos(newPos);
             ImGui.SetWindowSize(newSize);

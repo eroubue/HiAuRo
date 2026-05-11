@@ -75,6 +75,7 @@ public sealed class FactEvent
     [JsonIgnore] public double ActualStart { get; set; }
     [JsonIgnore] public double ActualEnd { get; set; }
     [JsonIgnore] public bool ActionsDone { get; set; }
+    [JsonIgnore] public bool SyncFired { get; set; }
 }
 
 /// <summary>
@@ -126,18 +127,33 @@ public sealed class FactSyncDef
     [JsonPropertyName("abilityIds")]
     public List<uint> AbilityIds { get; set; } = [];
 
-    [JsonPropertyName("entering")]
-    public bool Entering { get; set; } = true;
+    /// <summary>窗口提前打开秒数（默认 2.5）</summary>
+    [JsonPropertyName("windowBefore")]
+    public double WindowBefore { get; set; } = 2.5;
 
-    public bool Match(SyncContext ctx) =>
-        ctx.EventType == Type && (AbilityIds.Count == 0 || AbilityIds.Contains(ctx.AbilityId));
-}
+    /// <summary>窗口延后关闭秒数（默认 2.5）</summary>
+    [JsonPropertyName("windowAfter")]
+    public double WindowAfter { get; set; } = 2.5;
 
-public sealed class SyncContext
-{
-    public string EventType { get; set; } = "";
-    public uint AbilityId { get; set; }
-    public bool EnteringCombat { get; set; }
+    /// <summary>同步命中后跳转到的目标时间（null = 不跳转）</summary>
+    [JsonPropertyName("jump")]
+    public double? Jump { get; set; }
+
+    /// <summary>是否为无条件跳转（时间到即跳，不等 sync 匹配）</summary>
+    [JsonPropertyName("forcejump")]
+    public bool ForceJump { get; set; }
+
+    /// <summary>无条件跳转的目标时间</summary>
+    [JsonPropertyName("forcejumpTarget")]
+    public double? ForceJumpTarget { get; set; }
+
+    // === 运行时计算（不参与 JSON 序列化） ===
+    [JsonIgnore] public double Start { get; set; }
+    [JsonIgnore] public double End { get; set; }
+    [JsonIgnore] public double AnchorTime { get; set; }
+
+    public bool Match(string eventType, uint abilityId) =>
+        Type == eventType && (AbilityIds.Count == 0 || AbilityIds.Contains(abilityId));
 }
 
 public abstract class FactCondition

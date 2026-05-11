@@ -20,17 +20,23 @@ public static class ImGuiWidgetRenderer
         var groups = controls.Where(c => c.Type == "group" && c.ParentId == activeTab).ToList();
         if (groups.Count == 0)
         {
-            RenderItems(controls.Where(c => c.ParentId == null && c.Type is not ("tab" or "mainControl")));
+            // 无 group 时直接渲染此 tab 下的 item（或无 tab 时的顶层 item）
+            RenderItems(controls.Where(c =>
+                (c.ParentId == activeTab || c.ParentId == null) &&
+                c.Type is not ("tab" or "mainControl")));
             return;
         }
 
         foreach (var group in groups)
         {
-            ComponentLibrary.CardBegin(group.Label);
+            ImGui.PushFont(UiBuilder.DefaultFont);
+            ImGui.TextColored(Theme.Colors.TextPrimary, group.Label);
+            ImGui.PopFont();
+            ImGui.Spacing();
             var items = controls.Where(c => c.ParentId == group.Id);
             RenderItems(items);
-            ComponentLibrary.CardEnd();
             ImGui.Spacing();
+            ComponentLibrary.Divider();
         }
     }
 

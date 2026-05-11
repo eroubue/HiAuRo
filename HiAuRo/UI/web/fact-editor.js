@@ -848,43 +848,51 @@ function renderProps() {
     html += '<div class="prop-section">';
     html += '<div class="prop-section-header">同步校准</div>';
 
-    // 开始同步
-    if (ev.startSync) {
-        html += '<div style="margin-bottom:8px;">';
-        html += '<span style="display:inline-block;width:60px;font-size:11px;color:var(--tx1);">开始同步</span>';
-        html += '<select class="prop-input" style="width:auto;" onchange="updateSyncProp(\'startSync\',\'type\',this.value)">';
-        html += '<option value="startsUsing"' + (ev.startSync.type === 'startsUsing' ? ' selected' : '') + '>读条</option>';
-        html += '<option value="ability"' + (ev.startSync.type === 'ability' ? ' selected' : '') + '>技能</option>';
-        html += '<option value="inCombat"' + (ev.startSync.type === 'inCombat' ? ' selected' : '') + '>进战</option>';
-        html += '</select>';
-        html += '</div>';
-        html += '<div class="prop-row">';
-        html += '<span class="prop-label">技能ID</span>';
-        html += '<input class="prop-input" type="text" value="' + esc((ev.startSync.abilityIds || []).join(',')) + '" placeholder="逗号分隔" onchange="updateSyncProp(\'startSync\',\'abilityIds\',this.value)">';
-        html += '</div>';
-        html += '<button class="btn danger" style="margin-bottom:8px;" onclick="removeSync(\'startSync\')">移除</button>';
-    } else {
-        html += '<button class="btn" style="margin-bottom:4px;" onclick="addSync(\'startSync\')">+ 添加开始同步</button>';
+    function renderSyncSection(side, label) {
+        if (ev[side]) {
+            html += '<div style="margin-bottom:4px;">';
+            html += '<span style="display:inline-block;width:60px;font-size:11px;color:var(--tx1);">' + label + '</span>';
+            html += '<select class="prop-input" style="width:auto;" onchange="updateSyncProp(\'' + side + '\',\'type\',this.value)">';
+            html += '<option value="startsUsing"' + (ev[side].type === 'startsUsing' ? ' selected' : '') + '>读条</option>';
+            html += '<option value="ability"' + (ev[side].type === 'ability' ? ' selected' : '') + '>技能</option>';
+            html += '</select>';
+            html += '</div>';
+            html += '<div class="prop-row">';
+            html += '<span class="prop-label">技能ID</span>';
+            html += '<input class="prop-input" type="text" value="' + esc((ev[side].abilityIds || []).join(',')) + '" placeholder="逗号分隔" onchange="updateSyncProp(\'' + side + '\',\'abilityIds\',this.value)">';
+            html += '</div>';
+            html += '<div class="prop-row">';
+            html += '<span class="prop-label">前窗口(s)</span>';
+            html += '<input class="prop-input" type="number" value="' + (ev[side].windowBefore != null ? ev[side].windowBefore : 2.5) + '" step="0.5" onchange="updateSyncNumProp(\'' + side + '\',\'windowBefore\',this.value)">';
+            html += '</div>';
+            html += '<div class="prop-row">';
+            html += '<span class="prop-label">后窗口(s)</span>';
+            html += '<input class="prop-input" type="number" value="' + (ev[side].windowAfter != null ? ev[side].windowAfter : 2.5) + '" step="0.5" onchange="updateSyncNumProp(\'' + side + '\',\'windowAfter\',this.value)">';
+            html += '</div>';
+            html += '<div class="prop-row">';
+            html += '<span class="prop-label">跳转(s)</span>';
+            html += '<input class="prop-input" type="number" value="' + (ev[side].jump != null ? ev[side].jump : '') + '" step="0.1" placeholder="不跳转" onchange="updateSyncNumProp(\'' + side + '\',\'jump\',this.value)">';
+            html += '</div>';
+            if (side === 'startSync') {
+                html += '<div class="prop-row">';
+                html += '<span class="prop-label">强制跳转</span>';
+                html += '<input type="checkbox" style="width:auto;"' + (ev[side].forcejump ? ' checked' : '') + ' onchange="updateSyncBoolProp(\'' + side + '\',\'forcejump\',this.checked)">';
+                html += '</div>';
+                if (ev[side].forcejump) {
+                    html += '<div class="prop-row">';
+                    html += '<span class="prop-label">强跳目标(s)</span>';
+                    html += '<input class="prop-input" type="number" value="' + (ev[side].forcejumpTarget != null ? ev[side].forcejumpTarget : '') + '" step="0.1" onchange="updateSyncNumProp(\'' + side + '\',\'forcejumpTarget\',this.value)">';
+                    html += '</div>';
+                }
+            }
+            html += '<button class="btn danger" style="margin-bottom:8px;" onclick="removeSync(\'' + side + '\')">移除</button>';
+        } else {
+            html += '<button class="btn" style="margin-bottom:4px;" onclick="addSync(\'' + side + '\')">+ 添加' + label + '</button>';
+        }
     }
 
-    // 结束同步
-    if (ev.endSync) {
-        html += '<div style="margin-bottom:8px;">';
-        html += '<span style="display:inline-block;width:60px;font-size:11px;color:var(--tx1);">结束同步</span>';
-        html += '<select class="prop-input" style="width:auto;" onchange="updateSyncProp(\'endSync\',\'type\',this.value)">';
-        html += '<option value="startsUsing"' + (ev.endSync.type === 'startsUsing' ? ' selected' : '') + '>读条</option>';
-        html += '<option value="ability"' + (ev.endSync.type === 'ability' ? ' selected' : '') + '>技能</option>';
-        html += '<option value="inCombat"' + (ev.endSync.type === 'inCombat' ? ' selected' : '') + '>进战</option>';
-        html += '</select>';
-        html += '</div>';
-        html += '<div class="prop-row">';
-        html += '<span class="prop-label">技能ID</span>';
-        html += '<input class="prop-input" type="text" value="' + esc((ev.endSync.abilityIds || []).join(',')) + '" placeholder="逗号分隔" onchange="updateSyncProp(\'endSync\',\'abilityIds\',this.value)">';
-        html += '</div>';
-        html += '<button class="btn danger" style="margin-bottom:8px;" onclick="removeSync(\'endSync\')">移除</button>';
-    } else {
-        html += '<button class="btn" onclick="addSync(\'endSync\')">+ 添加结束同步</button>';
-    }
+    renderSyncSection('startSync', '开始同步');
+    renderSyncSection('endSync', '结束同步');
 
     html += '</div>'; // end 同步校准
 
@@ -1002,6 +1010,21 @@ function updateSyncProp(side, field, value) {
     markDirty();
 }
 
+function updateSyncNumProp(side, field, value) {
+    var ev = getEventByPath(selectedEventPath);
+    if (!ev || !ev[side]) return;
+    var num = parseFloat(value);
+    ev[side][field] = isNaN(num) ? undefined : num;
+    markDirty();
+}
+
+function updateSyncBoolProp(side, field, value) {
+    var ev = getEventByPath(selectedEventPath);
+    if (!ev || !ev[side]) return;
+    ev[side][field] = !!value;
+    markDirty();
+}
+
 var TYPE_NAMES = { demand:'需求', skillSuggestion:'技能建议', setVariable:'设置变量', toggleVariable:'切换变量', logMessage:'日志', switchPhase:'切换阶段', switchBranch:'切换分支' };
 
 function updateActionType(idx, newType) {
@@ -1059,7 +1082,7 @@ function createBranchForAction(actionIdx) {
     var phase = getPhase(currentPhaseIdx);
     if (!phase) return;
     if (!phase.switch) {
-        phase.switch = { sync: { type: 'startsUsing', abilityIds: [], entering: true }, branches: [] };
+        phase.switch = { sync: { type: 'startsUsing', abilityIds: [] }, branches: [] };
     }
     var ev = getEventByPath(selectedEventPath);
     if (!ev || !ev.actions || !ev.actions[actionIdx]) return;

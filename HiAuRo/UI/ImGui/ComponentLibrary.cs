@@ -4,100 +4,251 @@ using Dalamud.Interface;
 namespace HiAuRo.ImGuiLib;
 
 /// <summary>
-/// ImGui 通用组件库 — 参照 Ant Design 风格
+/// ImGui 组件库 — 复刻 Ant Design 5 按钮/开关/卡片等组件
+/// 参考: https://ant-design.antgroup.com/components/button-cn
 /// </summary>
 public static class ComponentLibrary
 {
-    // ── 玻璃背景 ──────────────────────────────────
+    // ═══════════════════════════════════════════════════
+    // 颜色工具
+    // ═══════════════════════════════════════════════════
 
-    /// <summary>绘制毛玻璃背景（半透明暗色圆角矩形）</summary>
-    public static void GlassBackground(float cornerRadius, float alpha = 0.75f)
+    private static Vector4 Lighten(Vector4 c, float amount)
+    {
+        return new Vector4(
+            Math.Min(c.X + amount, 1f),
+            Math.Min(c.Y + amount, 1f),
+            Math.Min(c.Z + amount, 1f),
+            c.W);
+    }
+
+    private static Vector4 Darken(Vector4 c, float amount)
+    {
+        return new Vector4(
+            Math.Max(c.X - amount, 0f),
+            Math.Max(c.Y - amount, 0f),
+            Math.Max(c.Z - amount, 0f),
+            c.W);
+    }
+
+    private static uint ColorU32(Vector4 c) => ImGui.ColorConvertFloat4ToU32(c);
+
+    // ═══════════════════════════════════════════════════
+    // 毛玻璃背景 + 阴影
+    // ═══════════════════════════════════════════════════
+
+    /// <summary>
+    /// 半透明圆角背景 + 阴影 — 铺满整个窗口
+    /// </summary>
+    public static void GlassBackground(float cornerRadius)
     {
         var dl = ImGui.GetWindowDrawList();
         var min = ImGui.GetWindowPos();
         var max = min + ImGui.GetWindowSize();
-        var color = ImGui.ColorConvertFloat4ToU32(
-            new Vector4(Theme.Colors.BgContainer.X,
-                        Theme.Colors.BgContainer.Y,
-                        Theme.Colors.BgContainer.Z, alpha));
-        dl.AddRectFilled(min, max, color, cornerRadius);
+
+        // 底层阴影
+        dl.AddRectFilled(min + new Vector2(0, 2), max + new Vector2(0, 2),
+            ColorU32(Theme.Colors.GlassShadow), cornerRadius);
+
+        // 半透明底色 — 铺满整个窗口
+        dl.AddRectFilled(min, max,
+            ColorU32(Theme.Colors.GlassBg), cornerRadius);
+
+        // 1px 细边框
+        dl.AddRect(min, max,
+            ColorU32(Theme.Colors.GlassBorder), cornerRadius, 0, 1.0f);
     }
 
-    // ── 图标按钮（DrawList 矢量绘制）─────────────
+    // ═══════════════════════════════════════════════════
+    // 图标集 (DrawList 矢量绘制)
+    // ═══════════════════════════════════════════════════
 
-    public enum IconType { Play, Stop, Pause, Save }
-
-    /// <summary>矢量图标按钮（填充/边框两种风格）</summary>
-    public static bool IconButton(IconType icon, Vector4 color, Vector2 size, bool outline = false)
+    public enum IconType
     {
-        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, Theme.RadiusXS);
-        ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, Vector2.Zero);
-        if (outline)
-        {
-            ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0, 0, 0, 0));
-            ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(Theme.Colors.BgHover.X,
-                Theme.Colors.BgHover.Y, Theme.Colors.BgHover.Z, 0.4f));
-        }
-        else
-        {
-            ImGui.PushStyleColor(ImGuiCol.Button, color);
-            ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(
-                Math.Min(color.X * 1.2f, 1f), Math.Min(color.Y * 1.2f, 1f),
-                Math.Min(color.Z * 1.2f, 1f), 1f));
-        }
-        ImGui.PushStyleColor(ImGuiCol.ButtonActive, outline ? new Vector4(0, 0, 0, 0) : color);
-        if (outline) ImGui.PushStyleColor(ImGuiCol.Border, color);
+        Play, Stop, Pause, Save,
+        ChevronDown, ChevronUp,
+        Close
+    }
 
-        var clicked = ImGui.Button("##icon", size);
-        var rectMin = ImGui.GetItemRectMin();
-        var rectMax = ImGui.GetItemRectMax();
-        var center = (rectMin + rectMax) / 2;
-        var dl = ImGui.GetWindowDrawList();
-        var cw = ImGui.ColorConvertFloat4ToU32;
-
-        var iconWhite = cw(new Vector4(1, 1, 1, 1));
-        var iconCol = cw(outline ? color : new Vector4(1, 1, 1, 1));
-
+    /// <summary>在指定中心绘制图标 (图标尺寸约 12~14px)</summary>
+    private static void DrawIcon(ImDrawListPtr dl, Vector2 center, IconType icon, uint color)
+    {
         switch (icon)
         {
             case IconType.Stop:
-                dl.AddRectFilled(center - new Vector2(4, 4), center + new Vector2(4, 4), iconWhite);
+                // 10×10 实心方块，圆角 2px
+                dl.AddRectFilled(center - new Vector2(5, 5), center + new Vector2(5, 5), color, Theme.RadiusXS);
                 break;
+
             case IconType.Play:
+                // 12×14 三角形
                 dl.AddTriangleFilled(
-                    center + new Vector2(-3, -5), center + new Vector2(-3, 5), center + new Vector2(5, 0), iconWhite);
+                    center + new Vector2(-5, -7),
+                    center + new Vector2(-5, 7),
+                    center + new Vector2(7, 0),
+                    color);
                 break;
+
             case IconType.Pause:
-                dl.AddRectFilled(center + new Vector2(-4, -4), center + new Vector2(-1, 4), iconWhite);
-                dl.AddRectFilled(center + new Vector2(1, -4), center + new Vector2(4, 4), iconWhite);
+                // 两根 3×12 竖条，间距 2px
+                dl.AddRectFilled(center + new Vector2(-5, -6), center + new Vector2(-2, 6), color, 1);
+                dl.AddRectFilled(center + new Vector2(2, -6), center + new Vector2(5, 6), color, 1);
                 break;
+
             case IconType.Save:
-                dl.AddRectFilled(center + new Vector2(-4, -3), center + new Vector2(4, 5), iconCol, Theme.RadiusXS);
-                dl.AddRectFilled(center + new Vector2(-4, -3), center + new Vector2(0, -1),
-                    ImGui.ColorConvertFloat4ToU32(outline ? new Vector4(0, 0, 0, 0) : color)); // 切角
+                // 软盘图标: 10×10 矩形 + 顶部切口
+                dl.AddRectFilled(center + new Vector2(-5, -3), center + new Vector2(5, 7), color, Theme.RadiusXS);
+                dl.AddRectFilled(center + new Vector2(-5, -3), center + new Vector2(-1, 0), ColorU32(Vector4.Zero));
+                dl.AddRectFilled(center + new Vector2(-3, 2), center + new Vector2(3, 6), ColorU32(Theme.Colors.GlassBg), 1);
+                break;
+
+            case IconType.ChevronDown:
+                // 向下 V 形
                 dl.AddTriangleFilled(
-                    center + new Vector2(-2, 3), center + new Vector2(2, 3), center + new Vector2(0, 6), iconCol);
+                    center + new Vector2(-6, -2), center + new Vector2(6, -2), center + new Vector2(0, 5), color);
+                break;
+
+            case IconType.ChevronUp:
+                // 向上 V 形
+                dl.AddTriangleFilled(
+                    center + new Vector2(-6, 2), center + new Vector2(6, 2), center + new Vector2(0, -5), color);
+                break;
+
+            case IconType.Close:
+                // X 形
+                dl.AddLine(center + new Vector2(-4, -4), center + new Vector2(4, 4), color, 2.5f);
+                dl.AddLine(center + new Vector2(4, -4), center + new Vector2(-4, 4), color, 2.5f);
                 break;
         }
+    }
 
-        ImGui.PopStyleColor(outline ? 4 : 3);
+    // ═══════════════════════════════════════════════════
+    // 图标按钮 (AntdUI Icon Button 风格)
+    // ═══════════════════════════════════════════════════
+
+    public enum IconButtonStyle { Fill, Outline, Text }
+
+    /// <summary>
+    /// AntdUI 风格图标按钮 — 大尺寸、大圆角、清晰图标
+    /// size 最小建议 52×36 (战斗易点击)
+    /// </summary>
+    public static bool IconButton(IconType icon, Vector4 color, Vector2 size,
+        IconButtonStyle style = IconButtonStyle.Fill)
+    {
+        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, Theme.RadiusMD);
+        ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(8, 6));
+
+        Vector4 bg, bgHover, bgActive, borderCol, iconCol;
+
+        if (style == IconButtonStyle.Fill)
+        {
+            bg = color;
+            bgHover = Lighten(color, 0.12f);
+            bgActive = Darken(color, 0.12f);
+            borderCol = color;
+            iconCol = new Vector4(1, 1, 1, 1);
+        }
+        else if (style == IconButtonStyle.Outline)
+        {
+            bg = Vector4.Zero;
+            bgHover = Theme.Colors.BgHover;
+            bgActive = Theme.Colors.FillPrimary;
+            borderCol = color;
+            iconCol = color;
+        }
+        else // Text
+        {
+            bg = Vector4.Zero;
+            bgHover = Theme.Colors.BgHover;
+            bgActive = Theme.Colors.FillPrimary;
+            borderCol = Vector4.Zero;
+            iconCol = color;
+        }
+
+        ImGui.PushStyleColor(ImGuiCol.Button, bg);
+        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, bgHover);
+        ImGui.PushStyleColor(ImGuiCol.ButtonActive, bgActive);
+        if (style == IconButtonStyle.Outline)
+            ImGui.PushStyleColor(ImGuiCol.Border, borderCol);
+
+        var clicked = ImGui.Button($"##icon_{icon}", size);
+
+        var rectMin = ImGui.GetItemRectMin();
+        var rectMax = ImGui.GetItemRectMax();
+        var center = (rectMin + rectMax) / 2;
+        DrawIcon(ImGui.GetWindowDrawList(), center, icon, ColorU32(iconCol));
+
+        if (style == IconButtonStyle.Outline)
+            ImGui.PopStyleColor(4);
+        else
+            ImGui.PopStyleColor(3);
+        ImGui.PopStyleVar(2);
+
+        return clicked;
+    }
+
+    // ═══════════════════════════════════════════════════
+    // Ant Design 5 按钮变体
+    // ═══════════════════════════════════════════════════
+
+    // ── Primary 主按钮 (蓝色填充) ──
+    public static bool PrimaryButton(string label, Vector2? size = null)
+        => FillButton(label, Theme.Colors.AccentBlue, size);
+
+    // ── Danger 危险按钮 (红色填充) ──
+    public static bool DangerButton(string label, Vector2? size = null)
+        => FillButton(label, Theme.Colors.AccentRed, size);
+
+    // ── Success 成功按钮 (绿色填充) ──
+    public static bool SuccessButton(string label, Vector2? size = null)
+        => FillButton(label, Theme.Colors.AccentGreen, size);
+
+    // ── Warning 警告按钮 (橙色填充) ──
+    public static bool WarningButton(string label, Vector2? size = null)
+        => FillButton(label, Theme.Colors.AccentOrange, size);
+
+    // ── Default 默认按钮 (白底灰边) ──
+    public static bool DefaultButton(string label, Vector2? size = null)
+        => OutlineButton(label, Theme.Colors.Border, Theme.Colors.TextPrimary, size);
+
+    // ── Text 文字按钮 (透明背景) ──
+    public static bool TextButton(string label, Vector2? size = null)
+        => GhostButton(label, Theme.Colors.AccentBlue, size);
+
+    // ── Link 链接按钮 ──
+    public static bool LinkButton(string label, Vector2? size = null)
+    {
+        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, Theme.RadiusSM);
+        ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(4, 2));
+        ImGui.PushStyleColor(ImGuiCol.Button, Vector4.Zero);
+        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, Vector4.Zero);
+        ImGui.PushStyleColor(ImGuiCol.ButtonActive, Vector4.Zero);
+        ImGui.PushStyleColor(ImGuiCol.Text, Theme.Colors.AccentBlue);
+
+        var clicked = ImGui.Button(label, size ?? Vector2.Zero);
+
+        if (ImGui.IsItemHovered())
+        {
+            var dl = ImGui.GetWindowDrawList();
+            var min = ImGui.GetItemRectMin();
+            var max = ImGui.GetItemRectMax();
+            dl.AddLine(new Vector2(min.X, max.Y - 1), new Vector2(max.X, max.Y - 1),
+                ColorU32(Theme.Colors.AccentBlue), 1);
+        }
+
+        ImGui.PopStyleColor(4);
         ImGui.PopStyleVar(2);
         return clicked;
     }
 
-    // ── 按钮变体 ──────────────────────────────────
-
-    /// <summary>强调按钮（填充色）</summary>
-    public static bool AccentButton(string label, Vector4 color, Vector2? size = null)
+    // ── 内部: 填充按钮 ──
+    private static bool FillButton(string label, Vector4 color, Vector2? size)
     {
-        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, Theme.RadiusXS);
-        ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(8, 3));
+        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, Theme.RadiusMD);
+        ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(15, 6));
         ImGui.PushStyleColor(ImGuiCol.Button, color);
-        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(
-            Math.Min(color.X * 1.2f, 1f),
-            Math.Min(color.Y * 1.2f, 1f),
-            Math.Min(color.Z * 1.2f, 1f), 1f));
-        ImGui.PushStyleColor(ImGuiCol.ButtonActive, color);
+        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, Lighten(color, 0.12f));
+        ImGui.PushStyleColor(ImGuiCol.ButtonActive, Darken(color, 0.12f));
         ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1, 1, 1, 1));
 
         var clicked = ImGui.Button(label, size ?? Vector2.Zero);
@@ -107,17 +258,16 @@ public static class ComponentLibrary
         return clicked;
     }
 
-    /// <summary>边框按钮（灰色描边无填充）</summary>
-    public static bool OutlineButton(string label, Vector2? size = null)
+    // ── 内部: 边框按钮 ──
+    private static bool OutlineButton(string label, Vector4 borderColor, Vector4 textColor, Vector2? size)
     {
-        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, Theme.RadiusXS);
-        ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(8, 3));
-        ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0, 0, 0, 0));
-        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(Theme.Colors.BgHover.X,
-            Theme.Colors.BgHover.Y, Theme.Colors.BgHover.Z, 0.4f));
-        ImGui.PushStyleColor(ImGuiCol.ButtonActive, new Vector4(0, 0, 0, 0));
-        ImGui.PushStyleColor(ImGuiCol.Border, Theme.Colors.Border);
-        ImGui.PushStyleColor(ImGuiCol.Text, Theme.Colors.TextSecondary);
+        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, Theme.RadiusMD);
+        ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(15, 6));
+        ImGui.PushStyleColor(ImGuiCol.Button, Vector4.Zero);
+        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, Theme.Colors.BgHover);
+        ImGui.PushStyleColor(ImGuiCol.ButtonActive, Theme.Colors.FillSecondary);
+        ImGui.PushStyleColor(ImGuiCol.Border, borderColor);
+        ImGui.PushStyleColor(ImGuiCol.Text, textColor);
 
         var clicked = ImGui.Button(label, size ?? Vector2.Zero);
 
@@ -126,26 +276,127 @@ public static class ComponentLibrary
         return clicked;
     }
 
-    // ── 标准 Button（保留向后兼容）───────────────
-
-    public static bool Button(string label, Vector2? size = null, bool disabled = false)
+    // ── 内部: Ghost 幽灵按钮 ──
+    private static bool GhostButton(string label, Vector4 textColor, Vector2? size)
     {
-        return AccentButton(label, Theme.Colors.AccentBlue, size);
+        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, Theme.RadiusMD);
+        ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(15, 6));
+        ImGui.PushStyleColor(ImGuiCol.Button, Vector4.Zero);
+        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, Theme.Colors.BgHover);
+        ImGui.PushStyleColor(ImGuiCol.ButtonActive, Theme.Colors.FillPrimary);
+        ImGui.PushStyleColor(ImGuiCol.Text, textColor);
+
+        var clicked = ImGui.Button(label, size ?? Vector2.Zero);
+
+        ImGui.PopStyleColor(4);
+        ImGui.PopStyleVar(2);
+        return clicked;
     }
 
-    // ── 分割竖线 ──────────────────────────────────
+    // ── 旧版兼容 ──
+    public static bool Button(string label, Vector2? size = null, bool disabled = false)
+        => PrimaryButton(label, size);
+
+    public static bool AccentButton(string label, Vector4 color, Vector2? size = null)
+        => FillButton(label, color, size);
+
+    public static bool OutlineButton(string label, Vector2? size = null)
+        => DefaultButton(label, size);
+
+    // ═══════════════════════════════════════════════════
+    // 图标 + 文字 组合按钮 (AntdUI 风格)
+    // ═══════════════════════════════════════════════════
+
+    /// <summary>图标 + 文字按钮 (例如 "▶ 启动")</summary>
+    public static bool IconTextButton(IconType icon, string label, Vector4 color,
+        Vector2? size = null, IconButtonStyle style = IconButtonStyle.Fill)
+    {
+        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, Theme.RadiusMD);
+        ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(12, 6));
+        ImGui.PushStyleVar(ImGuiStyleVar.ItemInnerSpacing, new Vector2(6, 0));
+
+        Vector4 bg, bgHover, bgActive, borderCol, iconCol, textCol;
+
+        if (style == IconButtonStyle.Fill)
+        {
+            bg = color;
+            bgHover = Lighten(color, 0.12f);
+            bgActive = Darken(color, 0.12f);
+            borderCol = color;
+            iconCol = new Vector4(1, 1, 1, 1);
+            textCol = new Vector4(1, 1, 1, 1);
+        }
+        else if (style == IconButtonStyle.Outline)
+        {
+            bg = Vector4.Zero;
+            bgHover = Theme.Colors.BgHover;
+            bgActive = Theme.Colors.FillPrimary;
+            borderCol = color;
+            iconCol = color;
+            textCol = color;
+        }
+        else
+        {
+            bg = Vector4.Zero;
+            bgHover = Theme.Colors.BgHover;
+            bgActive = Theme.Colors.FillPrimary;
+            borderCol = Vector4.Zero;
+            iconCol = color;
+            textCol = color;
+        }
+
+        ImGui.PushStyleColor(ImGuiCol.Button, bg);
+        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, bgHover);
+        ImGui.PushStyleColor(ImGuiCol.ButtonActive, bgActive);
+        if (style == IconButtonStyle.Outline)
+            ImGui.PushStyleColor(ImGuiCol.Border, borderCol);
+        ImGui.PushStyleColor(ImGuiCol.Text, textCol);
+
+        var clicked = ImGui.Button($"##it_{icon}_{label}", size ?? Vector2.Zero);
+
+        // 在按钮区域内绘制图标 + 文字
+        var rectMin = ImGui.GetItemRectMin();
+        var rectMax = ImGui.GetItemRectMax();
+        var center = (rectMin + rectMax) / 2;
+        var textSize = ImGui.CalcTextSize(label);
+        var totalW = 14 + 4 + textSize.X; // icon + gap + text
+        var startX = center.X - totalW / 2 + 7;
+
+        // 绘制图标
+        DrawIcon(ImGui.GetWindowDrawList(), new Vector2(startX, center.Y), icon, ColorU32(iconCol));
+
+        // 绘制文字
+        ImGui.GetWindowDrawList().AddText(
+            new Vector2(startX + 10, center.Y - textSize.Y / 2),
+            ColorU32(textCol),
+            label);
+
+        if (style == IconButtonStyle.Outline)
+            ImGui.PopStyleColor(5);
+        else
+            ImGui.PopStyleColor(4);
+        ImGui.PopStyleVar(3);
+
+        return clicked;
+    }
+
+    // ═══════════════════════════════════════════════════
+    // 分割竖线
+    // ═══════════════════════════════════════════════════
 
     public static void VSplit()
     {
-        ImGui.TextColored(Theme.Colors.Border, "│");
+        ImGui.TextColored(Theme.Colors.BorderSecondary, "│");
     }
 
-    // ── 开关 ─────────────────────────────────────
+    // ═══════════════════════════════════════════════════
+    // 开关 (AntdUI Switch 风格)
+    // ═══════════════════════════════════════════════════
 
     public static bool Switch(string id, ref bool value)
     {
-        ImGui.PushStyleColor(ImGuiCol.FrameBg, value ? Theme.Colors.AccentGreen : Theme.Colors.BgElevated);
-        ImGui.PushStyleColor(ImGuiCol.CheckMark, Theme.Colors.AccentGreen);
+        ImGui.PushStyleColor(ImGuiCol.FrameBg, value ? Theme.Colors.SwitchTrackOn : Theme.Colors.SwitchTrackOff);
+        ImGui.PushStyleColor(ImGuiCol.CheckMark, Theme.Colors.SwitchKnob);
         ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 12f);
         ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(2, 2));
 
@@ -165,16 +416,19 @@ public static class ComponentLibrary
         return Switch(id, ref value);
     }
 
-    // ── 滑块 ─────────────────────────────────────
+    // ═══════════════════════════════════════════════════
+    // 滑块
+    // ═══════════════════════════════════════════════════
 
     public static bool Slider(string id, string label, ref float value, float min, float max, string format = "%.1f")
     {
-        ImGui.PushStyleColor(ImGuiCol.FrameBg, Theme.Colors.BgElevated);
-        ImGui.PushStyleColor(ImGuiCol.SliderGrab, Theme.Colors.AccentBlue);
-        ImGui.PushStyleColor(ImGuiCol.SliderGrabActive, Theme.Colors.AccentBlue);
+        ImGui.PushStyleColor(ImGuiCol.FrameBg, Theme.Colors.SliderRail);
+        ImGui.PushStyleColor(ImGuiCol.SliderGrab, Theme.Colors.SliderTrack);
+        ImGui.PushStyleColor(ImGuiCol.SliderGrabActive, Theme.Colors.SliderTrack);
+        ImGui.PushStyleColor(ImGuiCol.Text, Theme.Colors.TextPrimary);
         ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 60);
         var changed = ImGui.SliderFloat($"##{id}", ref value, min, max, format);
-        ImGui.PopStyleColor(3);
+        ImGui.PopStyleColor(4);
         ImGui.SameLine();
         ImGui.TextColored(Theme.Colors.TextSecondary, label);
         return changed;
@@ -182,22 +436,25 @@ public static class ComponentLibrary
 
     public static bool SliderInt(string id, string label, ref int value, int min, int max)
     {
-        ImGui.PushStyleColor(ImGuiCol.FrameBg, Theme.Colors.BgElevated);
-        ImGui.PushStyleColor(ImGuiCol.SliderGrab, Theme.Colors.AccentBlue);
-        ImGui.PushStyleColor(ImGuiCol.SliderGrabActive, Theme.Colors.AccentBlue);
+        ImGui.PushStyleColor(ImGuiCol.FrameBg, Theme.Colors.SliderRail);
+        ImGui.PushStyleColor(ImGuiCol.SliderGrab, Theme.Colors.SliderTrack);
+        ImGui.PushStyleColor(ImGuiCol.SliderGrabActive, Theme.Colors.SliderTrack);
+        ImGui.PushStyleColor(ImGuiCol.Text, Theme.Colors.TextPrimary);
         ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 60);
         var changed = ImGui.SliderInt($"##{id}", ref value, min, max);
-        ImGui.PopStyleColor(3);
+        ImGui.PopStyleColor(4);
         ImGui.SameLine();
         ImGui.TextColored(Theme.Colors.TextSecondary, label);
         return changed;
     }
 
-    // ── 下拉选择器 ───────────────────────────────
+    // ═══════════════════════════════════════════════════
+    // 下拉选择器
+    // ═══════════════════════════════════════════════════
 
     public static bool Select(string id, string label, ref int selectedIndex, string[] options)
     {
-        ImGui.PushStyleColor(ImGuiCol.FrameBg, Theme.Colors.BgElevated);
+        ImGui.PushStyleColor(ImGuiCol.FrameBg, Theme.Colors.FillSecondary);
         ImGui.PushStyleColor(ImGuiCol.Header, Theme.Colors.AccentBlue);
         ImGui.PushStyleColor(ImGuiCol.HeaderHovered, Theme.Colors.BgHover);
         ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, Theme.RadiusSM);
@@ -210,7 +467,9 @@ public static class ComponentLibrary
         return changed;
     }
 
-    // ── 标签页 ───────────────────────────────────
+    // ═══════════════════════════════════════════════════
+    // 标签页
+    // ═══════════════════════════════════════════════════
 
     public static bool Tabs(string id, ref int activeTab, string[] tabNames)
     {
@@ -231,17 +490,19 @@ public static class ComponentLibrary
         return changed;
     }
 
-    // ── 卡片 ─────────────────────────────────────
+    // ═══════════════════════════════════════════════════
+    // 卡片
+    // ═══════════════════════════════════════════════════
 
     private static int _cardCounter;
 
-    public static void CardBegin(string? title = null)
+    public static void CardBegin(string? title = null, Vector4? bgColor = null)
     {
         var cardId = title ?? $"card_{Interlocked.Increment(ref _cardCounter)}";
         ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, Theme.RadiusMD);
         ImGui.PushStyleVar(ImGuiStyleVar.ChildBorderSize, 1f);
-        ImGui.PushStyleColor(ImGuiCol.ChildBg, Theme.Colors.BgContainer);
-        ImGui.PushStyleColor(ImGuiCol.Border, Theme.Colors.Border);
+        ImGui.PushStyleColor(ImGuiCol.ChildBg, bgColor ?? Theme.Colors.BgContainer);
+        ImGui.PushStyleColor(ImGuiCol.Border, Theme.Colors.BorderSecondary);
         ImGui.BeginChild($"##card_{cardId}", new Vector2(-1, 0), true);
         if (title != null)
         {
@@ -259,36 +520,42 @@ public static class ComponentLibrary
         ImGui.PopStyleVar(2);
     }
 
-    // ── 标签芯片 ─────────────────────────────────
+    // ═══════════════════════════════════════════════════
+    // 标签芯片 (Tag)
+    // ═══════════════════════════════════════════════════
 
     public static void Tag(string label, bool active, Vector4? activeColor = null, Vector4? inactiveColor = null)
     {
-        var color = active ? (activeColor ?? Theme.Colors.AccentGreen) : (inactiveColor ?? Theme.Colors.BgElevated);
-        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, Theme.RadiusLG);
-        ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(8, 2));
+        var color = active ? (activeColor ?? Theme.Colors.AccentGreen) : (inactiveColor ?? Theme.Colors.FillSecondary);
+        var textColor = active ? Theme.Colors.TagActiveText : Theme.Colors.TextSecondary;
+        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, Theme.RadiusSM);
+        ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(10, 4));
         ImGui.PushStyleColor(ImGuiCol.Button, color);
         ImGui.PushStyleColor(ImGuiCol.ButtonHovered, color);
         ImGui.PushStyleColor(ImGuiCol.ButtonActive, color);
-        ImGui.PushStyleColor(ImGuiCol.Text, active ? new Vector4(1, 1, 1, 1) : Theme.Colors.TextSecondary);
+        ImGui.PushStyleColor(ImGuiCol.Text, textColor);
         ImGui.Button(label, Vector2.Zero);
         ImGui.PopStyleColor(4);
         ImGui.PopStyleVar(2);
     }
 
-    // ── 分割线 ───────────────────────────────────
+    // ═══════════════════════════════════════════════════
+    // 分割线
+    // ═══════════════════════════════════════════════════
 
     public static void Divider()
     {
         ImGui.Spacing();
-        ImGui.PushStyleColor(ImGuiCol.Separator, Theme.Colors.Border);
+        ImGui.PushStyleColor(ImGuiCol.Separator, Theme.Colors.BorderSecondary);
         ImGui.Separator();
         ImGui.PopStyleColor();
         ImGui.Spacing();
     }
 
-    // ── Badge ────────────────────────────────────
+    // ═══════════════════════════════════════════════════
+    // Badge 徽标
+    // ═══════════════════════════════════════════════════
 
-    /// <summary>状态圆点 (直径8px, 行高对齐)</summary>
     public static void Badge(bool active, Vector4? activeColor = null)
     {
         var color = active ? (activeColor ?? Theme.Colors.AccentGreen) : Theme.Colors.TextTertiary;
@@ -296,15 +563,17 @@ public static class ComponentLibrary
         var cursor = ImGui.GetCursorScreenPos();
         var lineHeight = ImGui.GetTextLineHeight();
         var centerY = cursor.Y + lineHeight / 2;
-        dl.AddCircleFilled(new Vector2(cursor.X + 6, centerY), 4, ImGui.ColorConvertFloat4ToU32(color));
+        dl.AddCircleFilled(new Vector2(cursor.X + 6, centerY), 4, ColorU32(color));
         ImGui.SetCursorPosX(ImGui.GetCursorPosX() + 16);
     }
 
-    // ── 数字输入 ─────────────────────────────────
+    // ═══════════════════════════════════════════════════
+    // 数字输入
+    // ═══════════════════════════════════════════════════
 
     public static bool InputNumber(string id, string label, ref int value, int step = 1, int stepFast = 10)
     {
-        ImGui.PushStyleColor(ImGuiCol.FrameBg, Theme.Colors.BgElevated);
+        ImGui.PushStyleColor(ImGuiCol.FrameBg, Theme.Colors.FillSecondary);
         ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, Theme.RadiusSM);
         ImGui.SetNextItemWidth(80);
         var changed = ImGui.InputInt($"##{id}", ref value, step, stepFast);
@@ -315,7 +584,9 @@ public static class ComponentLibrary
         return changed;
     }
 
-    // ── 文本 ─────────────────────────────────────
+    // ═══════════════════════════════════════════════════
+    // 文本标签
+    // ═══════════════════════════════════════════════════
 
     public static void Label(string text)
     {

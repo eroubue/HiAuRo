@@ -5,6 +5,9 @@ namespace HiAuRo.Infrastructure;
 /// <summary>UI 渲染模式</summary>
 public enum UIMode { WebUI = 0, ImGui = 1 }
 
+/// <summary>ImGui 主题模式</summary>
+public enum ImGuiThemeMode { Light = 0, Dark = 1 }
+
 /// <summary>
 /// HiAuRo 主配置对象 —— 走 Dalamud 原生 IPluginConfiguration 序列化
 /// </summary>
@@ -33,6 +36,9 @@ public sealed class PluginConfig : IPluginConfiguration
     /// <summary>UI 渲染模式</summary>
     public UIMode UIMode { get; set; } = UIMode.WebUI;
 
+    /// <summary>ImGui 主题模式 (亮色/暗色)</summary>
+    public ImGuiThemeMode ImGuiThemeMode { get; set; } = ImGuiThemeMode.Light;
+
     /// <summary>ImGui 模式 — StatusBar overlay X 位置</summary>
     public float OverlayStatusBarX { get; set; } = 100f;
 
@@ -42,11 +48,17 @@ public sealed class PluginConfig : IPluginConfiguration
     /// <summary>ImGui 模式 — StatusBar 展开状态</summary>
     public bool OverlayStatusBarExpanded { get; set; } = true;
 
-    /// <summary>ImGui 模式 — ActionPanel overlay X 位置</summary>
-    public float OverlayActionPanelX { get; set; } = 100f;
+    /// <summary>ImGui 模式 — QT Panel overlay X 位置</summary>
+    public float OverlayQtPanelX { get; set; } = 100f;
 
-    /// <summary>ImGui 模式 — ActionPanel overlay Y 位置</summary>
-    public float OverlayActionPanelY { get; set; } = 300f;
+    /// <summary>ImGui 模式 — QT Panel overlay Y 位置</summary>
+    public float OverlayQtPanelY { get; set; } = 300f;
+
+    /// <summary>ImGui 模式 — Hotkey Panel overlay X 位置</summary>
+    public float OverlayHotkeyPanelX { get; set; } = 100f;
+
+    /// <summary>ImGui 模式 — Hotkey Panel overlay Y 位置</summary>
+    public float OverlayHotkeyPanelY { get; set; } = 420f;
 
     /// <summary>CEF 悬浮窗设置</summary>
     public OverlayWindowSetting[] Overlays { get; set; } =
