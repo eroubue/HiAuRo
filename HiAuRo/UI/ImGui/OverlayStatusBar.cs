@@ -5,18 +5,16 @@ using HiAuRo.Infrastructure;
 namespace HiAuRo.ImGuiLib;
 
 /// <summary>
-/// 状态栏 + ACR 控制面板（折叠=48px / 展开=左侧Tab+右侧内容）
+/// 状态栏 + ACR 控制面板（折叠=紧凑条 / 展开=左侧Tab+右侧内容）
 /// </summary>
 public sealed class OverlayStatusBar : OverlayBase
 {
     private readonly Action _saveConfig;
-    private Vector2 _savedExpandedSize;
-    private bool _wasExpanded;
+    private Vector2 _lastExpandedSize = new(420, 300);
 
     public OverlayStatusBar(PluginConfig config, Action saveConfig) : base("HiAuRoStatusBar##Overlay", config)
     {
         _saveConfig = saveConfig;
-        _wasExpanded = config.OverlayStatusBarExpanded;
         Position = new Vector2(config.OverlayStatusBarX, config.OverlayStatusBarY);
         PositionCondition = ImGuiCond.FirstUseEver;
         SizeConstraints = new WindowSizeConstraints
@@ -26,45 +24,32 @@ public sealed class OverlayStatusBar : OverlayBase
         };
     }
 
-    public override void PreDraw()
-    {
-        var expanded = _config.OverlayStatusBarExpanded;
-
-        if (!expanded && _wasExpanded)
-        {
-            var currentSize = ImGui.GetWindowSize();
-            if (currentSize.X > 0) _savedExpandedSize = currentSize;
-            ImGui.SetNextWindowSize(new Vector2(Math.Max(currentSize.X, 320), 52), ImGuiCond.Always);
-            _wasExpanded = false;
-        }
-        else if (expanded && !_wasExpanded)
-        {
-            var restore = _savedExpandedSize.X > 0 ? _savedExpandedSize : new Vector2(380, 300);
-            ImGui.SetNextWindowSize(restore, ImGuiCond.Always);
-            _wasExpanded = true;
-        }
-        else if (!expanded)
-        {
-            var currentSize = ImGui.GetWindowSize();
-            ImGui.SetNextWindowSize(new Vector2(Math.Max(currentSize.X, 320), 52), ImGuiCond.Always);
-        }
-    }
-
     protected override void DrawContent()
     {
-        DrawBar();
+        var expanded = _config.OverlayStatusBarExpanded;
+        var currentSize = ImGui.GetWindowSize();
 
-        if (!_config.OverlayStatusBarExpanded) return;
+        // 折叠：保存当前尺寸，缩小到紧凑条
+        if (!expanded)
+        {
+            if (currentSize.Y > 60) _lastExpandedSize = currentSize;
+            DrawBar();
+            ImGui.SetWindowSize(new Vector2(420, 52));
+            return;
+        }
+
+        // 展开：保存当前尺寸用于下次折叠恢复
+        if (currentSize.Y > 60) _lastExpandedSize = currentSize;
+
+        DrawBar();
+        ImGui.Spacing();
 
         var controls = ImGuiOverlayState.Controls;
         if (controls.Count == 0)
         {
-            ImGui.Spacing();
             ImGui.TextColored(Theme.Colors.TextSecondary, "  等待 ACR 加载...");
             return;
         }
-
-        ImGui.Spacing();
 
         var tabs = controls.Where(c => c.Type == "tab").ToList();
 
