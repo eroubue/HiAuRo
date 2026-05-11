@@ -110,10 +110,10 @@ public static class ComponentLibrary
     }
 
     /// <summary>标签页</summary>
-    public static bool Tabs(ref int activeTab, string[] tabNames)
+    public static bool Tabs(string id, ref int activeTab, string[] tabNames)
     {
         var changed = false;
-        if (ImGui.BeginTabBar("##tabs", ImGuiTabBarFlags.FittingPolicyScroll))
+        if (ImGui.BeginTabBar($"##tabs_{id}", ImGuiTabBarFlags.FittingPolicyScroll))
         {
             for (var i = 0; i < tabNames.Length; i++)
             {
@@ -129,15 +129,18 @@ public static class ComponentLibrary
         return changed;
     }
 
+    private static int _cardCounter;
+
     /// <summary>卡片容器 — Begin/End 配对</summary>
     public static void CardBegin(string? title = null)
     {
+        var cardId = title ?? $"card_{Interlocked.Increment(ref _cardCounter)}";
         ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, Theme.RadiusMD);
         ImGui.PushStyleVar(ImGuiStyleVar.ChildBorderSize, 1f);
         ImGui.PushStyleColor(ImGuiCol.ChildBg, Theme.Colors.BgContainer);
         ImGui.PushStyleColor(ImGuiCol.Border, Theme.Colors.Border);
 
-        ImGui.BeginChild($"##card_{title ?? "unnamed"}", new Vector2(-1, 0), true);
+        ImGui.BeginChild($"##card_{cardId}", new Vector2(-1, 0), true);
 
         if (title != null)
         {
