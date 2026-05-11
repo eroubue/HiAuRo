@@ -23,6 +23,68 @@ public static class ComponentLibrary
         dl.AddRectFilled(min, max, color, cornerRadius);
     }
 
+    // ── 图标按钮（DrawList 矢量绘制）─────────────
+
+    public enum IconType { Play, Stop, Pause, Save }
+
+    /// <summary>矢量图标按钮（填充/边框两种风格）</summary>
+    public static bool IconButton(IconType icon, Vector4 color, Vector2 size, bool outline = false)
+    {
+        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, Theme.RadiusXS);
+        ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, Vector2.Zero);
+        if (outline)
+        {
+            ImGui.PushStyleColor(ImGuiCol.Button, new Vector4(0, 0, 0, 0));
+            ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(Theme.Colors.BgHover.X,
+                Theme.Colors.BgHover.Y, Theme.Colors.BgHover.Z, 0.4f));
+        }
+        else
+        {
+            ImGui.PushStyleColor(ImGuiCol.Button, color);
+            ImGui.PushStyleColor(ImGuiCol.ButtonHovered, new Vector4(
+                Math.Min(color.X * 1.2f, 1f), Math.Min(color.Y * 1.2f, 1f),
+                Math.Min(color.Z * 1.2f, 1f), 1f));
+        }
+        ImGui.PushStyleColor(ImGuiCol.ButtonActive, outline ? new Vector4(0, 0, 0, 0) : color);
+        if (outline) ImGui.PushStyleColor(ImGuiCol.Border, color);
+
+        var clicked = ImGui.Button("##icon", size);
+        var rectMin = ImGui.GetItemRectMin();
+        var rectMax = ImGui.GetItemRectMax();
+        var center = (rectMin + rectMax) / 2;
+        var dl = ImGui.GetWindowDrawList();
+        var cw = ImGui.ColorConvertFloat4ToU32;
+
+        var iconWhite = cw(new Vector4(1, 1, 1, 1));
+        var iconCol = cw(outline ? color : new Vector4(1, 1, 1, 1));
+
+        switch (icon)
+        {
+            case IconType.Stop:
+                dl.AddRectFilled(center - new Vector2(4, 4), center + new Vector2(4, 4), iconWhite);
+                break;
+            case IconType.Play:
+                dl.AddTriangleFilled(
+                    center + new Vector2(-3, -5), center + new Vector2(-3, 5), center + new Vector2(5, 0), iconWhite);
+                break;
+            case IconType.Pause:
+                dl.AddRectFilled(center + new Vector2(-4, -4), center + new Vector2(-1, 4), iconWhite);
+                dl.AddRectFilled(center + new Vector2(1, -4), center + new Vector2(4, 4), iconWhite);
+                break;
+            case IconType.Save:
+                dl.AddRectFilled(center + new Vector2(-4, -3), center + new Vector2(4, 5), iconCol, Theme.RadiusXS);
+                dl.AddRectFilled(center + new Vector2(-4, -3), center + new Vector2(0, -1),
+                    ImGui.ColorConvertFloat4ToU32(outline ? new Vector4(0, 0, 0, 0) : color)); // 切角
+                dl.AddTriangleFilled(
+                    center + new Vector2(-2, 3), center + new Vector2(2, 3), center + new Vector2(0, 6), iconCol);
+                break;
+        }
+
+        ImGui.PopStyleColor(outline ? 4 : 3);
+        ImGui.PopStyleVar(2);
+        return clicked;
+    }
+
     // ── 按钮变体 ──────────────────────────────────
 
     /// <summary>强调按钮（填充色）</summary>

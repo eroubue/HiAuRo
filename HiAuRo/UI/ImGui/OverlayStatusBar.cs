@@ -130,34 +130,42 @@ public sealed class OverlayStatusBar : OverlayBase
         ImGui.SameLine(0, 4);
 
         // ── 操作按钮段 ──
+        var btnSize = new Vector2(24, 22);
         if (isRunning && !isPaused)
         {
-            if (ComponentLibrary.AccentButton("■", Theme.Colors.AccentRed * 0.8f, new Vector2(24, 0)))
+            if (ComponentLibrary.IconButton(ComponentLibrary.IconType.Stop,
+                    Theme.Colors.AccentRed * 0.85f, btnSize))
                 Runtime.RuntimeCore.Stop();
             ImGui.SameLine(0, 2);
-            if (ComponentLibrary.AccentButton("⏸", Theme.Colors.AccentOrange, new Vector2(24, 0)))
+            if (ComponentLibrary.IconButton(ComponentLibrary.IconType.Pause,
+                    Theme.Colors.AccentOrange, btnSize))
                 HiAuRo.ACR.MainControlHelper.TogglePause();
         }
         else if (isPaused)
         {
-            if (ComponentLibrary.AccentButton("■", Theme.Colors.AccentRed * 0.8f, new Vector2(24, 0)))
+            if (ComponentLibrary.IconButton(ComponentLibrary.IconType.Stop,
+                    Theme.Colors.AccentRed * 0.85f, btnSize))
                 Runtime.RuntimeCore.Stop();
             ImGui.SameLine(0, 2);
-            if (ComponentLibrary.AccentButton("▶", Theme.Colors.AccentOrange, new Vector2(24, 0)))
+            if (ComponentLibrary.IconButton(ComponentLibrary.IconType.Play,
+                    Theme.Colors.AccentOrange, btnSize))
                 HiAuRo.ACR.MainControlHelper.TogglePause();
         }
         else
         {
-            if (ComponentLibrary.AccentButton("▶", Theme.Colors.AccentGreen, new Vector2(24, 0)))
+            if (ComponentLibrary.IconButton(ComponentLibrary.IconType.Play,
+                    Theme.Colors.AccentGreen, btnSize))
                 Runtime.RuntimeCore.Start();
             ImGui.SameLine(0, 2);
             ImGui.BeginDisabled();
-            ComponentLibrary.OutlineButton("⏸", new Vector2(24, 0));
+            ComponentLibrary.IconButton(ComponentLibrary.IconType.Pause,
+                Theme.Colors.TextTertiary, btnSize, outline: true);
             ImGui.EndDisabled();
         }
 
         ImGui.SameLine(0, 2);
-        if (ComponentLibrary.OutlineButton("💾", new Vector2(24, 0)))
+        if (ComponentLibrary.IconButton(ComponentLibrary.IconType.Save,
+                Theme.Colors.Border, btnSize, outline: true))
             HiAuRo.ACR.MainControlHelper.Save();
 
         ImGui.SameLine(0, 4);
