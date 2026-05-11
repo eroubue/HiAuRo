@@ -18,7 +18,7 @@ public sealed class OverlayStatusBar : OverlayBase
         PositionCondition = ImGuiCond.FirstUseEver;
         SizeConstraints = new WindowSizeConstraints
         {
-            MinimumSize = new Vector2(260, 36),
+            MinimumSize = new Vector2(300, 48),
             MaximumSize = new Vector2(float.MaxValue, float.MaxValue)
         };
     }
@@ -130,7 +130,7 @@ public sealed class OverlayStatusBar : OverlayBase
         ImGui.SameLine(0, 4);
 
         // ── 操作按钮段 ──
-        var btnSize = new Vector2(24, 22);
+        var btnSize = new Vector2(32, 26);
         if (isRunning && !isPaused)
         {
             if (ComponentLibrary.IconButton(ComponentLibrary.IconType.Stop,

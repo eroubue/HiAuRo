@@ -288,7 +288,7 @@ public static class ComponentLibrary
 
     // ── Badge ────────────────────────────────────
 
-    /// <summary>状态圆点 (直径6px, 行高对齐)</summary>
+    /// <summary>状态圆点 (直径8px, 行高对齐)</summary>
     public static void Badge(bool active, Vector4? activeColor = null)
     {
         var color = active ? (activeColor ?? Theme.Colors.AccentGreen) : Theme.Colors.TextTertiary;
@@ -296,8 +296,8 @@ public static class ComponentLibrary
         var cursor = ImGui.GetCursorScreenPos();
         var lineHeight = ImGui.GetTextLineHeight();
         var centerY = cursor.Y + lineHeight / 2;
-        dl.AddCircleFilled(new Vector2(cursor.X + 5, centerY), 3, ImGui.ColorConvertFloat4ToU32(color));
-        ImGui.SetCursorPosX(ImGui.GetCursorPosX() + 13);
+        dl.AddCircleFilled(new Vector2(cursor.X + 6, centerY), 4, ImGui.ColorConvertFloat4ToU32(color));
+        ImGui.SetCursorPosX(ImGui.GetCursorPosX() + 16);
     }
 
     // ── 数字输入 ─────────────────────────────────

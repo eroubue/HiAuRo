@@ -42,8 +42,8 @@ public abstract class OverlayBase : Window
         // 毛玻璃背景（先画，内容叠在上方）
         ComponentLibrary.GlassBackground(Theme.RadiusSM);
 
-        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, Theme.PaddingXS);
-        ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(4, 2));
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, Theme.PaddingSM);
+        ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(6, 4));
 
         DrawContent();
 
@@ -123,8 +123,8 @@ public abstract class OverlayBase : Window
                 newSize.Y = _dragStartSize.Y + delta.Y;
 
             // 最小尺寸
-            if (newSize.X < 200) { newSize.X = 200; if (_resizeEdge.HasFlag(ResizeEdge.Left)) newPos.X = _dragStartPos.X + _dragStartSize.X - 200; }
-            if (newSize.Y < 36) { newSize.Y = 36; if (_resizeEdge.HasFlag(ResizeEdge.Top)) newPos.Y = _dragStartPos.Y + _dragStartSize.Y - 36; }
+            if (newSize.X < 260) { newSize.X = 260; if (_resizeEdge.HasFlag(ResizeEdge.Left)) newPos.X = _dragStartPos.X + _dragStartSize.X - 260; }
+            if (newSize.Y < 48) { newSize.Y = 48; if (_resizeEdge.HasFlag(ResizeEdge.Top)) newPos.Y = _dragStartPos.Y + _dragStartSize.Y - 48; }
 
             ImGui.SetWindowPos(newPos);
             ImGui.SetWindowSize(newSize);
