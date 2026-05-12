@@ -51,6 +51,9 @@ namespace Browsingway;
 
 	public event Action? OverlaysCreated;
 
+	/// <summary>控制所有 CEF overlay 窗口的渲染可见性</summary>
+	public bool OverlaysVisible { get; set; } = true;
+
 	public void Dispose()
 	{
 		Services.PluginLog.Info("[BW] BrowserHost.Dispose 开始");
@@ -202,10 +205,13 @@ namespace Browsingway;
 
 	private void Render()
 	{
+		_dependencyManager.Render();
+
+		if (!OverlaysVisible)
+			return;
+
 		if (++_renderFrameCount == 1)
 			Services.PluginLog.Info($"[BW] 首帧渲染 (overlays={_overlays.Count}, renderProcess={_renderProcess != null})");
-
-		_dependencyManager.Render();
 
 		ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(0, 0));
 
