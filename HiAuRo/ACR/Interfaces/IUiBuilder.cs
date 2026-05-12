@@ -21,4 +21,7 @@ public interface IUiBuilder
     void AddQtToggle(string id, string label, bool defaultValue, string? tooltip = null, string? color = null, bool defaultVisible = true);
     void AddMainControl(bool showPause = true, bool showSave = true);
     void AddTooltip(string targetId, string tooltip);
+
+    /// <summary>一行多个 hotkey（按传入 ID 顺序排列）</summary>
+    void AddHotkeyRow(params string[] hotkeyIds);
 }

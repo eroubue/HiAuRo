@@ -77,4 +77,8 @@ public sealed class UiBuilderImpl : HiAuRo.ACR.IUiBuilder
 
     public void AddTooltip(string targetId, string tooltip) =>
         _controls.Add(new UiControlDef($"__tip__{targetId}", "tooltip", _currentGroup, string.Empty, tooltip));
+
+    public void AddHotkeyRow(params string[] hotkeyIds) =>
+        _controls.Add(new UiControlDef("__hkrow__", "hotkeyRow", _currentGroup, string.Empty, null,
+            Options: hotkeyIds));
 }

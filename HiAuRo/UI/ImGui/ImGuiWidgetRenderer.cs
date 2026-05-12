@@ -1,5 +1,7 @@
 using System.Linq;
+using System.Numerics;
 using System.Text.Json;
+using Dalamud.Interface.Textures;
 using HiAuRo.Setting;
 using HiAuRo.UI;
 
@@ -67,6 +69,82 @@ public static class ImGuiWidgetRenderer
                 case "sameLine":
                     ImGui.SameLine();
                     break;
+                case "hotkeyRow":
+                    RenderHotkeyRow(item);
+                    break;
+            }
+        }
+    }
+
+    private static void RenderHotkeyRow(UiControlDef ctrl)
+    {
+        var ids = ctrl.Options switch
+        {
+            JsonElement el when el.ValueKind == JsonValueKind.Array =>
+                el.EnumerateArray().Select(e => e.GetString() ?? "").ToArray(),
+            string[] arr => arr,
+            _ => Array.Empty<string>()
+        };
+        if (ids.Length == 0) return;
+
+        var allHotkeys = HiAuRo.ACR.HotkeyHelper.GetAll();
+
+        for (int i = 0; i < ids.Length; i++)
+        {
+            var hk = allHotkeys.FirstOrDefault(h => h.Id == ids[i]);
+            if (hk == null) continue;
+
+            if (i > 0) ImGui.SameLine();
+
+            var available = hk.Check() >= 0;
+            var binding = HiAuRo.ACR.HotkeyHelper.GetBinding(hk.Id);
+
+            var tex = hk.IconId > 0
+                ? DService.Instance().Texture.GetFromGameIcon(
+                    new GameIconLookup(hk.IconId))
+                : null;
+
+            if (tex != null)
+            {
+                var wrap = tex.GetWrapOrEmpty();
+                var handle = wrap?.Handle ?? 0;
+                ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 4);
+                ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(4, 4));
+                var clicked = ImGui.Button($"##hkbtn-{hk.Id}", new Vector2(36, 36));
+                var rectMin = ImGui.GetItemRectMin();
+                var rectMax = ImGui.GetItemRectMax();
+                var pad = 4f;
+                if (handle != 0)
+                    ImGui.GetWindowDrawList().AddImage(
+                        handle, rectMin + new Vector2(pad), rectMax - new Vector2(pad));
+                ImGui.PopStyleVar(2);
+                if (clicked)
+                    HiAuRo.ACR.HotkeyHelper.ExecuteById(hk.Id);
+                if (ImGui.IsItemHovered())
+                {
+                    var tip = string.IsNullOrEmpty(binding) ? hk.Label : $"{hk.Label}   {binding}";
+                    ImGui.SetTooltip(tip);
+                }
+            }
+            else
+            {
+                ImGui.PushStyleColor(ImGuiCol.Button, available
+                    ? Theme.Colors.AccentBlue
+                    : new Vector4(0.3f, 0.3f, 0.3f, 1));
+                if (ImGui.Button($"{hk.Label}###hkbtn-{hk.Id}"))
+                    HiAuRo.ACR.HotkeyHelper.ExecuteById(hk.Id);
+                ImGui.PopStyleColor();
+                if (ImGui.IsItemHovered())
+                {
+                    ImGui.BeginTooltip();
+                    ImGui.Text(hk.Label);
+                    if (!string.IsNullOrEmpty(binding))
+                    {
+                        ImGui.SameLine();
+                        ImGui.TextDisabled($"({binding})");
+                    }
+                    ImGui.EndTooltip();
+                }
             }
         }
     }
