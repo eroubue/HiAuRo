@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Numerics;
 using Dalamud.Interface.Windowing;
 using HiAuRo.Infrastructure;
@@ -55,6 +56,11 @@ public sealed class MainWindow : Window
             if (ImGui.BeginTabItem("录制"))
             {
                 DrawRecording();
+                ImGui.EndTabItem();
+            }
+            if (ImGui.BeginTabItem("日志"))
+            {
+                DrawLog();
                 ImGui.EndTabItem();
             }
             ImGui.EndTabBar();
@@ -495,4 +501,66 @@ public sealed class MainWindow : Window
             }
         }
     }
+
+    private string _logFilter = "";
+
+    private void DrawLog()
+    {
+        var entries = LogManager.Instance.GetEntries();
+        var filtered = string.IsNullOrEmpty(_logFilter)
+            ? entries
+            : entries.Where(e => e.Type.Contains(_logFilter, StringComparison.OrdinalIgnoreCase)).ToList();
+
+        // 工具栏
+        ImGui.Spacing();
+        ImGui.SetNextItemWidth(200);
+        ImGui.InputTextWithHint("##LogFilter", "筛选类型...", ref _logFilter, 64);
+        ImGui.SameLine();
+        ImGui.TextDisabled($"({filtered.Count}/{entries.Count})");
+        ImGui.SameLine();
+
+        if (ImGui.Button("清除"))
+        {
+            LogManager.Instance.Clear();
+        }
+
+        ImGui.Spacing();
+        ImGui.Separator();
+
+        // 表格
+        if (ImGui.BeginTable("##LogTable", 3,
+            ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg |
+            ImGuiTableFlags.Resizable | ImGuiTableFlags.ScrollY,
+            new Vector2(-1, -1)))
+        {
+            ImGui.TableSetupColumn("时间", ImGuiTableColumnFlags.WidthFixed, 100);
+            ImGui.TableSetupColumn("类型", ImGuiTableColumnFlags.WidthFixed, 220);
+            ImGui.TableSetupColumn("内容",
+                ImGuiTableColumnFlags.WidthStretch);
+            ImGui.TableHeadersRow();
+
+            // 从最新到最旧显示
+            var count = filtered.Count;
+            for (int i = count - 1; i >= 0; i--)
+            {
+                var e = filtered[i];
+                ImGui.TableNextRow();
+
+                ImGui.TableSetColumnIndex(0);
+                ImGui.Text(e.Timestamp.ToString("HH:mm:ss.fff"));
+
+                ImGui.TableSetColumnIndex(1);
+                if (ImGui.Selectable(e.Type))
+                {
+                    _logFilter = _logFilter == e.Type ? "" : e.Type;
+                }
+
+                ImGui.TableSetColumnIndex(2);
+                ImGui.TextWrapped(e.Content);
+            }
+
+            ImGui.EndTable();
+        }
+    }
+
 }
