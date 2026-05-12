@@ -21,7 +21,7 @@ public partial class Plugin : IDalamudPlugin
     private readonly PluginConfig _config;
     internal WebUiBridge? _uiBridge;
     internal IDalamudPluginInterface PluginInterface => _pluginInterface;
-    private UIManager? _uiManager;
+    internal UIManager? _uiManager;
 
     /// <summary>当前是否处于 WebUI 模式（用于 ACRLifecycle 等判断状态推送通道）</summary>
     public static bool IsWebUI => Instance._uiManager?.IsWebUI ?? false;

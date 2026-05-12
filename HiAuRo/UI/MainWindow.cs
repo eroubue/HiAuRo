@@ -63,28 +63,50 @@ public sealed class MainWindow : Window
 
     private void DrawStatus()
     {
+        // UI 渲染模式切换
         ImGui.TextColored(Theme.Colors.AccentBlue, "UI 渲染模式:");
         ImGui.SameLine();
+
         var isWebUI = _config.UIMode == Infrastructure.UIMode.WebUI;
-        if (ImGui.RadioButton("WebUI", isWebUI))
+        var cefDisabled = _config.DisableCEF;
+
+        // WebUI 选项 —— 低配模式下灰掉
+        if (cefDisabled)
         {
-            _config.UIMode = Infrastructure.UIMode.WebUI;
-            _saveConfig();
+            ImGui.BeginDisabled();
+            ImGui.RadioButton("WebUI (CEF 已禁用)", false);
+            ImGui.EndDisabled();
         }
+        else if (ImGui.RadioButton("WebUI", isWebUI))
+        {
+            Plugin.Instance._uiManager?.SwitchTo(Infrastructure.UIMode.WebUI);
+        }
+
         ImGui.SameLine();
         if (ImGui.RadioButton("ImGui", !isWebUI))
         {
-            _config.UIMode = Infrastructure.UIMode.ImGui;
+            Plugin.Instance._uiManager?.SwitchTo(Infrastructure.UIMode.ImGui);
+        }
+
+        // 低配置模式复选框
+        ImGui.Spacing();
+        var newCefDisabled = cefDisabled;
+        if (ImGui.Checkbox("低配置模式 (禁用 CEF 以节省 ~200MB 内存)", ref newCefDisabled))
+        {
+            _config.DisableCEF = newCefDisabled;
             _saveConfig();
         }
 
-        if (_config.UIMode == Infrastructure.UIMode.ImGui)
+        if (_config.DisableCEF)
         {
             ImGui.PushStyleColor(ImGuiCol.Text, Theme.Colors.AccentOrange);
-            ImGui.TextWrapped("⚠ 切换后请重启插件生效 (Disable/Enable)");
+            ImGui.TextWrapped("CEF 已禁用，WebUI 不可用。切换此选项需重启插件生效。");
             ImGui.PopStyleColor();
+        }
 
-            // ImGui 主题模式切换
+        // ImGui 主题模式（仅 ImGui 模式时显示）
+        if (!isWebUI)
+        {
             ImGui.Spacing();
             var isLight = _config.ImGuiThemeMode == ImGuiThemeMode.Light;
             ImGui.TextColored(Theme.Colors.AccentBlue, "ImGui 主题:");
