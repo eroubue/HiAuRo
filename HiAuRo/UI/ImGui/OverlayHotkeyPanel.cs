@@ -119,7 +119,7 @@ public sealed class OverlayHotkeyPanel : OverlayBase
         if (iconId != 0)
         {
             var handle = LoadIconTexture(iconId);
-            if (handle != 0)
+            if (handle != (nint)0)
                 ImGui.GetWindowDrawList().AddImage(
                     handle, iconPos, iconPos + iconSize);
         }

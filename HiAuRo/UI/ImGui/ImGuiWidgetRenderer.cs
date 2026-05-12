@@ -114,7 +114,7 @@ public static class ImGuiWidgetRenderer
                 var rectMin = ImGui.GetItemRectMin();
                 var rectMax = ImGui.GetItemRectMax();
                 var pad = 4f;
-                if (handle != 0)
+                if (handle != (nint)0)
                     ImGui.GetWindowDrawList().AddImage(
                         handle, rectMin + new Vector2(pad), rectMax - new Vector2(pad));
                 ImGui.PopStyleVar(2);
