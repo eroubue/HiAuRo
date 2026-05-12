@@ -26,7 +26,7 @@ internal class UIManager : IDisposable
     private DemoWindow? _demoWindow;
 
     /// <summary>当前是否为 WebUI 模式（CEF 已启用且当前选中 WebUI）</summary>
-    public bool IsWebUI => _config.UIMode == UIMode.WebUI && !_config.DisableCEF;
+    public bool IsWebUI => _uiBridge != null && _config.UIMode == UIMode.WebUI && !_config.DisableCEF;
 
     /// <summary>WebSocket 桥接，低配模式下为 null</summary>
     public WebUiBridge? Bridge => _uiBridge;

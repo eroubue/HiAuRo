@@ -146,8 +146,6 @@ public partial class Plugin : IDalamudPlugin
         CombatContext.StateChanged -= OnCombatStateChanged;
         ACR.HotkeyHelper.OnExecuted -= OnHotkeyExecuted;
         ACR.QTHelper.OnChanged -= OnQtChanged;
-        Instance = null!;
-        PluginConfig.Instance = null!;
         RuntimeCore.Shutdown();
         CombatContext.Reset();
         ExecutionAxis.Instance.Shutdown();
@@ -164,6 +162,8 @@ public partial class Plugin : IDalamudPlugin
         }
 
         _uiManager?.Dispose();
+        Instance = null!;
+        PluginConfig.Instance = null!;
 
         // 清除静态缓存（避免下次加载残留）
         ACRLoader.UnloadAll();
@@ -214,9 +214,6 @@ public partial class Plugin : IDalamudPlugin
         ACR.HotkeyHelper.OnExecuted -= OnHotkeyExecuted;
         ACR.QTHelper.OnChanged -= OnQtChanged;
 
-        Instance = null!;
-        PluginConfig.Instance = null!;
-
         RuntimeCore.Shutdown();
         CombatContext.Reset();
         ExecutionAxis.Instance.Shutdown();
@@ -230,6 +227,8 @@ public partial class Plugin : IDalamudPlugin
         _windowSystem.RemoveAllWindows();
 
         _uiManager?.Dispose();
+        Instance = null!;
+        PluginConfig.Instance = null!;
 
         // 清除静态缓存（避免下次加载残留）
         ACRLoader.UnloadAll();
