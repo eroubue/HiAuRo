@@ -123,7 +123,7 @@ public partial class Plugin : IDalamudPlugin
             }
 
             var modeText = _config.UIMode == Infrastructure.UIMode.WebUI ? "WebUI" : "ImGui";
-            DService.Instance().Chat.Print($"[HiAuRo] /hi on|off|toggle|status|panel|reload  UI模式: {modeText}  悬浮窗: localhost:5678/jobview.html");
+            DService.Instance().Chat.Print($"[HiAuRo] /hi on|off|toggle|status|panel|reload  UI模式: {modeText}");
             DService.Instance().Log.Information($"[Lifecycle] HiAuRo 初始化完成。版本: {_config.LastSeenPluginVersion}  模式: {modeText}");
             DService.Instance().Log.Information($"[Lifecycle] 状态: Mode={modeText} ACR={ACRLifecycle.CurrentAcrName}");
         }
@@ -282,7 +282,7 @@ public partial class Plugin : IDalamudPlugin
             DService.Instance().Log.Information($"[UI] hotkey: executing '{id}' ({match.Label}) Check={check}");
             // 技能执行必须走 Dalamud 主线程
             var hotkeyId = id;
-            Browsingway.Services.Framework.RunOnFrameworkThread(() => HiAuRo.ACR.HotkeyHelper.ExecuteById(hotkeyId));
+            DService.Instance().Framework.RunOnFrameworkThread(() => HiAuRo.ACR.HotkeyHelper.ExecuteById(hotkeyId));
         });
 
         bridge.On("qttoggle", data =>
@@ -348,7 +348,6 @@ public partial class Plugin : IDalamudPlugin
             var width = data.Value.TryGetProperty("width", out var w) ? w.GetInt32() : 0;
             var height = data.Value.TryGetProperty("height", out var h) ? h.GetInt32() : 0;
             if (string.IsNullOrEmpty(overlay) || width <= 0 || height <= 0) return;
-            Instance._browserHost?.UpdateOverlay(overlay, width: width, height: height);
             // 持久化到当前 ACR 的 ui_settings.json
             var s = HiAuRo.Setting.SettingMgr.LoadAcrUiSettings(
                 Runtime.ACRLifecycle.CurrentAuthor, Runtime.ACRLifecycle.CurrentJobId);

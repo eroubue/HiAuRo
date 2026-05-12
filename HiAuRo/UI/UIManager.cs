@@ -1,5 +1,4 @@
 using System.Numerics;
-using Browsingway;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin;
 using HiAuRo.Infrastructure;
@@ -28,8 +27,7 @@ internal class UIManager : IDisposable
     private DemoWindow? _demoWindow;
     private readonly List<Window> _customWindows = [];
 
-    /// <summary>当前是否为 WebUI 模式（CEF 已启用且当前选中 WebUI）</summary>
-    public bool IsWebUI => _uiBridge != null && _config.UIMode == UIMode.WebUI && !_config.DisableCEF;
+    public bool IsWebUI => _config.UIMode == UIMode.WebUI;
 
     /// <summary>WebSocket 桥接，低配模式下为 null</summary>
     public WebUiBridge? Bridge => _uiBridge;
@@ -49,30 +47,18 @@ internal class UIManager : IDisposable
     {
         DService.Instance().Log.Information("[UIManager] 开始初始化 UI...");
 
-        if (!_config.DisableCEF)
+        try
         {
-            try
-            {
-                // 创建 CEF BrowserHost（渲染器进程异步启动）
-                var browserHost = new BrowserHost(_pluginInterface);
-                if (Plugin.Instance != null)
-                    Plugin.Instance._browserHost = browserHost;
+            // 创建 WebSocket 桥接 + HTTP 服务器
+            _uiBridge = new WebUiBridge();
+            _uiServer = new WebUiServer(_webRoot, _uiBridge);
+            _uiServer.Start();
 
-                // 创建 WebSocket 桥接 + HTTP 服务器
-                _uiBridge = new WebUiBridge();
-                _uiServer = new WebUiServer(_webRoot, _uiBridge);
-                _uiServer.Start();
-
-                DService.Instance().Log.Information("[UIManager] CEF+WebUiServer 初始化完成");
-
-                // ImGui 模式下隐藏 CEF overlay
-                if (_config.UIMode == UIMode.ImGui)
-                    browserHost.OverlaysVisible = false;
-            }
-            catch (Exception ex)
-            {
-                DService.Instance().Log.Error($"[UIManager] BrowserHost 初始化失败: {ex}");
-            }
+            DService.Instance().Log.Information("[UIManager] WebUiServer 初始化完成");
+        }
+        catch (Exception ex)
+        {
+            DService.Instance().Log.Error($"[UIManager] WebUiServer 初始化失败: {ex}");
         }
 
         // ImGui 模式下创建 ImGui overlay 窗口
@@ -87,22 +73,13 @@ internal class UIManager : IDisposable
     public void SwitchTo(UIMode mode)
     {
         if (mode == _config.UIMode) return;
-        if (mode == UIMode.WebUI && _config.DisableCEF) return;
 
         _config.UIMode = mode;
 
         if (mode == UIMode.WebUI)
-        {
             RemoveImGuiOverlays();
-            if (Plugin.BrowserHost != null)
-                Plugin.BrowserHost.OverlaysVisible = true;
-        }
         else
-        {
-            if (Plugin.BrowserHost != null)
-                Plugin.BrowserHost.OverlaysVisible = false;
             CreateImGuiOverlays();
-        }
 
         _saveConfig();
         DService.Instance().Chat.Print($"[HiAuRo] UI 模式已切换为: {(mode == UIMode.WebUI ? "WebUI" : "ImGui")}");
@@ -174,9 +151,6 @@ internal class UIManager : IDisposable
         try { RemoveImGuiOverlays(); } catch { }
         _uiServer?.Stop();
         _uiBridge?.Dispose();
-        DService.Instance().Log.Information("[UIManager] 释放 BrowserHost...");
-        Plugin.Instance._browserHost?.Dispose();
-        Plugin.Instance._browserHost = null;
         DService.Instance().Log.Information("[UIManager] UIManager 已释放");
     }
 

@@ -313,16 +313,7 @@ public static class ACRLifecycle
         }
         DService.Instance().Log.Information($"[ACR] status 消息已发送 (hotkeys={hotkeyList.Count} qts={qtList.Count})");
 
-        // 恢复上次持久化的 overlay 尺寸（避免每次 resize）
-        if (settings.OverlayContentWidth.Count > 0)
-        {
-            foreach (var kv in settings.OverlayContentWidth)
-            {
-                var h = settings.OverlayContentHeight.GetValueOrDefault(kv.Key);
-                if (h > 0)
-                    Plugin.BrowserHost?.UpdateOverlay(kv.Key, width: kv.Value, height: h);
-            }
-        }
+        // 恢复上次持久化的 overlay 尺寸（由外部插件处理）
         // 注册 ACR 自定义 ImGui 窗口
         var customWindows = entry.CustomWindows;
         if (customWindows != null)

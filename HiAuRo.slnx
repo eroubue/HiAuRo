@@ -1,15 +1,4 @@
 <Solution>
-  <Folder Name="/Browsingway/">
-    <Project Path="Browsingway/Browsingway.Common/Browsingway.Common.csproj">
-      <Platform Solution="Debug|*" Project="x64" />
-    </Project>
-    <Project Path="Browsingway/Browsingway/Browsingway.csproj">
-      <Platform Solution="Debug|*" Project="x64" />
-    </Project>
-    <Project Path="Browsingway/Browsingway.Renderer/Browsingway.Renderer.csproj">
-      <Platform Solution="Debug|*" Project="x64" />
-    </Project>
-  </Folder>
   <Project Path="HiAuRo/HiAuRo.csproj">
     <Platform Solution="Debug|*" Project="x64" />
   </Project>

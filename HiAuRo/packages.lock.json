@@ -58,21 +58,6 @@
         "resolved": "1.1.0",
         "contentHash": "pwe99NXsWkSeJdOwzcweorlyoB2frOlTU37QwzmnnxfRT5vRENXm4UOl5g4Nxq5V9lYOBWK1mZIozFfIlDVjYA=="
       },
-      "browsingway": {
-        "type": "Project",
-        "dependencies": {
-          "Browsingway.Common": "[1.7.2, )",
-          "DalamudPackager": "[15.0.0, )",
-          "SharedMemory": "[2.3.2, )"
-        }
-      },
-      "browsingway.common": {
-        "type": "Project",
-        "dependencies": {
-          "FlatSharp.Runtime": "[7.9.0, )",
-          "SharedMemory": "[2.3.2, )"
-        }
-      },
       "hiauro.helper": {
         "type": "Project",
         "dependencies": {

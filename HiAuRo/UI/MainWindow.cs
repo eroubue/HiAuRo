@@ -74,41 +74,11 @@ public sealed class MainWindow : Window
         ImGui.SameLine();
 
         var isWebUI = _config.UIMode == Infrastructure.UIMode.WebUI;
-        var cefDisabled = _config.DisableCEF;
-
-        // WebUI 选项 —— 低配模式下灰掉
-        if (cefDisabled)
-        {
-            ImGui.BeginDisabled();
-            ImGui.RadioButton("WebUI (CEF 已禁用)", false);
-            ImGui.EndDisabled();
-        }
-        else if (ImGui.RadioButton("WebUI", isWebUI))
-        {
+        if (ImGui.RadioButton("WebUI", isWebUI))
             Plugin.Instance._uiManager?.SwitchTo(Infrastructure.UIMode.WebUI);
-        }
-
         ImGui.SameLine();
         if (ImGui.RadioButton("ImGui", !isWebUI))
-        {
             Plugin.Instance._uiManager?.SwitchTo(Infrastructure.UIMode.ImGui);
-        }
-
-        // 低配置模式复选框
-        ImGui.Spacing();
-        var newCefDisabled = cefDisabled;
-        if (ImGui.Checkbox("低配置模式 (禁用 CEF 以节省 ~200MB 内存)", ref newCefDisabled))
-        {
-            _config.DisableCEF = newCefDisabled;
-            _saveConfig();
-        }
-
-        if (_config.DisableCEF)
-        {
-            ImGui.PushStyleColor(ImGuiCol.Text, Theme.Colors.AccentOrange);
-            ImGui.TextWrapped("CEF 已禁用，WebUI 不可用。切换此选项需重启插件生效。");
-            ImGui.PopStyleColor();
-        }
 
         // ImGui 主题模式（仅 ImGui 模式时显示）
         if (!isWebUI)
@@ -359,14 +329,13 @@ public sealed class MainWindow : Window
     private void DrawOverlaySettings()
     {
         ImGui.Spacing();
-        ImGui.Text("CEF 游戏内悬浮窗");
+        ImGui.Text("外部悬浮窗");
         ImGui.Separator();
 
         var overlays = _config.Overlays;
         if (overlays == null || overlays.Length == 0) return;
 
         var changed = false;
-        var host = Plugin.BrowserHost;
 
         for (int i = 0; i < overlays.Length; i++)
         {
@@ -387,7 +356,6 @@ public sealed class MainWindow : Window
             if (ImGui.InputText("URL", ref url, 256))
             {
                 ol.Url = url;
-                host?.UpdateOverlay(ol.Name, url: url);
                 changed = true;
             }
 
@@ -396,7 +364,6 @@ public sealed class MainWindow : Window
             if (ImGui.InputInt("宽", ref w, 10))
             {
                 ol.Width = w;
-                host?.UpdateOverlay(ol.Name, width: w, height: ol.Height);
                 changed = true;
             }
             ImGui.SameLine();
@@ -405,7 +372,6 @@ public sealed class MainWindow : Window
             if (ImGui.InputInt("高", ref h, 10))
             {
                 ol.Height = h;
-                host?.UpdateOverlay(ol.Name, width: ol.Width, height: h);
                 changed = true;
             }
 
@@ -414,7 +380,6 @@ public sealed class MainWindow : Window
             if (ImGui.SliderFloat("缩放 %", ref zoom, 50f, 200f, "%.0f%%"))
             {
                 ol.Zoom = zoom;
-                host?.UpdateOverlay(ol.Name, zoom: zoom);
                 changed = true;
             }
 
@@ -422,13 +387,8 @@ public sealed class MainWindow : Window
             if (ImGui.Checkbox("锁定窗口", ref locked))
             {
                 ol.Locked = locked;
-                host?.UpdateOverlay(ol.Name, locked: locked);
                 changed = true;
             }
-
-            ImGui.SameLine();
-            if (ImGui.Button("CEF DevTools"))
-                host?.DebugOverlay(ol.Name);
 
             ImGui.Unindent(16);
             ImGui.Spacing();
