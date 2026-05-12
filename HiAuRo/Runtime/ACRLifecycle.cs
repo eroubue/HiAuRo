@@ -103,9 +103,9 @@ public static class ACRLifecycle
             UnloadRotation();
         }
 
-        if (Plugin.Instance._uiBridge != null)
+        if (Plugin.IsWebUI)
         {
-            _ = Plugin.Instance._uiBridge.SendAsync(new
+            _ = Plugin.Instance._uiBridge!.SendAsync(new
             {
                 type = "status",
                 data = new
@@ -220,14 +220,14 @@ public static class ACRLifecycle
             }
             catch (Exception ex) { DService.Instance().Log.Error($"[ACR] controls 序列化异常: {ex.Message}"); }
 
-            if (Plugin.Instance._uiBridge != null)
+            if (Plugin.IsWebUI)
             {
-                _ = Plugin.Instance._uiBridge.SendAsync(new
+                _ = Plugin.Instance._uiBridge!.SendAsync(new
                 {
                     type = "controls",
                     data = controls
                 });
-                Plugin.Instance._uiBridge.CacheControls(controls);
+                Plugin.Instance._uiBridge!.CacheControls(controls);
             }
             ImGuiOverlayState.UpdateControls(controls);
             DService.Instance().Log.Information("[ACR] controls 消息已发送 + 已缓存");
@@ -238,9 +238,9 @@ public static class ACRLifecycle
         }
 
         // 推送 UI 设置
-        if (Plugin.Instance._uiBridge != null)
+        if (Plugin.IsWebUI)
         {
-            _ = Plugin.Instance._uiBridge.SendAsync(new
+            _ = Plugin.Instance._uiBridge!.SendAsync(new
             {
                 type = "uiSettings",
                 data = new
@@ -254,7 +254,7 @@ public static class ACRLifecycle
                     hkBindings = settings.HkBindings
                 }
             });
-            Plugin.Instance._uiBridge.CacheUiSettings(new
+            Plugin.Instance._uiBridge!.CacheUiSettings(new
             {
                 qtCols = settings.QtCols,
                 qtBtnW = settings.QtBtnW,
@@ -274,9 +274,9 @@ public static class ACRLifecycle
         // 推送完整状态（qt + hotkey 数据）
         var hotkeyList = ACR.HotkeyHelper.GetAll();
         var qtList = ACR.QTHelper.GetAll();
-        if (Plugin.Instance._uiBridge != null)
+        if (Plugin.IsWebUI)
         {
-            _ = Plugin.Instance._uiBridge.SendAsync(new
+            _ = Plugin.Instance._uiBridge!.SendAsync(new
             {
                 type = "status",
                 data = new
