@@ -39,6 +39,9 @@ public sealed class PluginConfig : IPluginConfiguration
     /// <summary>ImGui 主题模式 (亮色/暗色)</summary>
     public ImGuiThemeMode ImGuiThemeMode { get; set; } = ImGuiThemeMode.Light;
 
+    /// <summary>低配置模式：完全禁用 CEF 渲染，节省 ~200MB 内存。需重启插件生效。</summary>
+    public bool DisableCEF { get; set; } = false;
+
     /// <summary>ImGui 模式 — StatusBar overlay X 位置</summary>
     public float OverlayStatusBarX { get; set; } = 100f;
 
