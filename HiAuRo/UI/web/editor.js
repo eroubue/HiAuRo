@@ -187,7 +187,7 @@ function newNodeDefaults(type) {
     if (type === 'treeDelayNode') d.Delay = 0;
     if (type === 'treeCondNode') { d.CheckOnce = false; d.ReverseResult = false; d.TriggerConds = []; }
     if (type === 'treeActionNode') d.TriggerActions = [];
-    if (type === 'treeScriptNode') { d.Script = ''; d.OnlyCheck = false; }
+    if (type === 'treeScriptNode') { d.Script = ''; d.OnlyCheck = false; d.FactNodeId = ''; }
     if (type === 'treeParallel') d.AnyReturn = false;
     if (type === 'treeSequence') d.IgnoreNodeResult = false;
     return d;
@@ -601,7 +601,7 @@ function renderProps() {
         }
         if (type === 'treeDelayNode') { h += '<div class="ed-prop-section"><div class="ed-prop-head">延迟</div>'; h += prop('秒数', 'number', node, 'Delay'); h += '</div>'; }
         if (type === 'treeLoop') { h += '<div class="ed-prop-section"><div class="ed-prop-head">循环</div>'; h += prop('次数', 'number', node, 'Times'); h += '</div>'; }
-        if (type === 'treeScriptNode') { h += '<div class="ed-prop-section"><div class="ed-prop-head">脚本</div>'; h += '<textarea class="ed-prop-area" id="dfScript" style="width:100%;height:80px;font-size:11px;font-family:monospace">'+esc(node.Script||'')+'</textarea>'; h += '<button class="btn-sm" style="margin-top:4px" onclick="saveTreeScript()">保存脚本</button>'; h += '</div>'; }
+        if (type === 'treeScriptNode') { h += '<div class="ed-prop-section"><div class="ed-prop-head">脚本</div>'; h += prop('事实轴节点 ID', 'text', node, 'FactNodeId'); h += '<textarea class="ed-prop-area" id="dfScript" style="width:100%;height:80px;font-size:11px;font-family:monospace">'+esc(node.Script||'')+'</textarea>'; h += '<button class="btn-sm" style="margin-top:4px" onclick="saveTreeScript()">保存脚本</button>'; h += '</div>'; }
         body.innerHTML = h;
         bindTreePropInputs();
         return;
