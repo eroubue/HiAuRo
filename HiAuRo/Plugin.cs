@@ -42,6 +42,7 @@ public partial class Plugin : IDalamudPlugin
 
             DService.Init(pluginInterface);
             _config = LoadConfig();
+            LogManager.Instance.Init(_pluginInterface.ConfigDirectory.FullName);
             Theme.Mode = _config.ImGuiThemeMode == ImGuiThemeMode.Dark ? Theme.ThemeMode.Dark : Theme.ThemeMode.Light;
             _ = HelperUpdater.CheckAndUpdateAsync();
 
@@ -174,6 +175,7 @@ public partial class Plugin : IDalamudPlugin
         ACR.SpellHistoryHelper.Reset();
         ACRLifecycle.Shutdown();
 
+        LogManager.Instance.Dispose();
         DService.Uninit();
     }
 
@@ -240,6 +242,7 @@ public partial class Plugin : IDalamudPlugin
         ACRLifecycle.Shutdown();
 
         DService.Instance().Log.Information("[Lifecycle] HiAuRo 宿主已释放。");
+        LogManager.Instance.Dispose();
         DService.Uninit();
     }
 
