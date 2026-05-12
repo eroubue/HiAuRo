@@ -1,3 +1,4 @@
+using System.Linq;
 using System.Runtime.Loader;
 using HiAuRo.ACR;
 using HiAuRo.Infrastructure;
@@ -322,11 +323,24 @@ public static class ACRLifecycle
                     Plugin.BrowserHost?.UpdateOverlay(kv.Key, width: kv.Value, height: h);
             }
         }
+        // 注册 ACR 自定义 ImGui 窗口
+        var customWindows = entry.CustomWindows;
+        if (customWindows != null)
+        {
+            var uiMgr = Plugin.Instance._uiManager;
+            if (uiMgr != null)
+            {
+                foreach (var cw in customWindows)
+                    uiMgr.AddCustomWindow(cw);
+                DService.Instance().Log.Information($"[ACR] 自定义窗口已加载: {customWindows.Count()}个");
+            }
+        }
         IsLoadingRotation = false;
     }
 
     private static void UnloadRotation()
     {
+        Plugin.Instance._uiManager?.RemoveCustomWindows();
         DService.Instance().Log.Information($"[ACR] UnloadRotation: {CurrentAcrName}");
         ACR.QTHelper.OnChanged -= OnQtChanged;
         ACR.HotkeyHelper.OnExecuted -= OnHkExecuted;
