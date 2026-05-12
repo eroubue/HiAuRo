@@ -31,4 +31,7 @@ public interface IRotationEntry
 
     /// <summary>支持的职业列表（用于 ACRLoader 注册）</summary>
     IEnumerable<Jobs> TargetJobs { get; }
+
+    /// <summary>ACR 作者自定义 ImGui 窗口（不限数量），默认 null 表示无</summary>
+    IEnumerable<ICustomWindow>? CustomWindows => null;
 }
