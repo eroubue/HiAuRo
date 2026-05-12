@@ -19,13 +19,12 @@ public partial class Plugin : IDalamudPlugin
 {
     private readonly IDalamudPluginInterface _pluginInterface;
     private readonly PluginConfig _config;
-    internal readonly WebUiBridge? _uiBridge;
+    internal WebUiBridge? _uiBridge;
     internal IDalamudPluginInterface PluginInterface => _pluginInterface;
-    private readonly WebUiServer? _uiServer;
-    private OverlayStatusBar? _overlayStatusBar;
-    private OverlayQtPanel? _overlayQtPanel;
-    private OverlayHotkeyPanel? _overlayHotkeyPanel;
-    private DemoWindow? _demoWindow;
+    private UIManager? _uiManager;
+
+    /// <summary>当前是否处于 WebUI 模式（用于 ACRLifecycle 等判断状态推送通道）</summary>
+    public static bool IsWebUI => Instance._uiManager?.IsWebUI ?? false;
     private readonly MainWindow _mainWindow;
     private readonly WindowSystem _windowSystem;
 
@@ -44,9 +43,6 @@ public partial class Plugin : IDalamudPlugin
             DService.Init(pluginInterface);
             _config = LoadConfig();
             Theme.Mode = _config.ImGuiThemeMode == ImGuiThemeMode.Dark ? Theme.ThemeMode.Dark : Theme.ThemeMode.Light;
-            if (_config.UIMode == Infrastructure.UIMode.WebUI)
-                BrowsingwayPluginInit(pluginInterface);
-
             _ = HelperUpdater.CheckAndUpdateAsync();
 
             var webRoot = Path.Combine(_pluginInterface.ConfigDirectory.FullName, "web");
@@ -75,36 +71,25 @@ public partial class Plugin : IDalamudPlugin
             ModeSwitch.TryAutoSwitchToExecutionAxis();
             CombatContext.StateChanged += OnCombatStateChanged;
 
-            if (_config.UIMode == Infrastructure.UIMode.WebUI)
-            {
-                _uiBridge = new WebUiBridge();
-                RegisterUiHandlers(_uiBridge);
-                AuthoringServer.Instance.Register(_uiBridge);
-                _uiServer = new WebUiServer(webRoot, _uiBridge);
-                _uiServer.Start();
-            }
-
             ACR.HotkeyHelper.OnExecuted += OnHotkeyExecuted;
             ACR.QTHelper.OnChanged += OnQtChanged;
 
             _windowSystem = new WindowSystem("HiAuRo");
+            _uiManager = new UIManager(_config, _pluginInterface, _windowSystem,
+                () => _pluginInterface.SavePluginConfig(_config), webRoot);
+            _uiManager.Init();
+            _uiBridge = _uiManager.Bridge;
+            if (_uiBridge != null)
+            {
+                RegisterUiHandlers(_uiBridge);
+                AuthoringServer.Instance.Register(_uiBridge);
+            }
+
             _mainWindow = new MainWindow(_config, () => _pluginInterface.SavePluginConfig(_config));
             _windowSystem.AddWindow(_mainWindow);
             _pluginInterface.UiBuilder.Draw += _windowSystem.Draw;
             _pluginInterface.UiBuilder.OpenMainUi += () => _mainWindow.IsOpen = !_mainWindow.IsOpen;
             _pluginInterface.UiBuilder.OpenConfigUi += () => _mainWindow.IsOpen = !_mainWindow.IsOpen;
-
-            if (_config.UIMode == Infrastructure.UIMode.ImGui)
-            {
-                _demoWindow = new DemoWindow();
-                _overlayStatusBar = new OverlayStatusBar(_config, () => _pluginInterface.SavePluginConfig(_config));
-                _overlayQtPanel = new OverlayQtPanel(_config, () => _pluginInterface.SavePluginConfig(_config));
-                _overlayHotkeyPanel = new OverlayHotkeyPanel(_config, () => _pluginInterface.SavePluginConfig(_config));
-                _windowSystem.AddWindow(_demoWindow);
-                _windowSystem.AddWindow(_overlayStatusBar);
-                _windowSystem.AddWindow(_overlayQtPanel);
-                _windowSystem.AddWindow(_overlayHotkeyPanel);
-            }
 
             // 加载外部 ACR
             DService.Instance().Log.Information("[ACR] 开始扫描外部 ACR...");
@@ -178,9 +163,7 @@ public partial class Plugin : IDalamudPlugin
             _windowSystem.RemoveAllWindows();
         }
 
-        _uiServer?.Stop();
-        _uiBridge?.Dispose();
-        BrowsingwayDispose();
+        _uiManager?.Dispose();
 
         // 清除静态缓存（避免下次加载残留）
         ACRLoader.UnloadAll();
@@ -246,9 +229,7 @@ public partial class Plugin : IDalamudPlugin
         _pluginInterface.UiBuilder.Draw -= _windowSystem.Draw;
         _windowSystem.RemoveAllWindows();
 
-            _uiServer?.Stop();
-            _uiBridge?.Dispose();
-        BrowsingwayDispose();
+        _uiManager?.Dispose();
 
         // 清除静态缓存（避免下次加载残留）
         ACRLoader.UnloadAll();
@@ -376,8 +357,8 @@ public partial class Plugin : IDalamudPlugin
 
     private static async Task SendStatusState()
     {
-        if (Instance._uiBridge == null) return;
-        await Instance._uiBridge.SendAsync(new
+        if (!IsWebUI) return;
+        await Instance._uiBridge!.SendAsync(new
         {
             type = "acrState",
             data = new { enabled = RuntimeCore.IsRunning }
@@ -386,8 +367,8 @@ public partial class Plugin : IDalamudPlugin
 
     private static async Task SendUiSettings(HiAuRo.ACR.UiSettings s)
     {
-        if (Instance._uiBridge == null) return;
-        await Instance._uiBridge.SendAsync(new
+        if (!IsWebUI) return;
+        await Instance._uiBridge!.SendAsync(new
         {
             type = "uiSettings",
             data = new
@@ -405,8 +386,8 @@ public partial class Plugin : IDalamudPlugin
 
     private static async Task SendPauseState()
     {
-        if (Instance._uiBridge == null) return;
-        await Instance._uiBridge.SendAsync(new
+        if (!IsWebUI) return;
+        await Instance._uiBridge!.SendAsync(new
         {
             type = "pauseChanged",
             data = new { paused = HiAuRo.ACR.MainControlHelper.IsPaused }
@@ -415,8 +396,8 @@ public partial class Plugin : IDalamudPlugin
 
     private static void OnHotkeyExecuted(string id, string label)
     {
-        if (Instance._uiBridge == null) return;
-        _ = Instance._uiBridge.SendAsync(new
+        if (!IsWebUI) return;
+        _ = Instance._uiBridge!.SendAsync(new
         {
             type = "hotkeyExecuted",
             data = new { id, label }
@@ -425,8 +406,8 @@ public partial class Plugin : IDalamudPlugin
 
     private static void OnQtChanged(string id, bool value)
     {
-        if (Instance._uiBridge == null) return;
-        _ = Instance._uiBridge.SendAsync(new
+        if (!IsWebUI) return;
+        _ = Instance._uiBridge!.SendAsync(new
         {
             type = "qtChanged",
             data = new { id, value }
@@ -435,16 +416,7 @@ public partial class Plugin : IDalamudPlugin
 
     public void ShowDemoWindow()
     {
-        if (_demoWindow != null)
-        {
-            _demoWindow.IsOpen = true;
-        }
-        else
-        {
-            _demoWindow = new DemoWindow();
-            _windowSystem.AddWindow(_demoWindow);
-            _demoWindow.IsOpen = true;
-        }
+        _uiManager?.ShowDemoWindow();
     }
 
     #region 配置
