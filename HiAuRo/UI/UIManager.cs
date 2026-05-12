@@ -1,3 +1,4 @@
+using Browsingway;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin;
 using HiAuRo.Infrastructure;
@@ -43,25 +44,40 @@ internal class UIManager : IDisposable
     /// <summary>根据当前配置初始化 UI 资源</summary>
     public void Init()
     {
+        DService.Instance().Log.Information("[UIManager] 开始初始化 UI...");
+
         if (!_config.DisableCEF)
         {
-            // 创建 CEF BrowserHost（渲染器进程异步启动）
-            var browserHost = new Browsingway.BrowserHost(_pluginInterface);
-            Plugin.Instance._browserHost = browserHost;
+            try
+            {
+                // 创建 CEF BrowserHost（渲染器进程异步启动）
+                var browserHost = new BrowserHost(_pluginInterface);
+                if (Plugin.Instance != null)
+                    Plugin.Instance._browserHost = browserHost;
 
-            // 创建 WebSocket 桥接 + HTTP 服务器
-            _uiBridge = new WebUiBridge();
-            _uiServer = new WebUiServer(_webRoot, _uiBridge);
-            _uiServer.Start();
+                // 创建 WebSocket 桥接 + HTTP 服务器
+                _uiBridge = new WebUiBridge();
+                _uiServer = new WebUiServer(_webRoot, _uiBridge);
+                _uiServer.Start();
 
-            // ImGui 模式下隐藏 CEF overlay
-            if (_config.UIMode == UIMode.ImGui)
-                browserHost.OverlaysVisible = false;
+                DService.Instance().Log.Information("[UIManager] CEF+WebUiServer 初始化完成");
+
+                // ImGui 模式下隐藏 CEF overlay
+                if (_config.UIMode == UIMode.ImGui)
+                    browserHost.OverlaysVisible = false;
+            }
+            catch (Exception ex)
+            {
+                DService.Instance().Log.Error($"[UIManager] BrowserHost 初始化失败: {ex}");
+            }
         }
 
         // ImGui 模式下创建 ImGui overlay 窗口
         if (_config.UIMode == UIMode.ImGui)
+        {
             CreateImGuiOverlays();
+            DService.Instance().Log.Information("[UIManager] ImGui Overlay 已创建");
+        }
     }
 
     /// <summary>动态切换 UI 模式</summary>
@@ -131,7 +147,9 @@ internal class UIManager : IDisposable
         RemoveImGuiOverlays();
         _uiServer?.Stop();
         _uiBridge?.Dispose();
+        DService.Instance().Log.Information("[UIManager] 释放 BrowserHost...");
         Plugin.Instance._browserHost?.Dispose();
         Plugin.Instance._browserHost = null;
+        DService.Instance().Log.Information("[UIManager] UIManager 已释放");
     }
 }
