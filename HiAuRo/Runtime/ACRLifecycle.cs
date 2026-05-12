@@ -340,7 +340,8 @@ public static class ACRLifecycle
 
     private static void UnloadRotation()
     {
-        Plugin.Instance._uiManager?.RemoveCustomWindows();
+        if (Plugin.Instance != null)
+            Plugin.Instance._uiManager?.RemoveCustomWindows();
         DService.Instance().Log.Information($"[ACR] UnloadRotation: {CurrentAcrName}");
         ACR.QTHelper.OnChanged -= OnQtChanged;
         ACR.HotkeyHelper.OnExecuted -= OnHkExecuted;

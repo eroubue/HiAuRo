@@ -156,6 +156,9 @@ public partial class Plugin : IDalamudPlugin
         EventSystem.Shutdown();
         CommandMgr.Shutdown();
 
+        // 先关 ACR（UnloadRotation 依赖 Plugin.Instance）
+        ACRLifecycle.Shutdown();
+
         if (_windowSystem != null)
         {
             _pluginInterface.UiBuilder.Draw -= _windowSystem.Draw;
@@ -172,7 +175,6 @@ public partial class Plugin : IDalamudPlugin
         Decision.DecisionSkillRegistry.Clear();
         ACR.HotkeyPoller.Clear();
         ACR.SpellHistoryHelper.Reset();
-        ACRLifecycle.Shutdown();
 
         LogManager.Instance.Dispose();
         DService.Uninit();
@@ -224,6 +226,9 @@ public partial class Plugin : IDalamudPlugin
         EventSystem.Shutdown();
         CommandMgr.Shutdown();
 
+        // 先关 ACR（UnloadRotation 依赖 Plugin.Instance）
+        ACRLifecycle.Shutdown();
+
         _pluginInterface.UiBuilder.Draw -= _windowSystem.Draw;
         _uiManager?.Dispose();
         _windowSystem.RemoveAllWindows();
@@ -237,7 +242,6 @@ public partial class Plugin : IDalamudPlugin
         Decision.DecisionSkillRegistry.Clear();
         ACR.HotkeyPoller.Clear();
         ACR.SpellHistoryHelper.Reset();
-        ACRLifecycle.Shutdown();
 
         DService.Instance().Log.Information("[Lifecycle] HiAuRo 宿主已释放。");
         LogManager.Instance.Dispose();
