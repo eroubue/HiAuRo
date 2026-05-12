@@ -159,10 +159,9 @@ public partial class Plugin : IDalamudPlugin
         if (_windowSystem != null)
         {
             _pluginInterface.UiBuilder.Draw -= _windowSystem.Draw;
+            _uiManager?.Dispose();
             _windowSystem.RemoveAllWindows();
         }
-
-        _uiManager?.Dispose();
         Instance = null!;
         PluginConfig.Instance = null!;
 
@@ -226,9 +225,8 @@ public partial class Plugin : IDalamudPlugin
         CommandMgr.Shutdown();
 
         _pluginInterface.UiBuilder.Draw -= _windowSystem.Draw;
-        _windowSystem.RemoveAllWindows();
-
         _uiManager?.Dispose();
+        _windowSystem.RemoveAllWindows();
         Instance = null!;
         PluginConfig.Instance = null!;
 

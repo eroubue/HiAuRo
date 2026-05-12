@@ -125,10 +125,10 @@ internal class UIManager : IDisposable
 
     private void RemoveImGuiOverlays()
     {
-        if (_demoWindow != null) { _windowSystem.RemoveWindow(_demoWindow); _demoWindow = null; }
-        if (_overlayStatusBar != null) { _windowSystem.RemoveWindow(_overlayStatusBar); _overlayStatusBar = null; }
-        if (_overlayQtPanel != null) { _windowSystem.RemoveWindow(_overlayQtPanel); _overlayQtPanel = null; }
-        if (_overlayHotkeyPanel != null) { _windowSystem.RemoveWindow(_overlayHotkeyPanel); _overlayHotkeyPanel = null; }
+        try { if (_demoWindow != null) { _windowSystem.RemoveWindow(_demoWindow); _demoWindow = null; } } catch { }
+        try { if (_overlayStatusBar != null) { _windowSystem.RemoveWindow(_overlayStatusBar); _overlayStatusBar = null; } } catch { }
+        try { if (_overlayQtPanel != null) { _windowSystem.RemoveWindow(_overlayQtPanel); _overlayQtPanel = null; } } catch { }
+        try { if (_overlayHotkeyPanel != null) { _windowSystem.RemoveWindow(_overlayHotkeyPanel); _overlayHotkeyPanel = null; } } catch { }
     }
 
     public void ShowDemoWindow()
@@ -162,7 +162,7 @@ internal class UIManager : IDisposable
         foreach (var w in _customWindows)
         {
             w.IsOpen = false;
-            _windowSystem.RemoveWindow(w);
+            try { _windowSystem.RemoveWindow(w); } catch { }
         }
         _customWindows.Clear();
         DService.Instance().Log.Information($"[UIManager] 自定义窗口已全部移除");
@@ -170,7 +170,8 @@ internal class UIManager : IDisposable
 
     public void Dispose()
     {
-        RemoveImGuiOverlays();
+        try { RemoveCustomWindows(); } catch { }
+        try { RemoveImGuiOverlays(); } catch { }
         _uiServer?.Stop();
         _uiBridge?.Dispose();
         DService.Instance().Log.Information("[UIManager] 释放 BrowserHost...");
