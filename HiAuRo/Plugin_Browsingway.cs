@@ -5,7 +5,7 @@ namespace HiAuRo;
 
 partial class Plugin
 {
-    private BrowserHost? _browserHost;
+    internal BrowserHost? _browserHost;
     public static BrowserHost? BrowserHost => Instance._browserHost;
 
     private void BrowsingwayPluginInit(IDalamudPluginInterface pluginInterface)
