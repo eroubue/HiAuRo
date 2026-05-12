@@ -136,6 +136,11 @@ public sealed class TreeScriptNode : TriggerLeafNode
     public bool OnlyCheck { get; set; }
     public string Script { get; set; } = "";
 
+    /// <summary>
+    /// 绑定的事实轴节点 ID，脚本产生的 MovementDemand 自动继承
+    /// </summary>
+    public string FactNodeId { get; set; } = "";
+
     private ITriggerScript? _compiled;
 
     protected override async Task<bool> OnExecute(EvalContext ctx)

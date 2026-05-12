@@ -90,6 +90,9 @@ public sealed class TriggerNodeData
     [JsonPropertyName("Script")]
     public string? Script { get; set; }
 
+    [JsonPropertyName("factNodeId")]
+    public string? FactNodeId { get; set; }
+
     [JsonPropertyName("Info")]
     public string? Info { get; set; }
 
@@ -178,7 +181,8 @@ public sealed class TriggerNodeData
                 {
                     Id = Id, DisplayName = DisplayName, Remark = Remark, Tag = Tag, Enable = Enable,
                     OnlyCheck = OnlyCheck ?? false,
-                    Script = Script ?? ""
+                    Script = Script ?? "",
+                    FactNodeId = FactNodeId ?? ""
                 };
             case "TreePrintDebugInfoNode":
                 return new TreePrintDebugInfoNode
