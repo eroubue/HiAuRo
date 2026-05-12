@@ -4,6 +4,7 @@ using HiAuRo.Decision;
 using HiAuRo.Execution;
 using HiAuRo.FactAxis;
 using HiAuRo.Infrastructure;
+using HiAuRo.Runtime.Intelligence;
 
 namespace HiAuRo.Runtime;
 
@@ -375,6 +376,9 @@ public sealed class AIRunner
 
         // Phase 8: 消费事实轴需求 → 决策分配
         UpdateDecisions();
+
+        // Phase 8.5: 智能层——释放事实轴对应的移动需求
+        IntelligenceEngine.Instance.Update(FactTimeline.Instance);
     }
 
     /// <summary>Phase 8 — 从事实轴当前事件提取需求，运行决策引擎</summary>
