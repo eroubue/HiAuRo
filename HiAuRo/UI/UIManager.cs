@@ -1,7 +1,9 @@
+using System.Numerics;
 using Browsingway;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin;
 using HiAuRo.Infrastructure;
+using HiAuRo.ACR;
 using HiAuRo.ImGuiLib;
 
 namespace HiAuRo.UI;
@@ -24,6 +26,7 @@ internal class UIManager : IDisposable
     private OverlayQtPanel? _overlayQtPanel;
     private OverlayHotkeyPanel? _overlayHotkeyPanel;
     private DemoWindow? _demoWindow;
+    private readonly List<Window> _customWindows = [];
 
     /// <summary>当前是否为 WebUI 模式（CEF 已启用且当前选中 WebUI）</summary>
     public bool IsWebUI => _uiBridge != null && _config.UIMode == UIMode.WebUI && !_config.DisableCEF;
@@ -142,6 +145,29 @@ internal class UIManager : IDisposable
         }
     }
 
+    /// <summary>注册 ACR 自定义窗口</summary>
+    public void AddCustomWindow(ICustomWindow cw)
+    {
+        var window = new CustomWindowHost(cw);
+        _customWindows.Add(window);
+        _windowSystem.AddWindow(window);
+        if (cw.IsOpenByDefault)
+            window.IsOpen = true;
+        DService.Instance().Log.Information($"[UIManager] 自定义窗口已添加: {cw.Name}");
+    }
+
+    /// <summary>移除所有 ACR 自定义窗口（ACR 卸载时调用）</summary>
+    public void RemoveCustomWindows()
+    {
+        foreach (var w in _customWindows)
+        {
+            w.IsOpen = false;
+            _windowSystem.RemoveWindow(w);
+        }
+        _customWindows.Clear();
+        DService.Instance().Log.Information($"[UIManager] 自定义窗口已全部移除");
+    }
+
     public void Dispose()
     {
         RemoveImGuiOverlays();
@@ -151,5 +177,44 @@ internal class UIManager : IDisposable
         Plugin.Instance._browserHost?.Dispose();
         Plugin.Instance._browserHost = null;
         DService.Instance().Log.Information("[UIManager] UIManager 已释放");
+    }
+
+    /// <summary>
+    /// ICustomWindow → Dalamud Window 适配器
+    /// </summary>
+    private sealed class CustomWindowHost : Window
+    {
+        private readonly ICustomWindow _cw;
+
+        public CustomWindowHost(ICustomWindow cw) : base($"{cw.Name}##Custom")
+        {
+            _cw = cw;
+            var sz = cw.DefaultSize;
+            if (sz.HasValue)
+                SizeConstraints = new WindowSizeConstraints
+                {
+                    MinimumSize = sz.Value,
+                    MaximumSize = sz.Value
+                };
+            else
+                SizeConstraints = new WindowSizeConstraints
+                {
+                    MinimumSize = new Vector2(100, 50),
+                    MaximumSize = new Vector2(float.MaxValue, float.MaxValue)
+                };
+            IsOpen = cw.IsOpenByDefault;
+        }
+
+        public override void Draw()
+        {
+            try
+            {
+                _cw.Draw();
+            }
+            catch (Exception ex)
+            {
+                ImGui.TextColored(new Vector4(1, 0.3f, 0.3f, 1), $"Draw error: {ex.Message}");
+            }
+        }
     }
 }
