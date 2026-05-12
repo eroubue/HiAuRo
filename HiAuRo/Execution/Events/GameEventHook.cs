@@ -1,5 +1,6 @@
 using HiAuRo.ACR;
 using HiAuRo.Data;
+using HiAuRo.Infrastructure;
 using Dalamud.Hooking;
 using OmenTools.Dalamud.Services.ObjectTable.Abstractions.ObjectKinds;
 using OmenTools.OmenService;
@@ -11,6 +12,12 @@ public sealed class GameEventHook
 {
     public static GameEventHook Instance { get; } = new();
     public event Action<ITriggerCondParams>? OnEventFired;
+
+    private void Fire(ITriggerCondParams p)
+    {
+        LogManager.Instance.Log(p);
+        OnEventFired?.Invoke(p);
+    }
 
     private bool _initialized;
 
@@ -80,7 +87,7 @@ public sealed class GameEventHook
 
     private void OnGainStatus(IBattleChara player, ushort id, ushort param, ushort stackCount, TimeSpan remainingTime, ulong sourceID)
     {
-        OnEventFired?.Invoke(new BuffGainParams
+        Fire(new BuffGainParams
         {
             SourceID = player.EntityID,
             StatusID = id,
@@ -90,7 +97,7 @@ public sealed class GameEventHook
 
     private void OnLoseStatus(IBattleChara player, ushort id, ushort param, ushort stackCount, ulong sourceID)
     {
-        OnEventFired?.Invoke(new BuffRemoveParams
+        Fire(new BuffRemoveParams
         {
             SourceID = player.EntityID,
             StatusID = id
@@ -112,7 +119,7 @@ public sealed class GameEventHook
                     if (tether.TargetOID == 0xE0000000)
                     {
                         BattleData.RecentTethers.RemoveAll(e => e.TetherId == tether.TetherID && e.SourceId == tether.SourceID);
-                        OnEventFired?.Invoke(new TetherRemoveParams
+                        Fire(new TetherRemoveParams
                         {
                             SourceID = tether.SourceID,
                             Param2 = tether.A2, Param3 = tether.A3, Param5 = tether.A5
@@ -121,7 +128,7 @@ public sealed class GameEventHook
                     else
                     {
                         BattleData.OnTetherAdded(tether.TetherID, tether.SourceID, (uint)tether.TargetOID, now);
-                        OnEventFired?.Invoke(new TetherCreateParams
+                        Fire(new TetherCreateParams
                         {
                             TetherID = tether.TetherID,
                             SourceID = tether.SourceID,
@@ -138,7 +145,7 @@ public sealed class GameEventHook
                 {
                     var me = System.Runtime.InteropServices.Marshal.PtrToStructure<MapEffectRaw>(packet);
                     BattleData.OnMapEffect(me.PositionIndex, new System.Numerics.Vector3(), now);
-                    OnEventFired?.Invoke(new MapEffectParams
+                    Fire(new MapEffectParams
                     {
                         PositionIndex = me.PositionIndex,
                         Param1 = me.Param1,
@@ -161,7 +168,7 @@ public sealed class GameEventHook
                 unsafe
                 {
                     var cast = System.Runtime.InteropServices.Marshal.PtrToStructure<ActorCastRaw>(packet);
-                    OnEventFired?.Invoke(new ActorCastParams
+                    Fire(new ActorCastParams
                     {
                         ActionID = cast.ActionID,
                         CastTime = cast.CastTime,
@@ -181,7 +188,7 @@ public sealed class GameEventHook
                     var yell = System.Runtime.InteropServices.Marshal.PtrToStructure<NpcYellRaw>(packet);
                     var name = System.Runtime.InteropServices.Marshal.PtrToStringUTF8((nint)yell.SourceNamePtr, 32) ?? "";
                     var msg = System.Runtime.InteropServices.Marshal.PtrToStringUTF8((nint)yell.YellMsgPtr, 128) ?? "";
-                    OnEventFired?.Invoke(new NpcYellParams
+                    Fire(new NpcYellParams
                     {
                         SourceID = yell.SourceID,
                         SourceName = name,
@@ -196,7 +203,7 @@ public sealed class GameEventHook
                 unsafe
                 {
                     var env = System.Runtime.InteropServices.Marshal.PtrToStructure<EnvControlRaw>(packet);
-                    OnEventFired?.Invoke(new EnvControlParams
+                    Fire(new EnvControlParams
                     {
                         Index = env.Index,
                         Flag = env.Flag
@@ -209,7 +216,7 @@ public sealed class GameEventHook
 
     private void OnChatMessage(string text, bool saveToHistory)
     {
-        OnEventFired?.Invoke(new ChatMessageParams { Message = text });
+        Fire(new ChatMessageParams { Message = text });
     }
 
     private void OnActorControl(ActorControlRaw ac)
@@ -222,19 +229,19 @@ public sealed class GameEventHook
             P4 = ac.P4, P5 = ac.P5, P6 = ac.P6,
             TargetID = ac.TargetID
         };
-        OnEventFired?.Invoke(raw);
+        Fire(raw);
 
         switch (ac.Command)
         {
             case 2 when ac.P3 == 2:
-                OnEventFired?.Invoke(new ActorControlDeathParams
+                Fire(new ActorControlDeathParams
                 {
                     SourceID = ac.SourceID,
                     TargetID = ac.TargetID
                 });
                 break;
             case 34:
-                OnEventFired?.Invoke(new ActorControlTargetIconParams
+                Fire(new ActorControlTargetIconParams
                 {
                     SourceID = ac.SourceID,
                     TargetID = ac.TargetID,
@@ -242,7 +249,7 @@ public sealed class GameEventHook
                 });
                 break;
             case 54:
-                OnEventFired?.Invoke(new ActorControlTargetableParams
+                Fire(new ActorControlTargetableParams
                 {
                     SourceID = ac.SourceID,
                     TargetID = ac.TargetID,
@@ -253,7 +260,7 @@ public sealed class GameEventHook
                 // CombatStateParams already dispatched by CombatContext (authoritative source)
                 break;
             case 407:
-                OnEventFired?.Invoke(new ActorControlTimelineParams
+                Fire(new ActorControlTimelineParams
                 {
                     SourceID = ac.SourceID,
                     TimelineID = ac.P2
@@ -286,7 +293,7 @@ public sealed class GameEventHook
             if (_knownEntities.Count > 0 && !_knownEntities.ContainsKey(obj.EntityID))
             {
                 var bn = obj as IBattleNPC;
-                OnEventFired?.Invoke(new UnitCreateParams
+                Fire(new UnitCreateParams
                 {
                     EntityId = obj.EntityID,
                     DataId = bn?.DataID ?? 0,
@@ -301,7 +308,7 @@ public sealed class GameEventHook
             {
                 if (!currentIds.Contains(id))
                 {
-                    OnEventFired?.Invoke(new UnitDeleteParams
+                    Fire(new UnitDeleteParams
                     {
                         EntityId = id,
                         DataId = info.DataId,
@@ -325,7 +332,7 @@ public sealed class GameEventHook
         var currentWeather = OmenTools.OmenService.GameState.Weather;
         if (_lastWeatherId != 0 && currentWeather != _lastWeatherId)
         {
-            OnEventFired?.Invoke(new WeatherChangedParams
+            Fire(new WeatherChangedParams
             {
                 NewWeatherId = (int)currentWeather
             });
@@ -362,7 +369,7 @@ public sealed class GameEventHook
                 var targetOid = i == 0 ? header->AnimationTargetId 
                     : (effectTail != nint.Zero ? *(ulong*)(effectTail + i * 8) : 0xE0000000);
 
-                OnEventFired?.Invoke(new ActionEffectParams
+                Fire(new ActionEffectParams
                 {
                     ActionID = actionId,
                     SourceID = sourceId,
@@ -374,7 +381,7 @@ public sealed class GameEventHook
                 if (targetOid == 0xE0000000)
                 {
                     var p = pos != nint.Zero ? (Vector3Raw*)pos : null;
-                    OnEventFired?.Invoke(new NoTargetAbilityEffectParams
+                    Fire(new NoTargetAbilityEffectParams
                     {
                         SourceID = sourceId,
                         ActionID = actionId,
