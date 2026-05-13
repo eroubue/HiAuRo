@@ -89,11 +89,12 @@ internal class UIManager : IDisposable
         if (mode == UIMode.WebUI)
         {
             RemoveImGuiOverlays();
+            _browsingwayIpc?.EnableAll(_config.Overlays ?? []);
             _browsingwayIpc?.ShowConfigured(_config.Overlays ?? []);
         }
         else
         {
-            _browsingwayIpc?.HideAll(_config.Overlays ?? []);
+            _browsingwayIpc?.DisableAll(_config.Overlays ?? []);
             CreateImGuiOverlays();
         }
 
@@ -163,7 +164,7 @@ internal class UIManager : IDisposable
 
     public void Dispose()
     {
-        _browsingwayIpc?.HideAll(_config.Overlays ?? []);
+        _browsingwayIpc?.DisableAll(_config.Overlays ?? []);
         _browsingwayIpc?.Dispose();
         try { RemoveCustomWindows(); } catch { }
         try { RemoveImGuiOverlays(); } catch { }

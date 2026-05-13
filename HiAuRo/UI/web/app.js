@@ -9,8 +9,13 @@ let uiSettings = { qtCols:0, qtBtnW:0, qtVisible:{}, hkCols:0, hkBtnSize:52, hkV
 let _lastReportedSize = { width: 0, height: 0 };
 
 function reportContentSize() {
-    const w = document.documentElement.scrollWidth;
-    const h = document.documentElement.scrollHeight;
+    // MainWindow 固定尺寸，不自动调整窗口大小
+    if (OVERLAY_NAME === 'MainWindow') return;
+    // 用 root panel 的精确尺寸，避免 scrollWidth 包含 border 导致的累积误差
+    const panel = document.querySelector('#main-win, #qt-panel, #hk-panel');
+    const rect = panel ? panel.getBoundingClientRect() : document.documentElement.getBoundingClientRect();
+    const w = Math.ceil(rect.width);
+    const h = Math.ceil(rect.height);
     if (Math.abs(w - _lastReportedSize.width) < 5 &&
         Math.abs(h - _lastReportedSize.height) < 5) return;
     _lastReportedSize = { width: w, height: h };
@@ -251,17 +256,14 @@ function toggleExpand() {
     const win = document.getElementById('main-win');
     const btn = document.getElementById('btn-expand');
     if (!win || !btn) return;
-    const tabBody = document.querySelector('#panel-body .tab-body');
 
     if (expanded) {
         win.classList.add('expanded');
         btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>';
         renderTabs();
-        reportContentSize();
     } else {
         win.classList.remove('expanded');
         btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 6 15 12 9 18"/></svg>';
-        reportContentSize();
     }
 }
 

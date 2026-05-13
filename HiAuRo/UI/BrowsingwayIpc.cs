@@ -157,7 +157,6 @@ internal sealed class BrowsingwayIpc : IDisposable
     /// <summary>创建或更新 overlay（替换 URL 中的端口占位符）</summary>
     public void CreateOrUpdateOverlay(OverlayWindowSetting ol)
     {
-        if (!IsReady) return;
         try
         {
             var url = ol.Url.Replace("localhost:5678", $"localhost:{_port}");
@@ -187,7 +186,6 @@ internal sealed class BrowsingwayIpc : IDisposable
     /// <summary>调整 overlay 尺寸（保留其他属性从配置读取）</summary>
     public void ResizeOverlay(string name, int width, int height)
     {
-        if (!IsReady) return;
         var cfg = _overlayConfigs.FirstOrDefault(o => o.Name == name);
         if (cfg == null) return;
         try
@@ -215,7 +213,6 @@ internal sealed class BrowsingwayIpc : IDisposable
     /// <summary>显示/隐藏 overlay</summary>
     public void SetOverlayVisible(string name, bool visible)
     {
-        if (!IsReady) return;
         try
         {
             DService.Instance().PI
@@ -238,6 +235,36 @@ internal sealed class BrowsingwayIpc : IDisposable
     {
         foreach (var ol in overlays)
             SetOverlayVisible(ol.Name, ol.Visible);
+    }
+
+    /// <summary>禁用所有 overlay（销毁 CEF 实例，释放资源）</summary>
+    public void DisableAll(OverlayWindowSetting[] overlays)
+    {
+        foreach (var ol in overlays)
+            SetOverlayDisabled(ol.Name, true);
+    }
+
+    /// <summary>启用所有 overlay（重新创建 CEF 实例）</summary>
+    public void EnableAll(OverlayWindowSetting[] overlays)
+    {
+        foreach (var ol in overlays)
+            SetOverlayDisabled(ol.Name, false);
+    }
+
+    /// <summary>禁用/启用 overlay</summary>
+    private void SetOverlayDisabled(string name, bool disabled)
+    {
+        try
+        {
+            DService.Instance().PI
+                .GetIpcSubscriber<SetDisabledArgs, object>("Browsingway.Overlay.SetDisabled")
+                .InvokeAction(new SetDisabledArgs { Name = name, Disabled = disabled });
+            DService.Instance().Log.Debug($"[BrowsingwayIpc] SetDisabled: {name} = {disabled}");
+        }
+        catch (Exception ex)
+        {
+            DService.Instance().Log.Warning($"[BrowsingwayIpc] SetDisabled 失败 ({name}): {ex.Message}");
+        }
     }
 
     /// <summary>隐藏所有 overlay</summary>

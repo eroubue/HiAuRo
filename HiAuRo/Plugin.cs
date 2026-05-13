@@ -1,4 +1,4 @@
-using System.Collections.Concurrent;
+using System.Linq;
 using Dalamud.Interface.Windowing;
 using Dalamud.Plugin;
 using HiAuRo.Authoring;
@@ -30,9 +30,6 @@ public partial class Plugin : IDalamudPlugin
     private readonly WindowSystem _windowSystem;
 
     public static Plugin Instance { get; private set; } = null!;
-
-    /// <summary>contentResize 防抖：记录每个 overlay 最后通过 IPC 通知的尺寸</summary>
-    private static readonly ConcurrentDictionary<string, (int w, int h)> _lastIpcResize = new();
 
     /// <summary>保存配置到磁盘</summary>
     public static void SaveConfig() => Instance?._pluginInterface.SavePluginConfig(Instance._config);
@@ -342,7 +339,7 @@ public partial class Plugin : IDalamudPlugin
             }
         });
 
-        // 内容尺寸自适应：JS 上报 overlay 内容实际尺寸 → 持久化 + Browsingway IPC 调整窗口
+        // 内容尺寸自适应：JS 上报 overlay 内容实际尺寸 → Browsingway IPC 调整窗口
         bridge.On("contentResize", data =>
         {
             if (data is null) return;
@@ -352,20 +349,21 @@ public partial class Plugin : IDalamudPlugin
             var height = data.Value.TryGetProperty("height", out var h) ? h.GetInt32() : 0;
             if (string.IsNullOrEmpty(overlay) || width <= 0 || height <= 0) return;
 
-            // 持久化到当前 ACR 的 ui_settings.json
-            var s = HiAuRo.Setting.SettingMgr.LoadAcrUiSettings(
-                Runtime.ACRLifecycle.CurrentAuthor, Runtime.ACRLifecycle.CurrentJobId);
-            s.OverlayContentWidth[overlay] = width;
-            s.OverlayContentHeight[overlay] = height;
-            HiAuRo.Setting.SettingMgr.SaveAcrUiSettings(
-                Runtime.ACRLifecycle.CurrentAuthor, Runtime.ACRLifecycle.CurrentJobId, s);
+            // MainWindow 固定尺寸，Qt/Hotkey 自适应
+            if (overlay == "MainWindow") return;
 
-            // 通过 IPC 通知 Browsingway 调整 overlay 尺寸（防抖：5px 阈值）
-            if (_lastIpcResize.TryGetValue(overlay, out var last) &&
-                Math.Abs(width - last.w) < 5 && Math.Abs(height - last.h) < 5)
-                return;
-            _lastIpcResize[overlay] = (width, height);
-            Instance._uiManager?.BrowsingwayIpc?.ResizeOverlay(overlay, width, height);
+            // 更新 PluginConfig 中对应 overlay 的尺寸
+            var ol = Instance._config.Overlays?.FirstOrDefault(x => x.Name == overlay);
+            if (ol != null) { ol.Width = width; ol.Height = height; }
+
+            // 通知 Browsingway（须在主线程执行）
+            var ipc = Instance._uiManager?.BrowsingwayIpc;
+            if (ipc != null)
+            {
+                var oName = overlay;
+                var oW = width; var oH = height;
+                DService.Instance().Framework.RunOnFrameworkThread(() => ipc.ResizeOverlay(oName, oW, oH));
+            }
         });
     }
 
@@ -448,6 +446,14 @@ public partial class Plugin : IDalamudPlugin
                 .Append(new OverlayWindowSetting { Name = "QtWindow", Url = "http://localhost:5678/qt.html", Width = 320, Height = 80 })
                 .Append(new OverlayWindowSetting { Name = "HotkeyWindow", Url = "http://localhost:5678/hotkey.html", Width = 320, Height = 100 })
                 .ToArray();
+        }
+
+        // 修复之前 contentResize 错误写入 MainWindow 的尺寸（高度 < 100 视为异常值）
+        var mw = config.Overlays?.FirstOrDefault(o => o.Name == "MainWindow");
+        if (mw != null && mw.Height < 100)
+        {
+            mw.Width = 310;
+            mw.Height = 480;
         }
 
         _pluginInterface.SavePluginConfig(config);
