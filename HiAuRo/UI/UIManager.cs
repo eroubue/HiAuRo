@@ -20,6 +20,7 @@ internal class UIManager : IDisposable
 
     private WebUiServer? _uiServer;
     private WebUiBridge? _uiBridge;
+    private BrowsingwayIpc? _browsingwayIpc;
 
     private OverlayStatusBar? _overlayStatusBar;
     private OverlayQtPanel? _overlayQtPanel;
@@ -29,8 +30,11 @@ internal class UIManager : IDisposable
 
     public bool IsWebUI => _config.UIMode == UIMode.WebUI;
 
-    /// <summary>WebSocket 桥接，低配模式下为 null</summary>
+    /// <summary>WebSocket 桥接</summary>
     public WebUiBridge? Bridge => _uiBridge;
+
+    /// <summary>Browsingway IPC 服务</summary>
+    public BrowsingwayIpc? BrowsingwayIpc => _browsingwayIpc;
 
     public UIManager(PluginConfig config, IDalamudPluginInterface pluginInterface,
                      WindowSystem windowSystem, Action saveConfig, string webRoot)
@@ -49,19 +53,25 @@ internal class UIManager : IDisposable
 
         try
         {
-            // 创建 WebSocket 桥接 + HTTP 服务器
             _uiBridge = new WebUiBridge();
             _uiServer = new WebUiServer(_webRoot, _uiBridge);
             _uiServer.Start();
+            DService.Instance().Log.Information($"[UIManager] WebUiServer 启动完成 端口={_uiServer.Port}");
 
-            DService.Instance().Log.Information("[UIManager] WebUiServer 初始化完成");
+            // 启动 Browsingway IPC（异步等待就绪后注册 overlay，按当前模式决定显隐）
+            _browsingwayIpc = new BrowsingwayIpc(_uiServer.Port, () => _config.UIMode);
+            var overlays = _config.Overlays ?? [];
+            _ = _browsingwayIpc.InitAsync(overlays).ContinueWith(_ =>
+            {
+                if (_config.UIMode != UIMode.WebUI)
+                    _browsingwayIpc.HideAll(overlays);
+            });
         }
         catch (Exception ex)
         {
             DService.Instance().Log.Error($"[UIManager] WebUiServer 初始化失败: {ex}");
         }
 
-        // ImGui 模式下创建 ImGui overlay 窗口
         if (_config.UIMode == UIMode.ImGui)
         {
             CreateImGuiOverlays();
@@ -77,9 +87,15 @@ internal class UIManager : IDisposable
         _config.UIMode = mode;
 
         if (mode == UIMode.WebUI)
+        {
             RemoveImGuiOverlays();
+            _browsingwayIpc?.ShowConfigured(_config.Overlays ?? []);
+        }
         else
+        {
+            _browsingwayIpc?.HideAll(_config.Overlays ?? []);
             CreateImGuiOverlays();
+        }
 
         _saveConfig();
         DService.Instance().Chat.Print($"[HiAuRo] UI 模式已切换为: {(mode == UIMode.WebUI ? "WebUI" : "ImGui")}");
@@ -147,6 +163,8 @@ internal class UIManager : IDisposable
 
     public void Dispose()
     {
+        _browsingwayIpc?.HideAll(_config.Overlays ?? []);
+        _browsingwayIpc?.Dispose();
         try { RemoveCustomWindows(); } catch { }
         try { RemoveImGuiOverlays(); } catch { }
         _uiServer?.Stop();

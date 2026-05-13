@@ -13,6 +13,9 @@ public sealed class WebUiServer
     private readonly WebUiBridge _bridge;
     private CancellationTokenSource? _cts;
 
+    /// <summary>实际监听的端口（5678 或 5679）</summary>
+    public int Port { get; private set; } = 5678;
+
     public WebUiServer(string webRoot, WebUiBridge bridge)
     {
         _webRoot = webRoot;
@@ -24,6 +27,7 @@ public sealed class WebUiServer
         _cts = new CancellationTokenSource();
         _listener = new HttpListener();
         _listener.Prefixes.Add("http://localhost:5678/");
+        Port = 5678;
 
         try
         {
@@ -34,6 +38,7 @@ public sealed class WebUiServer
         {
             _listener.Prefixes.Clear();
             _listener.Prefixes.Add("http://localhost:5679/");
+            Port = 5679;
             _listener.Start();
             DService.Instance().Log.Warning("[WebServer] 5678被占用, 改用 http://localhost:5679/");
         }

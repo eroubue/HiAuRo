@@ -143,8 +143,9 @@ public sealed class MainWindow : Window
         ImGui.Spacing();
         ImGui.Separator();
         ImGui.Text("游戏内 CEF 悬浮窗（浏览器打开测试）:");
-        ImGui.BulletText("http://localhost:5678/main.html   — 主控制栏");
-        ImGui.BulletText("http://localhost:5678/action.html — QT + 热键面板");
+        ImGui.BulletText("http://localhost:5678/main.html     — 主控制栏");
+        ImGui.BulletText("http://localhost:5678/qt.html       — QT 面板");
+        ImGui.BulletText("http://localhost:5678/hotkey.html   — 热键面板");
         ImGui.Spacing();
     }
 
@@ -340,13 +341,14 @@ public sealed class MainWindow : Window
         for (int i = 0; i < overlays.Length; i++)
         {
             var ol = overlays[i];
+            var overlayChanged = false;
 
             ImGui.PushID(i);
             var vis = ol.Visible;
             if (ImGui.Checkbox(ol.Name, ref vis))
             {
                 ol.Visible = vis;
-                changed = true;
+                overlayChanged = true;
             }
 
             ImGui.Indent(16);
@@ -356,7 +358,7 @@ public sealed class MainWindow : Window
             if (ImGui.InputText("URL", ref url, 256))
             {
                 ol.Url = url;
-                changed = true;
+                overlayChanged = true;
             }
 
             var w = ol.Width;
@@ -364,7 +366,7 @@ public sealed class MainWindow : Window
             if (ImGui.InputInt("宽", ref w, 10))
             {
                 ol.Width = w;
-                changed = true;
+                overlayChanged = true;
             }
             ImGui.SameLine();
             var h = ol.Height;
@@ -372,7 +374,7 @@ public sealed class MainWindow : Window
             if (ImGui.InputInt("高", ref h, 10))
             {
                 ol.Height = h;
-                changed = true;
+                overlayChanged = true;
             }
 
             var zoom = ol.Zoom;
@@ -380,19 +382,25 @@ public sealed class MainWindow : Window
             if (ImGui.SliderFloat("缩放 %", ref zoom, 50f, 200f, "%.0f%%"))
             {
                 ol.Zoom = zoom;
-                changed = true;
+                overlayChanged = true;
             }
 
             var locked = ol.Locked;
             if (ImGui.Checkbox("锁定窗口", ref locked))
             {
                 ol.Locked = locked;
-                changed = true;
+                overlayChanged = true;
             }
 
             ImGui.Unindent(16);
             ImGui.Spacing();
             ImGui.PopID();
+
+            if (overlayChanged)
+            {
+                changed = true;
+                Plugin.Instance._uiManager?.BrowsingwayIpc?.CreateOrUpdateOverlay(ol);
+            }
         }
 
         if (changed) _saveConfig();

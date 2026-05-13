@@ -64,7 +64,8 @@ public sealed class PluginConfig : IPluginConfiguration
     public OverlayWindowSetting[] Overlays { get; set; } =
     [
         new() { Name = "MainWindow", Url = "http://localhost:5678/main.html", Width = 310, Height = 480 },
-        new() { Name = "ActionPanel", Url = "http://localhost:5678/action.html", Width = 600, Height = 180 },
+        new() { Name = "QtWindow", Url = "http://localhost:5678/qt.html", Width = 320, Height = 80 },
+        new() { Name = "HotkeyWindow", Url = "http://localhost:5678/hotkey.html", Width = 320, Height = 100 },
     ];
 
     /// <summary>GitHub 个人访问令牌（repo 权限，用于上传触发器目录）</summary>
