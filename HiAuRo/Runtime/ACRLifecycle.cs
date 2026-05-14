@@ -18,6 +18,7 @@ public static class ACRLifecycle
     public static uint CurrentJobId { get; private set; }
     /// <summary>ISettingsProvider 缓存（供显式 save 遍历）</summary>
     private static readonly Dictionary<string, (IRotationEntry Entry, Type SettingsType)> _settingsProviders = [];
+    private static readonly object _settingsLock = new();
     public static bool IsLoadingRotation { get; private set; }
 
     /// <summary>外部 ACR: JobId → (Factory, SettingDir)</summary>
@@ -186,17 +187,35 @@ public static class ACRLifecycle
         if (providerInterface != null)
         {
             var tType = providerInterface.GetGenericArguments()[0];
-            var loadMethod = typeof(HiAuRo.Setting.SettingMgr).GetMethod(nameof(HiAuRo.Setting.SettingMgr.GetAcrJobSetting))!
-                .MakeGenericMethod(tType);
-            var acrSettings = loadMethod.Invoke(null, [entry.AuthorName, CurrentJobId]);
-            providerInterface.GetProperty("Settings")!.SetValue(entry, acrSettings);
-            if (acrSettings is AcrSettings acr)
+            var loadMethod = typeof(HiAuRo.Setting.SettingMgr).GetMethod(nameof(HiAuRo.Setting.SettingMgr.GetAcrJobSetting));
+            if (loadMethod == null)
             {
-                acr._author = entry.AuthorName;
-                acr._jobId = CurrentJobId;
+                DService.Instance().Log.Error($"[ACR] GetAcrJobSetting 方法未找到");
+                // skip injection — fall through
             }
-            _settingsProviders[GetProviderKey(entry.AuthorName, CurrentJobId)] = (entry, tType);
-            DService.Instance().Log.Information($"[ACR] ISettingsProvider<{tType.Name}> 已注入: author={entry.AuthorName} jobId={CurrentJobId}");
+            else
+            {
+                loadMethod = loadMethod.MakeGenericMethod(tType);
+                try
+                {
+                    var acrSettings = loadMethod.Invoke(null, [entry.AuthorName, CurrentJobId]);
+                    providerInterface.GetProperty("Settings")?.SetValue(entry, acrSettings);
+                    if (acrSettings is AcrSettings acr)
+                    {
+                        acr._author = entry.AuthorName;
+                        acr._jobId = CurrentJobId;
+                    }
+                    lock (_settingsLock)
+                    {
+                        _settingsProviders[GetProviderKey(entry.AuthorName, CurrentJobId)] = (entry, tType);
+                    }
+                    DService.Instance().Log.Information($"[ACR] ISettingsProvider<{tType.Name}> 已注入: author={entry.AuthorName} jobId={CurrentJobId}");
+                }
+                catch (Exception ex)
+                {
+                    DService.Instance().Log.Error($"[ACR] Settings 加载/注入失败: {ex.Message}");
+                }
+            }
         }
 
         DService.Instance().Log.Information($"[ACR] LoadRotation 开始: author={entry.AuthorName}, jobId={CurrentJobId}, settingFolder={settingFolder}");
@@ -369,7 +388,10 @@ public static class ACRLifecycle
         ACR.HotkeyHelper.Clear();
         ACR.QTHelper.Clear();
         ACR.MainControlHelper.OnSave -= HostSaveAllSettings;
-        _settingsProviders.Clear();
+        lock (_settingsLock)
+        {
+            _settingsProviders.Clear();
+        }
         ACR.MainControlHelper.Reset();
     }
 
@@ -408,12 +430,18 @@ public static class ACRLifecycle
     /// <summary>宿主 save handler —— 遍历所有已加载 ISettingsProvider 并保存</summary>
     private static void HostSaveAllSettings()
     {
-        foreach (var (entry, _) in _settingsProviders.Values)
+        (IRotationEntry Entry, Type SettingsType)[] snapshot;
+        lock (_settingsLock)
+        {
+            snapshot = _settingsProviders.Values.ToArray();
+        }
+        foreach (var (entry, _) in snapshot)
         {
             var providerInterface = entry.GetType()
                 .GetInterfaces()
-                .First(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(ISettingsProvider<>));
-            var settings = providerInterface.GetProperty("Settings")!.GetValue(entry);
+                .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(ISettingsProvider<>));
+            if (providerInterface == null) continue;
+            var settings = providerInterface.GetProperty("Settings")?.GetValue(entry);
             if (settings is AcrSettings acr)
                 acr.Save();
         }
