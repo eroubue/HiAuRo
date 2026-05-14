@@ -1,7 +1,8 @@
 namespace HiAuRo.ACR;
 
 /// <summary>
-/// ACR 作者入口接口 —— 两种 UI 模式可选
+/// ACR 作者入口接口 —— 两种 UI 模式可选。
+/// 如需宿主托管 Settings 持久化，同时实现 ISettingsProvider&lt;T&gt; 并让 Settings 类继承 AcrSettings。
 /// </summary>
 public interface IRotationEntry
 {
