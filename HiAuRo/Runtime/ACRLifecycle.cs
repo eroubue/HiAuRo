@@ -16,6 +16,8 @@ public static class ACRLifecycle
     public static string CurrentAcrName => CurrentEntry?.AuthorName ?? "无ACR";
     public static string CurrentAuthor => CurrentEntry?.AuthorName ?? "";
     public static uint CurrentJobId { get; private set; }
+    /// <summary>ISettingsProvider 缓存（供显式 save 遍历）</summary>
+    private static readonly Dictionary<string, (IRotationEntry Entry, Type SettingsType)> _settingsProviders = [];
     public static bool IsLoadingRotation { get; private set; }
 
     /// <summary>外部 ACR: JobId → (Factory, SettingDir)</summary>
@@ -176,6 +178,27 @@ public static class ACRLifecycle
         Data.Combat.MaxAbilityTimesInGcd = PluginConfig.Instance.MaxAbilityTimesInGcd;
 
         CurrentJobId = _lastJob;
+
+        // 自动检测 ISettingsProvider<T> 接口 → 加载 settings 并注入
+        var providerInterface = entry.GetType()
+            .GetInterfaces()
+            .FirstOrDefault(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(ISettingsProvider<>));
+        if (providerInterface != null)
+        {
+            var tType = providerInterface.GetGenericArguments()[0];
+            var loadMethod = typeof(HiAuRo.Setting.SettingMgr).GetMethod(nameof(HiAuRo.Setting.SettingMgr.GetAcrJobSetting))!
+                .MakeGenericMethod(tType);
+            var acrSettings = loadMethod.Invoke(null, [entry.AuthorName, CurrentJobId]);
+            providerInterface.GetProperty("Settings")!.SetValue(entry, acrSettings);
+            if (acrSettings is AcrSettings acr)
+            {
+                acr._author = entry.AuthorName;
+                acr._jobId = CurrentJobId;
+            }
+            _settingsProviders[GetProviderKey(entry.AuthorName, CurrentJobId)] = (entry, tType);
+            DService.Instance().Log.Information($"[ACR] ISettingsProvider<{tType.Name}> 已注入: author={entry.AuthorName} jobId={CurrentJobId}");
+        }
+
         DService.Instance().Log.Information($"[ACR] LoadRotation 开始: author={entry.AuthorName}, jobId={CurrentJobId}, settingFolder={settingFolder}");
         Runner.Load(entry, settingFolder);
         CurrentEntry = entry;
@@ -326,6 +349,9 @@ public static class ACRLifecycle
                 DService.Instance().Log.Information($"[ACR] 自定义窗口已加载: {customWindows.Count()}个");
             }
         }
+        // 宿主订阅保存事件 —— 用户点击保存按钮时自动写回所有 settings
+        ACR.MainControlHelper.OnSave += HostSaveAllSettings;
+
         IsLoadingRotation = false;
     }
 
@@ -342,6 +368,8 @@ public static class ACRLifecycle
         CurrentJobId = 0;
         ACR.HotkeyHelper.Clear();
         ACR.QTHelper.Clear();
+        ACR.MainControlHelper.OnSave -= HostSaveAllSettings;
+        _settingsProviders.Clear();
         ACR.MainControlHelper.Reset();
     }
 
@@ -376,4 +404,20 @@ public static class ACRLifecycle
     }
 
     private static void OnHkExecuted(string id, string label) { } // 占位，绑定/可见性由前端 saveUiSettings 维护
+
+    /// <summary>宿主 save handler —— 遍历所有已加载 ISettingsProvider 并保存</summary>
+    private static void HostSaveAllSettings()
+    {
+        foreach (var (entry, _) in _settingsProviders.Values)
+        {
+            var providerInterface = entry.GetType()
+                .GetInterfaces()
+                .First(i => i.IsGenericType && i.GetGenericTypeDefinition() == typeof(ISettingsProvider<>));
+            var settings = providerInterface.GetProperty("Settings")!.GetValue(entry);
+            if (settings is AcrSettings acr)
+                acr.Save();
+        }
+    }
+
+    private static string GetProviderKey(string author, uint jobId) => $"{author}_{jobId}";
 }
