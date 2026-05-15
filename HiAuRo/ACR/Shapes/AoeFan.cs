@@ -28,7 +28,7 @@ public sealed class AoeFan : IAoeZone
         if (dx * dx + dz * dz > _radiusSq)
             return false;
 
-        var angle = MathF.Atan2(dz, dx);
+        var angle = MathF.Atan2(dx, -dz);
         var diff = MathHelper.NormalizeAngle(angle - _facingRad);
         return MathF.Abs(diff) <= _halfArcRad;
     }

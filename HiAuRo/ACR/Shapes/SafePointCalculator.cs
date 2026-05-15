@@ -128,7 +128,7 @@ public sealed class SafePointCalculator
             {
                 var dx = p.X - origin.X;
                 var dz = p.Z - origin.Z;
-                var angle = MathF.Atan2(dz, dx);
+                var angle = MathF.Atan2(dx, -dz);
                 var diff = MathHelper.NormalizeAngle(angle - facingRad);
                 return MathF.Abs(diff) > halfArcRad;
             });
