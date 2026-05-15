@@ -70,10 +70,11 @@ public class AoeRing(Vector3 center, float innerRadius, float outerRadius) : IAo
 ```csharp
 public class SafePointConfig
 {
-    public int Count { get; private set; } = 1;               // 需要几个点 (1~8)
+    public int Count { get; private set; } = 1;               // 需要几个点 (1~4)
     public Vector3? ReferencePoint { get; private set; }       // 参考点
     public ReferenceMode? RefMode { get; private set; }        // Nearest / Farthest
     public float? MinDistanceFromRef { get; private set; }     // Farthest 模式的最小距离
+    public float? MaxDistanceFromRef { get; private set; }     // 可选：不超过此距离（Nearest/Farthest 通用）
     public float? MinMutualDistance { get; private set; }      // 点位间最小间距
     public Vector3? Origin { get; private set; }               // 方向过滤原点
     public float? FacingDeg { get; private set; }              // 方向过滤朝向
@@ -84,9 +85,9 @@ public class SafePointConfig
     public float GridSpacing { get; private set; } = 0.5f;     // 采样网格间距
 
     // --- fluent builder ---
-    public SafePointConfig Count(int n)                             { Count = Math.Clamp(n, 1, 8); return this; }
-    public SafePointConfig NearestTo(Vector3 refPoint)              { ReferencePoint = refPoint; RefMode = ReferenceMode.Nearest; return this; }
-    public SafePointConfig FarthestFrom(Vector3 refPoint, float minDistance) { ReferencePoint = refPoint; RefMode = ReferenceMode.Farthest; MinDistanceFromRef = minDistance; return this; }
+    public SafePointConfig Count(int n)                             { Count = Math.Clamp(n, 1, 4); return this; }
+    public SafePointConfig NearestTo(Vector3 refPoint, float? maxDistance = null) { ReferencePoint = refPoint; RefMode = ReferenceMode.Nearest; MaxDistanceFromRef = maxDistance; return this; }
+    public SafePointConfig FarthestFrom(Vector3 refPoint, float minDistance, float? maxDistance = null) { ReferencePoint = refPoint; RefMode = ReferenceMode.Farthest; MinDistanceFromRef = minDistance; MaxDistanceFromRef = maxDistance; return this; }
     public SafePointConfig MinMutualDistance(float dist)            { MinMutualDistance = dist; return this; }
     public SafePointConfig InDirection(Vector3 origin, float facingDeg, float halfArcDeg) { Origin = origin; FacingDeg = facingDeg; HalfArcDeg = halfArcDeg; return this; }
     public SafePointConfig WithinCircle(Vector3 center, float radius) { RangeCenter = center; RangeRadius = radius; return this; }
@@ -172,11 +173,12 @@ var points = SafeFieldContext.Current
 安全点按以下规则综合分排序，取前 N 个：
 
 1. **范围限制**（`WithinCircle`）：先过滤 `DistTo(RangeCenter) > RangeRadius` 的点
-2. **Farthest 模式**：先过滤 `DistToRef >= MinDistanceFromRef`，再按距离降序打分
-3. **Nearest 模式**：按距离升序直接排序
-4. **方向过滤**：先过滤非扇形内的点，再打分
-5. **靠边/靠心**：`PreferEdge=true` 按到场中心距离降序；`false` 按升序
-6. **多点检测**（MinMutualDistance > 0）：选中第一个点 → 排除半径内其他点 → 选第二个 → 循环
+2. **距离上限**（`MaxDistanceFromRef`）：先过滤 `DistToRef > MaxDistanceFromRef` 的点
+3. **Farthest 模式**：先过滤 `DistToRef < MinDistanceFromRef`，再按距离降序打分
+4. **Nearest 模式**：按距离升序直接排序
+5. **方向过滤**：先过滤非扇形内的点，再打分
+6. **靠边/靠心**：`PreferEdge=true` 按到场中心距离降序；`false` 按升序
+7. **多点检测**（MinMutualDistance > 0）：选中第一个点 → 排除半径内其他点 → 选第二个 → 循环
 
 ## 性能考量
 
