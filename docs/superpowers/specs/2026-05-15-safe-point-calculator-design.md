@@ -2,7 +2,7 @@
 
 ## 概述
 
-为 HiAuRo 轴脚本提供低延迟战场安全点位计算工具。输入场地 + AOE 列表 + 约束条件，返回非 AOE 区域内的安全坐标点（1-8 个）。所有计算在 XZ 平面进行，忽略 Y 轴。
+为 HiAuRo 轴脚本提供低延迟战场安全点位计算工具。输入场地 + AOE 列表 + 约束条件，一次计算同时返回近远两组安全坐标点（每组 0~4 个）。所有计算在 XZ 平面进行，忽略 Y 轴。
 
 ## 命名空间与文件结构
 
@@ -67,15 +67,17 @@ public class AoeRing(Vector3 center, float innerRadius, float outerRadius) : IAo
 
 ### 约束配置（SafePointConfig）
 
+一次计算同时返回近点+远点两组结果。近点按距离升序取，远点从剩余安全点中按距离降序取，全局互斥。
+
 ```csharp
 public class SafePointConfig
 {
-    public int Count { get; private set; } = 1;               // 需要几个点 (1~4)
+    public int NearCount { get; private set; }                 // 近点数量 (0~4)
+    public int FarCount { get; private set; }                  // 远点数量 (0~4)
     public Vector3? ReferencePoint { get; private set; }       // 参考点
-    public ReferenceMode? RefMode { get; private set; }        // Nearest / Farthest
-    public float? MinDistanceFromRef { get; private set; }     // Farthest 模式的最小距离
-    public float? MaxDistanceFromRef { get; private set; }     // 可选：不超过此距离（Nearest/Farthest 通用）
-    public float? MinMutualDistance { get; private set; }      // 点位间最小间距
+    public float? MinDistanceFromRef { get; private set; }     // 远点的最小距离（近点不限）
+    public float? MaxDistanceFromRef { get; private set; }     // 所有点不超过此距离
+    public float? MinMutualDistance { get; private set; }      // 所有点位间最小间距（全局互斥）
     public Vector3? Origin { get; private set; }               // 方向过滤原点
     public float? FacingDeg { get; private set; }              // 方向过滤朝向
     public float? HalfArcDeg { get; private set; }             // 方向过滤半张角
@@ -85,23 +87,32 @@ public class SafePointConfig
     public float GridSpacing { get; private set; } = 0.5f;     // 采样网格间距
 
     // --- fluent builder ---
-    public SafePointConfig Count(int n)                             { Count = Math.Clamp(n, 1, 4); return this; }
-    public SafePointConfig NearestTo(Vector3 refPoint, float? maxDistance = null) { ReferencePoint = refPoint; RefMode = ReferenceMode.Nearest; MaxDistanceFromRef = maxDistance; return this; }
-    public SafePointConfig FarthestFrom(Vector3 refPoint, float minDistance, float? maxDistance = null) { ReferencePoint = refPoint; RefMode = ReferenceMode.Farthest; MinDistanceFromRef = minDistance; MaxDistanceFromRef = maxDistance; return this; }
-    public SafePointConfig MinMutualDistance(float dist)            { MinMutualDistance = dist; return this; }
+    public SafePointConfig RefPoint(Vector3 refPoint)           { ReferencePoint = refPoint; return this; }
+    public SafePointConfig Nearest(int count)                   { NearCount = Math.Clamp(count, 0, 4); return this; }
+    public SafePointConfig Farthest(int count, float minDist = 0) { FarCount = Math.Clamp(count, 0, 4); MinDistanceFromRef = minDist; return this; }
+    public SafePointConfig MaxDistance(float dist)              { MaxDistanceFromRef = dist; return this; }
+    public SafePointConfig MinMutualDistance(float dist)        { MinMutualDistance = dist; return this; }
     public SafePointConfig InDirection(Vector3 origin, float facingDeg, float halfArcDeg) { Origin = origin; FacingDeg = facingDeg; HalfArcDeg = halfArcDeg; return this; }
     public SafePointConfig WithinCircle(Vector3 center, float radius) { RangeCenter = center; RangeRadius = radius; return this; }
-    public SafePointConfig PreferEdge()                             { PreferEdge = true; return this; }
-    public SafePointConfig PreferCenter()                           { PreferEdge = false; return this; }
-    public SafePointConfig SetGridSpacing(float spacing)            { GridSpacing = spacing; return this; }
+    public SafePointConfig PreferEdge()                         { PreferEdge = true; return this; }
+    public SafePointConfig PreferCenter()                       { PreferEdge = false; return this; }
+    public SafePointConfig SetGridSpacing(float spacing)        { GridSpacing = spacing; return this; }
 }
+```
 
-public enum ReferenceMode { Nearest, Farthest }
+### 结果类型（SafePointResult）
+
+```csharp
+public class SafePointResult
+{
+    public List<Vector3> NearPoints { get; }   // ≤ NearCount 个
+    public List<Vector3> FarPoints { get; }    // ≤ FarCount 个
+}
 ```
 
 ### 计算构建器（CalculationBuilder）
 
-每次计算通过 `SafePointCalculator.Begin()` 获得全新实例，链式设置 AOE 和约束，互不污染。
+每次计算通过 `SafePointCalculator.Begin()` 获得全新实例，链式设置 AOE，互不污染。
 
 ```csharp
 public class CalculationBuilder
@@ -112,15 +123,9 @@ public class CalculationBuilder
     internal CalculationBuilder(SafePointCalculator owner) { _owner = owner; }
 
     public CalculationBuilder WithAoe(IAoeZone aoe) { _aoes.Add(aoe); return this; }
-    public List<Vector3> Calculate(SafePointConfig config);   // 终端方法
+    public SafePointResult Calculate(SafePointConfig config);   // 终端方法
 }
 ```
-
-`Calculate()` 内部流程：
-1. 从 `_owner._field.SampleGrid(config.GridSpacing)` 获取候选点
-2. 过滤：`!aoe.Any(a => a.Contains(p))` + `_owner._field.Contains(p)`
-3. 按 `config` 约束打分排序
-4. 返回前 `Count` 个
 
 ### 计算器（SafePointCalculator）
 
@@ -152,33 +157,33 @@ public static class SafeFieldContext
 // ===== 副本初始化（轴脚本入口，执行一次）=====
 SafeFieldContext.Current = new SafePointCalculator(new RectField(center, 40, 30));
 
-// ===== 任意类、任意命名空间、任意时机 =====
-var config = new SafePointConfig()
-    .Count(3)
-    .NearestTo(npcPos)
-    .MinMutualDistance(5)
-    .PreferEdge();
-
-var points = SafeFieldContext.Current
+// ===== 同时取近远两组 =====
+var result = SafeFieldContext.Current
     .Begin()
     .WithAoe(new AoeCircle(bossPos, 8))
     .WithAoe(new AoeFan(bossPos, 20, 90, 60))
-    .Calculate(config);
+    .Calculate(new SafePointConfig()
+        .RefPoint(npcPos)
+        .Nearest(4)
+        .Farthest(4, minDist: 0)
+        .MaxDistance(20)
+        .MinMutualDistance(6));
 
-// points: List<Vector3>，1~3 个安全点位
+// result.NearPoints → 离参考点最近的 4 个安全点
+// result.FarPoints  → 离参考点最远的 4 个安全点（剩余中点按距离降序）
 ```
 
 ## 打分规则（Calculate 内部）
 
-安全点按以下规则综合分排序，取前 N 个：
-
-1. **范围限制**（`WithinCircle`）：先过滤 `DistTo(RangeCenter) > RangeRadius` 的点
-2. **距离上限**（`MaxDistanceFromRef`）：先过滤 `DistToRef > MaxDistanceFromRef` 的点
-3. **Farthest 模式**：先过滤 `DistToRef < MinDistanceFromRef`，再按距离降序打分
-4. **Nearest 模式**：按距离升序直接排序
-5. **方向过滤**：先过滤非扇形内的点，再打分
-6. **靠边/靠心**：`PreferEdge=true` 按到场中心距离降序；`false` 按升序
-7. **多点检测**（MinMutualDistance > 0）：选中第一个点 → 排除半径内其他点 → 选第二个 → 循环
+1. **采样**：从 `_field.SampleGrid(GridSpacing)` 获取候选点
+2. **安全过滤**：排除在任一 AOE 内的点 + 排除在场外的点
+3. **硬过滤**（按顺序）：
+   - `WithinCircle`：排除 `DistTo(RangeCenter) > RangeRadius` 的点
+   - `MaxDistance`：排除 `DistToRef > MaxDistanceFromRef` 的点
+   - `InDirection`：排除不在方向扇形内的点
+4. **打分**：`PreferEdge` 时按到场中心距离降序，否则升序 → 稳定排序
+5. **近点选取**：按距离升序遍历，每次选最近 + 排除 `MinMutualDistance` 内邻近点，直到满 `NearCount` 或无剩余
+6. **远点选取**：从剩余安全点中先排除 `DistToRef < MinDistanceFromRef`，再按距离降序，同样全局互斥，直到满 `FarCount` 或无剩余
 
 ## 性能考量
 
