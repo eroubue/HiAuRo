@@ -28,8 +28,9 @@ public sealed class RectField : IField
 
     public List<Vector3> SampleGrid(float spacing)
     {
+        if (spacing <= 0f) throw new ArgumentOutOfRangeException(nameof(spacing), "网格间距必须大于0");
         if (_gridCache.TryGetValue(spacing, out var cached))
-            return cached;
+            return new List<Vector3>(cached);
 
         var points = new List<Vector3>();
         var y = _center.Y;
