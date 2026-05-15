@@ -32,7 +32,7 @@ public sealed class SafePointCalculator
         }
 
         // 2. 硬过滤
-        candidates = ApplyHardFilters(candidates, config);
+        ApplyHardFilters(candidates, config);
         if (candidates.Count == 0) return result;
 
         // 3. 排序：按到场中心距离（EdgePreferred 影响排序方向）
@@ -94,14 +94,14 @@ public sealed class SafePointCalculator
 
             if (best == null) break;
             result.Add(best.Value);
-            pool.RemoveAll(p => DistSqTo2D(p, best.Value) < minDistSq);
+            pool.RemoveAll(p => DistSqTo2D(p, best.Value) <= minDistSq);
         }
 
         return result;
     }
 
     /// <summary>硬过滤：WithinCircle、MaxDistance、InDirection</summary>
-    static List<Vector3> ApplyHardFilters(List<Vector3> points, SafePointConfig config)
+    static void ApplyHardFilters(List<Vector3> points, SafePointConfig config)
     {
         // WithinCircle
         if (config.RangeCenter != null && config.RangeRadius != null)
@@ -134,7 +134,6 @@ public sealed class SafePointCalculator
             });
         }
 
-        return points;
     }
 
     static float DistSqTo2D(Vector3 a, Vector3 b)
