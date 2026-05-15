@@ -78,6 +78,8 @@ public class SafePointConfig
     public Vector3? Origin { get; private set; }               // 方向过滤原点
     public float? FacingDeg { get; private set; }              // 方向过滤朝向
     public float? HalfArcDeg { get; private set; }             // 方向过滤半张角
+    public Vector3? RangeCenter { get; private set; }           // 范围限制圆心
+    public float? RangeRadius { get; private set; }             // 范围限制半径
     public bool PreferEdge { get; private set; }               // true=靠边, false=靠中心
     public float GridSpacing { get; private set; } = 0.5f;     // 采样网格间距
 
@@ -87,6 +89,7 @@ public class SafePointConfig
     public SafePointConfig FarthestFrom(Vector3 refPoint, float minDistance) { ReferencePoint = refPoint; RefMode = ReferenceMode.Farthest; MinDistanceFromRef = minDistance; return this; }
     public SafePointConfig MinMutualDistance(float dist)            { MinMutualDistance = dist; return this; }
     public SafePointConfig InDirection(Vector3 origin, float facingDeg, float halfArcDeg) { Origin = origin; FacingDeg = facingDeg; HalfArcDeg = halfArcDeg; return this; }
+    public SafePointConfig WithinCircle(Vector3 center, float radius) { RangeCenter = center; RangeRadius = radius; return this; }
     public SafePointConfig PreferEdge()                             { PreferEdge = true; return this; }
     public SafePointConfig PreferCenter()                           { PreferEdge = false; return this; }
     public SafePointConfig SetGridSpacing(float spacing)            { GridSpacing = spacing; return this; }
@@ -168,11 +171,12 @@ var points = SafeFieldContext.Current
 
 安全点按以下规则综合分排序，取前 N 个：
 
-1. **Farthest 模式**：先过滤 `DistToRef >= MinDistanceFromRef`，再按距离降序打分
-2. **Nearest 模式**：按距离升序直接排序
-3. **方向过滤**：先过滤非扇形内的点，再打分
-4. **靠边/靠心**：`PreferEdge=true` 按到场中心距离降序；`false` 按升序
-5. **多点检测**（MinMutualDistance > 0）：选中第一个点 → 排除半径内其他点 → 选第二个 → 循环
+1. **范围限制**（`WithinCircle`）：先过滤 `DistTo(RangeCenter) > RangeRadius` 的点
+2. **Farthest 模式**：先过滤 `DistToRef >= MinDistanceFromRef`，再按距离降序打分
+3. **Nearest 模式**：按距离升序直接排序
+4. **方向过滤**：先过滤非扇形内的点，再打分
+5. **靠边/靠心**：`PreferEdge=true` 按到场中心距离降序；`false` 按升序
+6. **多点检测**（MinMutualDistance > 0）：选中第一个点 → 排除半径内其他点 → 选第二个 → 循环
 
 ## 性能考量
 
