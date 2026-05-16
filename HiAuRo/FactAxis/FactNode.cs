@@ -235,7 +235,7 @@ public sealed class 需求减伤动作 : FactAction
 {
     [JsonPropertyName("value")]
     public int Value { get; set; }
-    public override void Execute(FactTimeline timeline) { }
+    public override void Execute(FactTimeline timeline) { /* 由 DecisionEngine 消费 */ }
 }
 
 /// <summary>治疗需求 — 事件到达时立即分配+释放</summary>
@@ -243,7 +243,7 @@ public sealed class 需求治疗动作 : FactAction
 {
     [JsonPropertyName("value")]
     public int Value { get; set; }
-    public override void Execute(FactTimeline timeline) { }
+    public override void Execute(FactTimeline timeline) { /* 由 DecisionEngine 消费 */ }
 }
 
 /// <summary>设置 QT — 到达时(或offset后)调 QTHelper.SetValue</summary>
@@ -255,7 +255,7 @@ public sealed class 设置QT动作 : FactAction
     public bool Value { get; set; }
     [JsonPropertyName("offset")]
     public double Offset { get; set; }
-    public override void Execute(FactTimeline timeline) { }
+    public override void Execute(FactTimeline timeline) { /* 由 FactTimeline.RunActions 消费 */ }
 }
 
 /// <summary>切换 QT — 到达时(或offset后)调 QTHelper.Toggle</summary>
@@ -265,7 +265,7 @@ public sealed class 切换QT动作 : FactAction
     public string QtId { get; set; } = "";
     [JsonPropertyName("offset")]
     public double Offset { get; set; }
-    public override void Execute(FactTimeline timeline) { }
+    public override void Execute(FactTimeline timeline) { /* 由 FactTimeline.RunActions 消费 */ }
 }
 
 /// <summary>站位需求 — 声明 deadline，位置由辅助轴通过 FactNodeId 关联</summary>
@@ -275,7 +275,7 @@ public sealed class 站位需求动作 : FactAction
     public double Deadline { get; set; }
     [JsonPropertyName("role")]
     public string Role { get; set; } = "All";
-    public override void Execute(FactTimeline timeline) { }
+    public override void Execute(FactTimeline timeline) { /* 由 MovementExecutor 消费 */ }
 }
 
 #endregion
