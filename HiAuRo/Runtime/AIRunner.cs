@@ -552,15 +552,17 @@ public sealed class AIRunner
         return false;
     }
 
-    /// <summary>转发游戏事件到当前 ACR 的 EventHandler</summary>
+    /// <summary>转发游戏事件到当前 ACR 的 EventHandler。线程安全：先捕获 handler 引用再调用，防止 Unload 期间 CurrentRotation 变 null。</summary>
     private void OnGameEvent(ITriggerCondParams eventParams)
     {
-        CurrentRotation?.EventHandler?.OnGameEvent(eventParams);
+        var handler = CurrentRotation?.EventHandler;
+        handler?.OnGameEvent(eventParams);
     }
 
-    /// <summary>转发阶段切换到当前 ACR 的 EventHandler</summary>
+    /// <summary>转发阶段切换到当前 ACR 的 EventHandler。线程安全：先捕获 handler 引用再调用，防止 Unload 期间 CurrentRotation 变 null。</summary>
     private void OnPhaseChanged(string phaseId, string phaseName)
     {
-        CurrentRotation?.EventHandler?.OnPhaseChanged(phaseId, phaseName);
+        var handler = CurrentRotation?.EventHandler;
+        handler?.OnPhaseChanged(phaseId, phaseName);
     }
 }
