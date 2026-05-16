@@ -62,8 +62,6 @@ dotnet build HiAuRo.slnx -c Release -nologo
 
 | Path | What |
 |------|------|
-| `../资料/AEAssist/` (外部，不在仓库内) | AEAssist decompiled source (host framework reference) |
-| `../Oblivion/` (外部，不在仓库内) | BLM ACR example (AE-style IRotationEntry usage) |
 | `OmenTools/` | OmenTools source (DService, OmenService managers) |
 | `Browsingway/` | CEF rendering reference (D3D11 texture sharing) |
 
