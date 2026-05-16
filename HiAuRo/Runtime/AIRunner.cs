@@ -26,6 +26,20 @@ public sealed class AIRunner
     private int _battleTimeMs;
     private bool _loaded;
     private CombatContext.State _prevFactAxisState;
+    // B3: 需求分治 + 去重
+    private readonly HashSet<string> _processedHealEventIds = new();
+    private readonly HashSet<string> _processedMitEventIds = new();
+    private readonly List<PendingMitigation> _pendingMits = new();
+
+    private sealed class PendingMitigation(string eventId, uint skillId, string skillName, long windowStartMs, long windowEndMs)
+    {
+        public string EventId { get; } = eventId;
+        public uint SkillId { get; } = skillId;
+        public string SkillName { get; } = skillName;
+        public long WindowStartMs { get; } = windowStartMs;
+        public long WindowEndMs { get; } = windowEndMs;
+        public bool Executed { get; set; }
+    }
     private CombatContext.State _prevExecAxisState; // 执行轴战斗状态追踪
     private CombatContext.State _prevAssistAxisState; // 辅助轴战斗状态追踪
     private CombatContext.State _prevState; // 用于检测战斗状态切换
@@ -309,6 +323,8 @@ public sealed class AIRunner
         Data.Combat.AbilityCountInGcd = 0;
         Data.Combat.MaxAbilityTimesInGcd = PluginConfig.Instance.MaxAbilityTimesInGcd;
         CurrentRotation?.EventHandler?.OnResetBattle();
+        IntelligenceEngine.Instance.Reset();
+        MovementExecutor.Instance.Reset();
     }
 
     /// <summary>倒计时阶段检查（通过 IPC 获取游戏倒计时）</summary>
@@ -359,62 +375,133 @@ public sealed class AIRunner
 
     private void UpdateFactAxis(CombatContext.State state)
     {
-        // 战斗状态变化 → 启停事实轴
+        var flags = PluginConfig.Instance.FactAxis;
+
         if (state != _prevFactAxisState)
         {
             _prevFactAxisState = state;
             if (state == CombatContext.State.InCombat)
                 FactTimeline.Instance.Start();
-            else if (state == CombatContext.State.OutOfCombat || state == CombatContext.State.Idle)
+            else
                 FactTimeline.Instance.Stop();
         }
 
         if (state != CombatContext.State.InCombat) return;
 
-        // 推进时间轴
-        FactTimeline.Instance.Update(_battleTimeMs);
+        // 时间线观测
+        if (flags.Observe)
+            FactTimeline.Instance.Update(_battleTimeMs);
 
-        // Phase 8: 消费事实轴需求 → 决策分配
-        UpdateDecisions();
+        // 决策分配
+        bool needDecisions = flags.TeamMitigation || flags.PersonalMitigation
+                            || flags.TeamHealing || flags.ForceExecute;
+        if (needDecisions)
+            UpdateDecisions(flags);
 
-        // Phase 8.5: 智能层——释放事实轴对应的移动需求
+        // 检查到期减伤
+        CheckPendingMitigations();
+
+        // 智能层 + 移动执行
         IntelligenceEngine.Instance.Update(FactTimeline.Instance);
+        MovementExecutor.Instance.Update(FactTimeline.Instance.State);
     }
 
-    /// <summary>Phase 8 — 从事实轴当前事件提取需求，运行决策引擎</summary>
-    private void UpdateDecisions()
+    private void UpdateDecisions(FactAxisFlags flags)
     {
         var state = FactTimeline.Instance.State;
         var ev = state.CurrentEvent;
         if (ev == null || ev.Actions.Count == 0) return;
 
-        int 需求减伤 = 0, 需求治疗 = 0;
         foreach (var action in ev.Actions)
         {
-            if (action is 需求动作 demand)
+            switch (action)
             {
-                需求减伤 = demand.需求减伤;
-                需求治疗 = demand.需求治疗;
+                case 需求治疗动作 heal when !_processedHealEventIds.Contains(ev.Id):
+                    _processedHealEventIds.Add(ev.Id);
+                    if (flags.TeamHealing)
+                    {
+                        var output = DecisionEngine.Instance.计算治疗(heal.Value);
+                        执行分配技能(output);
+                    }
+                    break;
+
+                case 需求减伤动作 mit when !_processedMitEventIds.Contains(ev.Id):
+                    _processedMitEventIds.Add(ev.Id);
+                    if (flags.TeamMitigation || flags.PersonalMitigation)
+                    {
+                        var output = DecisionEngine.Instance.计算减伤(mit.Value);
+                        // 不立即执行，记录窗口
+                        foreach (var alloc in output.减伤分配)
+                        {
+                            int durSec = 10;
+                            long damageMs = (long)((ev.Time + (ev.Duration ?? 0)) * 1000);
+                            long windowStart = damageMs - durSec * 1000;
+                            _pendingMits.Add(new PendingMitigation(ev.Id, alloc.技能ID, alloc.技能名称, windowStart, damageMs));
+                        }
+                    }
+                    break;
+
+                case 需求动作 oldDemand:
+                    // 兼容旧格式
+                    if (!_processedHealEventIds.Contains(ev.Id) && oldDemand.需求治疗 > 0 && flags.TeamHealing)
+                    {
+                        _processedHealEventIds.Add(ev.Id);
+                        var outHeal = DecisionEngine.Instance.计算治疗(oldDemand.需求治疗);
+                        执行分配技能(outHeal);
+                    }
+                    if (!_processedMitEventIds.Contains(ev.Id) && oldDemand.需求减伤 > 0 && (flags.TeamMitigation || flags.PersonalMitigation))
+                    {
+                        _processedMitEventIds.Add(ev.Id);
+                        var outMit = DecisionEngine.Instance.计算减伤(oldDemand.需求减伤);
+                        foreach (var alloc in outMit.减伤分配)
+                        {
+                            int durSec = 10;
+                            long damageMs = (long)((ev.Time + (ev.Duration ?? 0)) * 1000);
+                            _pendingMits.Add(new PendingMitigation(ev.Id, alloc.技能ID, alloc.技能名称, damageMs - durSec * 1000, damageMs));
+                        }
+                    }
+                    break;
             }
         }
+    }
 
-        if (需求减伤 == 0 && 需求治疗 == 0) return;
+    private void CheckPendingMitigations()
+    {
+        var flags = PluginConfig.Instance.FactAxis;
+        if (!flags.ForceExecute) return;
 
-        var output = DecisionEngine.Instance.计算(需求减伤, 需求治疗);
-        if (output.执行技能IDs.Count > 0)
+        for (int i = _pendingMits.Count - 1; i >= 0; i--)
         {
-            DService.Instance().Log.Information(
-                $"[Decision] {state.PhaseName}: 减伤={output.减伤合计}/{需求减伤} " +
-                $"治疗={output.治疗合计}/{需求治疗} " +
-                $"分配={string.Join(",", output.减伤分配.Select(m => $"{m.技能名称}({m.减伤值}%)"))}");
-
-            // 强制全部分配技能依次发（ACR 不能跳过）
-            foreach (var skillId in output.执行技能IDs)
+            var mit = _pendingMits[i];
+            if (mit.Executed) { _pendingMits.RemoveAt(i); continue; }
+            if (mit.WindowEndMs > 0 && _battleTimeMs >= mit.WindowStartMs && _battleTimeMs <= mit.WindowEndMs)
             {
-                var slot = new Slot();
-                slot.Add(new ACR.Spell { Id = skillId, Name = "决策技能", Type = ACR.SpellType.Ability, TargetType = ACR.SpellTargetType.Self });
-                SlotExecutor.ExecuteSlot(slot);
+                var spell = FactSpellTable.构造Spell(mit.SkillId);
+                if (spell != null)
+                {
+                    var slot = new Slot();
+                    slot.Add(spell);
+                    SlotExecutor.ExecuteSlot(slot);
+                }
+                mit.Executed = true;
             }
+            if (mit.WindowEndMs > 0 && _battleTimeMs > mit.WindowEndMs)
+                _pendingMits.RemoveAt(i);
+        }
+    }
+
+    private void 执行分配技能(DecisionOutput output)
+    {
+        var flags = PluginConfig.Instance.FactAxis;
+        if (!flags.ForceExecute || output.执行技能IDs.Count == 0) return;
+
+        foreach (var skillId in output.执行技能IDs)
+        {
+            var spell = FactSpellTable.构造Spell(skillId);
+            if (spell == null) continue;
+            var slot = new Slot();
+            slot.Add(spell);
+            SlotExecutor.ExecuteSlot(slot);
         }
     }
 
