@@ -217,6 +217,62 @@ public sealed class FactTimeline
             case ActionEffectParams effect:
                 MatchActiveSyncs("ability", effect.ActionID, fightNow);
                 break;
+
+            case NoTargetAbilityEffectParams effect:
+                MatchActiveSyncs("ability", effect.ActionID, fightNow);
+                break;
+
+            case ActorControlTargetIconParams icon:
+                MatchActiveSyncs("headMarker", icon.IconID, fightNow);
+                break;
+
+            case TetherCreateParams tether:
+                MatchActiveSyncs("tether", tether.TetherID, fightNow);
+                break;
+
+            case TetherRemoveParams tether:
+                // 连线移除不带 TetherID，无法做 Sync 匹配
+                break;
+
+            case ActorControlDeathParams death:
+                MatchActiveSyncs("wasDefeated", death.SourceID, fightNow);
+                break;
+
+            case BuffGainParams buff:
+                MatchActiveSyncs("gainsEffect", buff.StatusID, fightNow);
+                break;
+
+            case BuffRemoveParams buff:
+                MatchActiveSyncs("losesEffect", buff.StatusID, fightNow);
+                break;
+
+            case MapEffectParams map:
+                MatchActiveSyncs("mapEffect", map.PositionIndex, fightNow);
+                break;
+
+            case NpcYellParams yell:
+                MatchActiveSyncs("npcYell", yell.YellID, fightNow);
+                break;
+
+            case UnitCreateParams create:
+                MatchActiveSyncs("addedCombatant", create.DataId, fightNow);
+                break;
+
+            case UnitDeleteParams delete:
+                MatchActiveSyncs("removedCombatant", delete.DataId, fightNow);
+                break;
+
+            // 以下类型暂无对应的 FactEventType，仅接收不做 Sync 匹配
+            case ActorControlTargetableParams:
+            case ActorControlCombatParams:
+            case ActorControlTimelineParams:
+            case ActorControlParams:
+            case DirectorUpdateParams:
+            case EnvControlParams:
+            case WeatherChangedParams:
+            case AfterSpellParams:
+            case CombatStateParams:
+                break;
         }
     }
 
@@ -455,9 +511,18 @@ public sealed class FactTimeline
 
             var evTypeName = ev.Type switch
             {
-                FactEventType.Ability     => "ability",
-                FactEventType.StartsUsing => "startsUsing",
-                _                         => null
+                FactEventType.Ability           => "ability",
+                FactEventType.StartsUsing       => "startsUsing",
+                FactEventType.HeadMarker        => "headMarker",
+                FactEventType.Tether             => "tether",
+                FactEventType.AddedCombatant     => "addedCombatant",
+                FactEventType.RemovedCombatant  => "removedCombatant",
+                FactEventType.WasDefeated       => "wasDefeated",
+                FactEventType.GainsEffect       => "gainsEffect",
+                FactEventType.LosesEffect       => "losesEffect",
+                FactEventType.MapEffect         => "mapEffect",
+                FactEventType.NPCYell           => "npcYell",
+                _                               => null
             };
             if (evTypeName == null || evTypeName != gameEventType) continue;
             if (ev.AbilityId != 0 && ev.AbilityId != abilityId) continue;
