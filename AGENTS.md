@@ -7,10 +7,8 @@ HiAuRo is a FFXIV Dalamud **combat assist framework** (.NET 10, Dalamud.NET.Sdk 
 ## Build & Verify
 
 ```bash
-dotnet build HiAuRo/HiAuRo.csproj -nologo
+dotnet build HiAuRo.slnx -c Release -nologo
 ```
-
-No `.sln` — single project. CEF renderer (`HiAuRo.Renderer`) is a separate `.csproj` added in Phase 5.3.
 
 **构建环境**：代码开发在 WSL 中，但 `dotnet build` 需要在 **Windows 环境**中执行（Dalamud SDK 依赖 Windows-only 的 Dalamud Hooks 和 FFXIV 游戏进程）。在 WSL 中直接运行 `dotnet build` 会因缺少 `/home/haiya/dalamud_hooks/` 和 CefSharp 包而失败。通过 WSL 的 `cmd.exe /c "dotnet build ..."` 在 Windows 端执行。
 
@@ -22,7 +20,7 @@ No `.sln` — single project. CEF renderer (`HiAuRo.Renderer`) is a separate `.c
 2. No premature abstraction — don't build for hypothetical future needs.
 3. Use Chinese comments for maintenance and collaboration.
 4. New capabilities are **additive** — never rewrite familiar workflows.
-5. Before Phase 7 (Fact Axis), keep ACR interfaces and author experience close to AEAssist.
+5. ACR interfaces stay close to AEAssist conventions for ACR author familiarity.
 
 ## Technology Choices
 
@@ -40,10 +38,24 @@ No `.sln` — single project. CEF renderer (`HiAuRo.Renderer`) is a separate `.c
 │   ├── ROADMAP.md      ← 9-phase roadmap with plan details
 │   ├── ARCHITECTURE.md ← layered design, data flow, interfaces
 │   ├── STACK.md        ← tech stack & dependency versions
-│   ├── dev-tasks/      ← per-phase task breakdowns (PHASE1~PHASE5.4)
+│   ├── dev-tasks/      ← per-phase task breakdowns (PHASE1~PHASE9)
 │   ├── OMEN_TOOLS_USAGE.md  ← what OmenTools provides vs what we build
 │   └── AEASSIST_STUDY.md    ← AEAssist architecture reference
-└── HiAuRo/             ← plugin source (TO BE CREATED per dev-tasks)
+├── HiAuRo/             ← plugin source
+│   ├── ACR/            ← interfaces, helpers, slot system, target resolvers
+│   ├── Command/        ← /hi command handler
+│   ├── Data/           ← game data layer (battle, combat, objects, party, target)
+│   ├── Execution/      ← execution axis + trigger metadata + script compiler
+│   ├── Runtime/        ← runtime core, AIRunner, ACR lifecycle, spell queue
+│   ├── UI/             ← Web UI (Kestrel + CEF) + ImGui overlays
+│   ├── FactAxis/       ← fact axis (spell table, timeline, fact nodes)
+│   ├── Decision/       ← decision engine + decision types
+│   ├── Authoring/      ← authoring server
+│   ├── Infrastructure/ ← logging, config, Browsingway IPC
+│   ├── Recording/      ← encounter recording
+│   └── Setting/        ← settings manager
+├── OmenTools/          ← Dalamud service encapsulation (submodule)
+└── Browsingway/        ← CEF rendering reference (submodule)
 ```
 
 ## Reference Code (read-only, do not modify)
@@ -64,6 +76,8 @@ Phase 1 → Phase 2 → Phase 3 → Phase 4 → Phase 5.1 → (5.2 ∥ 5.3) → 
                                                                               │
                                                                         Phase 6 → 7 → 8 → 9
 ```
+
+All 9 phases are **completed** (46/46 v1 requirements).
 
 **Before starting any phase**, read the corresponding `doc/dev-tasks/PHASE*_*.md` which contains the exact file manifest, tasks, and verification steps.
 
