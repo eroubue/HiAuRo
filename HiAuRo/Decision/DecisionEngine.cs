@@ -1,5 +1,6 @@
 using HiAuRo.ACR;
 using HiAuRo.Data;
+using HiAuRo.FactAxis;
 
 namespace HiAuRo.Decision;
 
@@ -200,6 +201,16 @@ public sealed class DecisionEngine
                 new() { 技能ID = 124, 名称 = "医济", 职业 = Jobs.WHM, 恢复力 = 600, 冷却秒 = 60, 治疗类型 = 治疗类型.持续, 是否持续 = true },
                 new() { 技能ID = 7434, 名称 = "全大赦", 职业 = Jobs.WHM, 恢复力 = 800, 冷却秒 = 60, 治疗类型 = 治疗类型.直疗 },
             ]);
+
+        // FactSpellTable — 技能执行数据（"怎么放"）
+        FactSpellTable.注册(7561, "策动");
+        FactSpellTable.注册(7559, "行吟");
+        FactSpellTable.注册(7560, "光阴神的礼赞凯歌");
+        FactSpellTable.注册(7549, "牵制");
+        FactSpellTable.注册(3547, "内丹");
+        FactSpellTable.注册(7433, "节制");
+        FactSpellTable.注册(124, "医济");
+        FactSpellTable.注册(7434, "全大赦");
     }
 
     #endregion
