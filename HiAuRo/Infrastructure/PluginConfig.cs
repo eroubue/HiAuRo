@@ -76,6 +76,9 @@ public sealed class PluginConfig : IPluginConfiguration
 
     /// <summary>GitHub 分支名</summary>
     public string CatalogBranch { get; set; } = "main";
+
+    public FactAxisFlags FactAxis { get; set; } = new();
+    public AutoSwitchMode AutoSwitch { get; set; } = AutoSwitchMode.Execution优先;
 }
 
 public sealed class OverlayWindowSetting
@@ -88,3 +91,25 @@ public sealed class OverlayWindowSetting
     public bool Visible { get; set; } = true;
     public bool Locked { get; set; } = true;
 }
+
+#region FactAxis
+
+public sealed class FactAxisFlags
+{
+    public bool Observe = true;          // 时间线观测
+    public bool QtControl;               // QT 调控
+    public bool TeamMitigation;          // 团队减伤分配
+    public bool PersonalMitigation;      // 单人减伤分配
+    public bool TeamHealing;             // 团队治疗分配
+    public bool ForceExecute;            // 技能强制释放
+    public bool MoveTo;                  // NavMesh 移动
+    public bool TP;                      // 传送
+    public bool Hold;                    // 站位保持
+    public MovementMode MovementMode = MovementMode.NavMesh_TP兜底;
+}
+
+public enum MovementMode { NavMesh, TP, NavMesh_TP兜底 }
+
+public enum AutoSwitchMode { None, Execution优先, Fact优先 }
+
+#endregion
