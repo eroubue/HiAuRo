@@ -17,6 +17,9 @@ public sealed class FactTimeline
     public bool IsRunning { get; private set; }
     public FactState State { get; } = new();
 
+    /// <summary>阶段切换事件（phaseId, phaseName）。EnterPhase 和 TrySwitchBranch 中触发。</summary>
+    public event Action<string, string>? PhaseChanged;
+
     private readonly Dictionary<string, bool> _variables = [];
     private long _timebase;
     private double _phaseStartTime;
@@ -146,6 +149,7 @@ public sealed class FactTimeline
         _waitingSwitch = false;
         _phaseStartTime = FightNow;
 
+        PhaseChanged?.Invoke(phase.Id, phase.Name);
         DService.Instance().Log.Debug($"[FactAxis] 进入阶段: {phase.Name} ({phase.Events.Count} 事件)");
     }
 
@@ -191,6 +195,7 @@ public sealed class FactTimeline
         _waitingSwitch = false;
         _phaseStartTime = FightNow;
 
+        PhaseChanged?.Invoke(_currentPhase?.Id ?? "", selected.Name);
         return true;
     }
 
