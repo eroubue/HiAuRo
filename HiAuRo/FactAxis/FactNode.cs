@@ -2,6 +2,35 @@ using System.Text.Json.Serialization;
 
 namespace HiAuRo.FactAxis;
 
+/// <summary>事实轴事件类型——对应游戏包类型 (ITriggerCondParams 子类)</summary>
+public enum FactEventType
+{
+    /// <summary>无游戏事件对照（纯时间标记/状态声明）</summary>
+    None,
+    /// <summary>技能效果 → ActionEffectParams</summary>
+    Ability,
+    /// <summary>读条开始 → ActorCastParams</summary>
+    StartsUsing,
+    /// <summary>点名标记 → ActorControlTargetIconParams</summary>
+    HeadMarker,
+    /// <summary>连线 → TetherCreateParams</summary>
+    Tether,
+    /// <summary>单位出现 → UnitCreateParams</summary>
+    AddedCombatant,
+    /// <summary>单位消失 → UnitDeleteParams</summary>
+    RemovedCombatant,
+    /// <summary>单位死亡 → ActorControlDeathParams</summary>
+    WasDefeated,
+    /// <summary>Buff获得 → BuffGainParams</summary>
+    GainsEffect,
+    /// <summary>Buff消失 → BuffRemoveParams</summary>
+    LosesEffect,
+    /// <summary>地图特效 → MapEffectParams</summary>
+    MapEffect,
+    /// <summary>NPC喊话 → NpcYellParams</summary>
+    NPCYell,
+}
+
 #region 数据模型
 
 /// <summary>副本时间线根</summary>
@@ -59,6 +88,20 @@ public sealed class FactEvent
     [JsonPropertyName("duration")]
     public double? Duration { get; set; }
 
+    /// <summary>游戏事件类型。None=无游戏事件对照</summary>
+    [JsonPropertyName("type")]
+    [JsonConverter(typeof(JsonStringEnumConverter))]
+    public FactEventType Type { get; set; } = FactEventType.None;
+
+    /// <summary>主要ID（技能ID/连线ID/BuffID等，按Type解释）。0=无</summary>
+    [JsonPropertyName("abilityId")]
+    public uint AbilityId { get; set; }
+
+    /// <summary>目标可选中状态声明。null=不涉及，true=变为可选中，false=变为不可选中</summary>
+    [JsonPropertyName("targetable")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public bool? Targetable { get; set; }
+
     /// <summary>开始校准 — 游戏事件匹配后记录实际开始时刻</summary>
     [JsonPropertyName("startSync")]
     public FactSyncDef? StartSync { get; set; }
@@ -76,6 +119,22 @@ public sealed class FactEvent
     [JsonIgnore] public double ActualEnd { get; set; }
     [JsonIgnore] public bool ActionsDone { get; set; }
     [JsonIgnore] public bool SyncFired { get; set; }
+
+    /// <summary>向后兼容：若 Type=None 则尝试从 StartSync 迁移</summary>
+    public void MigrateFromLegacy()
+    {
+        if (Type != FactEventType.None || AbilityId != 0) return;
+        if (StartSync == null) return;
+
+        Type = StartSync.Type switch
+        {
+            "ability"     => FactEventType.Ability,
+            "startsUsing" => FactEventType.StartsUsing,
+            _             => FactEventType.None
+        };
+        if (StartSync.AbilityIds.Count > 0)
+            AbilityId = StartSync.AbilityIds[0];
+    }
 }
 
 /// <summary>
@@ -121,10 +180,13 @@ public sealed class FactSwitchBranch
 
 public sealed class FactSyncDef
 {
+    // 仅向后兼容反序列化，不参与新格式输出
     [JsonPropertyName("type")]
-    public string Type { get; set; } = ""; // "ability" | "startsUsing" | "inCombat"
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
+    public string Type { get; set; } = "";
 
     [JsonPropertyName("abilityIds")]
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
     public List<uint> AbilityIds { get; set; } = [];
 
     /// <summary>窗口提前打开秒数（默认 2.5）</summary>
@@ -151,9 +213,6 @@ public sealed class FactSyncDef
     [JsonIgnore] public double Start { get; set; }
     [JsonIgnore] public double End { get; set; }
     [JsonIgnore] public double AnchorTime { get; set; }
-
-    public bool Match(string eventType, uint abilityId) =>
-        Type == eventType && (AbilityIds.Count == 0 || AbilityIds.Contains(abilityId));
 }
 
 public abstract class FactCondition
@@ -296,11 +355,35 @@ public sealed class FactState
     public Dictionary<string, bool> Variables { get; set; } = [];
     public string LastSyncInfo { get; set; } = "";
 
+    /// <summary>当前目标可选中状态。未声明时为 null。</summary>
+    [JsonIgnore]
+    public bool? IsTargetable { get; set; }
+
+    /// <summary>距下次变为可占用的秒数。当前已可占用时返回 0，无后续声明时返回 null。</summary>
+    [JsonIgnore]
+    public double? NextTargetableIn =>
+        IsTargetable == true ? 0 : PendingEvents.FirstOrDefault(e => e.Targetable == true)?.Time - PhaseTime;
+
+    /// <summary>距下次变为不可占用的秒数。当前已不可占用时返回 0，无后续声明时返回 null。</summary>
+    [JsonIgnore]
+    public double? NextUntargetableIn =>
+        IsTargetable == false ? 0 : PendingEvents.FirstOrDefault(e => e.Targetable == false)?.Time - PhaseTime;
+
+    /// <summary>当前阶段未到达的事件（按时序）。ACR 可自定前向扫描。</summary>
+    [JsonIgnore]
+    public List<FactEvent> PendingEvents { get; set; } = [];
+
+    /// <summary>查询距指定类游戏事件类型的秒数。无匹配返回 null。</summary>
+    public double? NextEventTimeOfType(FactEventType type) =>
+        PendingEvents.FirstOrDefault(e => e.Type == type)?.Time - PhaseTime;
+
     public void Clear()
     {
         IsRunning = false; PhaseName = ""; PhaseTime = 0; TotalTime = 0;
         CurrentEvent = null; Status = ""; NextEventTime = null;
         Suggestions.Clear(); Variables.Clear(); LastSyncInfo = "";
+        IsTargetable = null;
+        PendingEvents.Clear();
     }
 }
 

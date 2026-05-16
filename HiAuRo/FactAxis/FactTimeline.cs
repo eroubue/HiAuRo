@@ -444,7 +444,8 @@ public sealed class FactTimeline
             if (sync.Start > fightNow) break;
             if (sync.End <= fightNow) continue;
 
-            if (!sync.Match(type, abilityId)) continue;
+            if (sync.Type != type) continue;
+            if (sync.AbilityIds.Count > 0 && !sync.AbilityIds.Contains(abilityId)) continue;
 
             var targetTime = sync.Jump ?? sync.AnchorTime;
             if (targetTime >= double.MaxValue - 1) continue;
