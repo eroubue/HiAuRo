@@ -1,9 +1,10 @@
 using HiAuRo.ACR;
+using HiAuRo.Execution.Events;
 
 namespace HiAuRo.ACR;
 
 /// <summary>
-/// 战斗事件回调处理接口 —— 对齐 AE 风格，10 个回调
+/// 战斗事件回调处理接口 —— 对齐 AE 风格，12 个回调
 /// 由 AIRunner 在 Slot 执行过程中同步调用
 /// </summary>
 public interface IRotationEventHandler
@@ -37,4 +38,10 @@ public interface IRotationEventHandler
 
     /// <summary>切图时触发</summary>
     void OnTerritoryChanged() { }
+
+    /// <summary>游戏事件分发回调。全部 ITriggerCondParams 子类型均转发，ACR 作者自行类型判断过滤。回调在 GameEventHook 线程执行，为只读通知。</summary>
+    void OnGameEvent(ITriggerCondParams eventParams) { }
+
+    /// <summary>事实轴阶段切换回调。仅 FactAxis 运行时触发。</summary>
+    void OnPhaseChanged(string phaseId, string phaseName) { }
 }
