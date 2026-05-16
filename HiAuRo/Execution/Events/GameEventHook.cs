@@ -299,7 +299,7 @@ public sealed class GameEventHook
                 {
                     SourceID = ac.SourceID,
                     TargetID = ac.TargetID,
-                    Data1    = ac.Command,
+                    Command  = ac.Command,
                     P1       = ac.P1, P2 = ac.P2, P3 = ac.P3, P4 = ac.P4
                 });
                 break;
@@ -486,7 +486,7 @@ public sealed class GameEventHook
                     objectId = *(uint*)(gameObjectPtr + 0x74);
             }
 
-            Fire(new ObjectChangeParams
+            Fire(new ObjectEffectParams
             {
                 ObjectID = objectId,
                 Data1 = data1,

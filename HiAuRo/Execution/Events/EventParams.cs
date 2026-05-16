@@ -174,17 +174,23 @@ public sealed class CombatStateParams : ITriggerCondParams
     public bool IsEntering;
 }
 
-/// <summary>对象变化 — ActorControl 未分类命令 或 ObjectEffect 钩子事件</summary>
+/// <summary>对象变化 — ActorControl 未分类命令</summary>
 public sealed class ObjectChangeParams : ITriggerCondParams
 {
-    /// <summary>游戏对象 ID（ObjectEffect 钩子来源时有效）</summary>
-    public uint ObjectID;
-    /// <summary>数据1（ObjectEffect: data1, ActorControl: Command）</summary>
-    public ushort Data1;
-    /// <summary>数据2（ObjectEffect: data2）</summary>
-    public ushort Data2;
-    /// <summary>ActorControl 来源时可用的完整字段</summary>
     public uint SourceID;
     public uint TargetID;
+    /// <summary>ActorControl Command</summary>
+    public ushort Command;
     public uint P1, P2, P3, P4;
+}
+
+/// <summary>对象特效 — ProcessObjectEffect 函数钩子</summary>
+public sealed class ObjectEffectParams : ITriggerCondParams
+{
+    /// <summary>来源游戏对象 ID</summary>
+    public uint ObjectID;
+    /// <summary>特效数据1</summary>
+    public ushort Data1;
+    /// <summary>特效数据2</summary>
+    public ushort Data2;
 }

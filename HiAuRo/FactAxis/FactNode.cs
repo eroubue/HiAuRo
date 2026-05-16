@@ -35,6 +35,8 @@ public enum FactEventType
     Weather,
     /// <summary>对象变化 → ObjectChangeParams</summary>
     ObjectChange,
+    /// <summary>对象特效 → ObjectEffectParams</summary>
+    ObjectEffect,
 }
 
 #region 数据模型
