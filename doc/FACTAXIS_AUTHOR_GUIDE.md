@@ -166,7 +166,7 @@
 | 枚举值 | 中文名 | 对应游戏包 | abilityId 含义 |
 |--------|--------|-----------|---------------|
 | `"None"` | 无类型 | — | 不匹配数据包 |
-| `"Ability"` | 技能效果 | `ActionEffectParams` | 技能 ID |
+| `"Ability"` | 技能效果 | `ActionEffectParams` / `NoTargetAbilityEffectParams` | 技能 ID |
 | `"StartsUsing"` | 读条开始 | `ActorCastParams` | 技能 ID |
 | `"HeadMarker"` | 点名标记 | `ActorControlTargetIconParams` | 标记 IconID |
 | `"Tether"` | 连线 | `TetherCreateParams` | 连线 TetherID |
@@ -178,7 +178,7 @@
 | `"MapEffect"` | 地图特效 | `MapEffectParams` | EffectID |
 | `"NPCYell"` | NPC喊话 | `NpcYellParams` | YellID |
 
-> **当前 Sync 匹配**：只有 `Ability` 和 `StartsUsing` 会与游戏数据包做 Sync 匹配校准。其余类型主要用于记录和 ACR 查询，后续版本会逐步支持匹配校准。
+> **全部 12 种事件类型均支持 Sync 匹配校准。** 此外以下游戏数据包类型也会被接收，但暂无对应的 `FactEventType`（不做 Sync 匹配，仅流向 ACR）：`TetherRemoveParams`、`ActorControlTargetableParams`、`ActorControlCombatParams`、`ActorControlTimelineParams`、`ActorControlParams`、`DirectorUpdateParams`、`EnvControlParams`、`WeatherChangedParams`、`AfterSpellParams`、`CombatStateParams`。
 
 ### 使用场景
 

@@ -563,22 +563,34 @@ public void OnBattleUpdate(int battleTimeMs)
 
 ### 新增：游戏事件回调 `OnGameEvent`
 
-`OnGameEvent` 将全部底层游戏事件分发给 ACR。回调在 GameEventHook 线程执行，为只读通知，ACR 作者自行处理线程安全。
+`OnGameEvent` 将全部 22 种底层游戏事件分发给 ACR。回调在 GameEventHook 线程执行，为只读通知，ACR 作者自行处理线程安全。
 
-**ITriggerCondParams 常见子类型**：
+**ITriggerCondParams 完整子类型**：
 
 | 类型 | 含义 | 关键字段 |
 |------|------|---------|
-| `ActorCastParams` | Boss 开始读条 | `ActionID`, `CastTime`, `SourceID` |
+| `ActorCastParams` | Boss 开始读条 | `ActionID`, `CastTime`, `SourceID`, `PosX/Y/Z` |
 | `ActionEffectParams` | 技能效果命中 | `ActionID`, `SourceID`, `TargetOID` |
+| `NoTargetAbilityEffectParams` | 地面AOE效果 | `ActionID`, `SourceID`, `PosX/Y/Z` |
+| `ActorControlTargetIconParams` | 点名标记 (HeadMarker) | `SourceID`, `TargetID`, `IconID` |
+| `TetherCreateParams` | 连线创建 | `TetherID`, `SourceID`, `TargetOID` |
+| `TetherRemoveParams` | 连线移除 | `SourceID` |
+| `ActorControlDeathParams` | Actor 死亡 | `SourceID`, `TargetID` |
 | `BuffGainParams` | Buff 获得 | `SourceID`, `StatusID`, `StackCount` |
 | `BuffRemoveParams` | Buff 移除 | `SourceID`, `StatusID` |
-| `TetherCreateParams` | 连线创建 | `TetherID`, `SourceID`, `TargetOID` |
-| `ActorControlDeathParams` | Actor 死亡 | `SourceID`, `TargetID` |
-| `ActorControlTargetIconParams` | 头部标记（点名） | `SourceID`, `IconID` |
-| `NpcYellParams` | NPC 喊话 | `SourceName`, `YellMsg` |
-| `MapEffectParams` | 地图特效 | `PositionIndex`, `Param1` |
-| `EnvControlParams` | 环境变化 | `Index`, `Flag` |
+| `MapEffectParams` | 地图特效 | `PositionIndex`, `Param1`, `Param2` |
+| `NpcYellParams` | NPC 喊话 | `SourceID`, `SourceName`, `YellID`, `YellMsg` |
+| `UnitCreateParams` | 单位出现 | `EntityId`, `DataId`, `Name` |
+| `UnitDeleteParams` | 单位消失 | `EntityId`, `DataId`, `Name` |
+| `ActorControlTargetableParams` | 可选中状态变化 | `SourceID`, `TargetID`, `IsTargetable` |
+| `ActorControlCombatParams` | 战斗状态变化 | `IsEntering` |
+| `ActorControlTimelineParams` | 时间轴播放 | `SourceID`, `TimelineID` |
+| `ActorControlParams` | ActorControl 原始 | `SourceID`, `Command`, `P1~P6`, `TargetID` |
+| `DirectorUpdateParams` | Director 更新 | `Category`, `Param1~4` |
+| `EnvControlParams` | 环境控制 | `Index`, `Flag` |
+| `WeatherChangedParams` | 天气变化 | `NewWeatherId` |
+| `AfterSpellParams` | 自身技能后 | `SpellID` |
+| `CombatStateParams` | 战斗状态 | `IsEntering` |
 
 ```csharp
 // 使用示例：监听 Boss 读条和点名
