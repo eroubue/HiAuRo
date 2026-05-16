@@ -262,14 +262,20 @@ public sealed class FactTimeline
                 MatchActiveSyncs("removedCombatant", delete.DataId, fightNow);
                 break;
 
+            case EnvControlParams env:
+                MatchActiveSyncs("envControl", env.Index, fightNow);
+                break;
+
+            case WeatherChangedParams weather:
+                MatchActiveSyncs("weather", (uint)weather.NewWeatherId, fightNow);
+                break;
+
             // 以下类型暂无对应的 FactEventType，仅接收不做 Sync 匹配
             case ActorControlTargetableParams:
             case ActorControlCombatParams:
             case ActorControlTimelineParams:
             case ActorControlParams:
             case DirectorUpdateParams:
-            case EnvControlParams:
-            case WeatherChangedParams:
             case AfterSpellParams:
             case CombatStateParams:
                 break;
@@ -514,14 +520,16 @@ public sealed class FactTimeline
                 FactEventType.Ability           => "ability",
                 FactEventType.StartsUsing       => "startsUsing",
                 FactEventType.HeadMarker        => "headMarker",
-                FactEventType.Tether             => "tether",
-                FactEventType.AddedCombatant     => "addedCombatant",
+                FactEventType.Tether            => "tether",
+                FactEventType.AddedCombatant    => "addedCombatant",
                 FactEventType.RemovedCombatant  => "removedCombatant",
                 FactEventType.WasDefeated       => "wasDefeated",
                 FactEventType.GainsEffect       => "gainsEffect",
                 FactEventType.LosesEffect       => "losesEffect",
                 FactEventType.MapEffect         => "mapEffect",
                 FactEventType.NPCYell           => "npcYell",
+                FactEventType.EnvControl        => "envControl",
+                FactEventType.Weather           => "weather",
                 _                               => null
             };
             if (evTypeName == null || evTypeName != gameEventType) continue;

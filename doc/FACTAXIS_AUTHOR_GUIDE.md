@@ -177,6 +177,8 @@
 | `"LosesEffect"` | Buff消失 | `BuffRemoveParams` | Buff StatusID |
 | `"MapEffect"` | 地图特效 | `MapEffectParams` | EffectID |
 | `"NPCYell"` | NPC喊话 | `NpcYellParams` | YellID |
+| `"EnvControl"` | 环境控制 | `EnvControlParams` | Index |
+| `"Weather"` | 天气变化 | `WeatherChangedParams` | NewWeatherId |
 
 > **全部 12 种事件类型均支持 Sync 匹配校准。** 此外以下游戏数据包类型也会被接收，但暂无对应的 `FactEventType`（不做 Sync 匹配，仅流向 ACR）：`TetherRemoveParams`、`ActorControlTargetableParams`、`ActorControlCombatParams`、`ActorControlTimelineParams`、`ActorControlParams`、`DirectorUpdateParams`、`EnvControlParams`、`WeatherChangedParams`、`AfterSpellParams`、`CombatStateParams`。
 
@@ -481,13 +483,17 @@ s.PendingEvents.Where(e => e.Targetable != null).ToList();
 | 颜色 | 事件类型 |
 |------|---------|
 | 青色 | Ability |
-| 橙色 | StartsUsing |
+| 橙色 | StartsUsing / NPCYell |
 | 粉色 | HeadMarker |
 | 墨绿 | Tether |
 | 绿色 | AddedCombatant |
+| 浅绿 | RemovedCombatant |
 | 红色 | WasDefeated |
 | 黄色 | GainsEffect |
+| 浅红 | LosesEffect |
 | 紫色 | MapEffect |
+| 浅紫 | EnvControl |
+| 天蓝 | Weather |
 | 灰色 | None |
 
 ---

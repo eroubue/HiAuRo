@@ -29,6 +29,10 @@ public enum FactEventType
     MapEffect,
     /// <summary>NPC喊话 → NpcYellParams</summary>
     NPCYell,
+    /// <summary>环境控制 → EnvControlParams</summary>
+    EnvControl,
+    /// <summary>天气变化 → WeatherChangedParams</summary>
+    Weather,
 }
 
 #region 数据模型
