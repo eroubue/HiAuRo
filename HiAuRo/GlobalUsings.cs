@@ -36,5 +36,6 @@ global using Dalamud.Plugin.Services;
 #region C#
 
 global using System.Drawing;
+global using HiAuRo.Infrastructure;
 
 #endregion
