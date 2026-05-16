@@ -88,7 +88,7 @@ public static class ACRLifecycle
 
     private static void CheckJobSwitch()
     {
-        if (!HiAuRo.Data.Data.IsReady) return;
+        if (!HiAuRo.Data.IsReady) return;
 
         var currentJob = Data.Me.ClassJob;
         if (currentJob == _lastJob && currentJob != 0) return;

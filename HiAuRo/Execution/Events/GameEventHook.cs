@@ -1,5 +1,5 @@
 using HiAuRo.ACR;
-using HiAuRo.Data;
+using static HiAuRo.Data;
 using HiAuRo.Infrastructure;
 using Dalamud.Hooking;
 using OmenTools.Dalamud.Services.ObjectTable.Abstractions.ObjectKinds;

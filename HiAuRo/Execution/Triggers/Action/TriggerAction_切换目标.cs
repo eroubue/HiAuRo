@@ -1,5 +1,5 @@
 using HiAuRo.ACR;
-using HiAuRo.Data;
+using static HiAuRo.Data;
 using OmenTools.OmenService;
 
 namespace HiAuRo.Execution.Triggers.Action;

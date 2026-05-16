@@ -1,33 +1,36 @@
 using OmenTools.OmenService;
 using OmenTools.Dalamud.Services.ObjectTable.Abstractions.ObjectKinds;
 
-namespace HiAuRo.Data;
+namespace HiAuRo;
 
-/// <summary>
-/// 玩家自身数据 —— 转发 LocalPlayerState.*
-/// 别名 "Me" = AE 风格：Core.Me 对应 HiAuRo.Data.Me
-public static class Me
+public static partial class Data
 {
-    public static IPlayerCharacter? Object => LocalPlayerState.Object;
+    /// <summary>
+    /// 玩家自身数据 —— 转发 LocalPlayerState.*
+    /// 别名 "Me" = AE 风格：Core.Me 对应 HiAuRo.Data.Me
+    public static class Me
+    {
+        public static IPlayerCharacter? Object => LocalPlayerState.Object;
 
-    public static string Name => LocalPlayerState.Name;
+        public static string Name => LocalPlayerState.Name;
 
-    public static uint ClassJob => LocalPlayerState.ClassJob;
+        public static uint ClassJob => LocalPlayerState.ClassJob;
 
-    public static ushort CurrentLevel => LocalPlayerState.CurrentLevel;
+        public static ushort CurrentLevel => LocalPlayerState.CurrentLevel;
 
-    public static bool IsMoving => LocalPlayerState.Instance().IsMoving;
+        public static bool IsMoving => LocalPlayerState.Instance().IsMoving;
 
-    public static bool IsInParty => LocalPlayerState.IsInParty;
+        public static bool IsInParty => LocalPlayerState.IsInParty;
 
-    public static bool IsPartyLeader => LocalPlayerState.IsPartyLeader;
+        public static bool IsPartyLeader => LocalPlayerState.IsPartyLeader;
 
-    public static float DistanceToObject2D(IGameObject? target, bool ignoreRadius = true) =>
-        LocalPlayerState.DistanceToObject2D(target, ignoreRadius);
+        public static float DistanceToObject2D(IGameObject? target, bool ignoreRadius = true) =>
+            LocalPlayerState.DistanceToObject2D(target, ignoreRadius);
 
-    public static float DistanceToObject3D(IGameObject? target, bool ignoreRadius = true) =>
-        LocalPlayerState.DistanceToObject3D(target, ignoreRadius);
+        public static float DistanceToObject3D(IGameObject? target, bool ignoreRadius = true) =>
+            LocalPlayerState.DistanceToObject3D(target, ignoreRadius);
 
-    public static bool HasStatus(uint statusID, out int index, uint sourceID = 0xE0000000) =>
-        LocalPlayerState.HasStatus(statusID, out index, sourceID);
+        public static bool HasStatus(uint statusID, out int index, uint sourceID = 0xE0000000) =>
+            LocalPlayerState.HasStatus(statusID, out index, sourceID);
+    }
 }

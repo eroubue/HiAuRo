@@ -118,7 +118,7 @@ sealed class HiAuRoContextImpl
 
     public int GetPartyCount() => Data.Party.All.Count;
 
-    private static Data.Party.PartyMemberInfo? GetPartyMember(int index)
+    private static HiAuRo.Data.PartyMemberInfo? GetPartyMember(int index)
     {
         if (index < 0 || index >= Data.Party.All.Count) return null;
         return Data.Party.All[index];

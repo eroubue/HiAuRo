@@ -1,11 +1,11 @@
 using HiAuRo.FactAxis;
 
-namespace HiAuRo.Data;
+namespace HiAuRo;
 
 /// <summary>
 /// HiAuRo 游戏数据统一入口
 /// </summary>
-public static class Data
+public static partial class Data
 {
     public static bool IsReady =>
         OmenTools.OmenService.GameState.IsLoggedIn &&

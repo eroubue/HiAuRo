@@ -135,7 +135,7 @@ public sealed class MainWindow : Window
         ImGui.Spacing();
         ImGui.Separator();
 
-        if (!HiAuRo.Data.Data.IsReady)
+        if (!HiAuRo.Data.IsReady)
         {
             ImGui.Text("等待角色加载...");
             return;

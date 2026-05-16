@@ -34,7 +34,7 @@ public static class RuntimeCore
         if (!IsRunning) return;
         try
         {
-            if (!HiAuRo.Data.Data.IsReady)
+            if (!HiAuRo.Data.IsReady)
             {
                 CombatContext.Reset();
                 return;

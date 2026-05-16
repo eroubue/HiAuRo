@@ -1,5 +1,5 @@
 using HiAuRo.ACR;
-using HiAuRo.Data;
+using static HiAuRo.Data;
 using HiAuRo.Decision;
 using HiAuRo.Execution;
 using HiAuRo.Execution.Events;
