@@ -628,6 +628,41 @@ public sealed class EncounterRecorder
                 Data = new() { ["message"] = cp.Message }
             };
         };
+
+        _serializers[typeof(ObjectChangeParams)] = (p, t) =>
+        {
+            var op = (ObjectChangeParams)p;
+            return new EncounterEvent
+            {
+                TimeMs = t,
+                Type = nameof(ObjectChangeParams),
+                Category = "actorControl",
+                Data = new()
+                {
+                    ["sourceId"] = op.SourceID,
+                    ["targetId"] = op.TargetID,
+                    ["command"]  = op.Command,
+                    ["p1"] = op.P1, ["p2"] = op.P2, ["p3"] = op.P3, ["p4"] = op.P4
+                }
+            };
+        };
+
+        _serializers[typeof(ObjectEffectParams)] = (p, t) =>
+        {
+            var op = (ObjectEffectParams)p;
+            return new EncounterEvent
+            {
+                TimeMs = t,
+                Type = nameof(ObjectEffectParams),
+                Category = "environment",
+                Data = new()
+                {
+                    ["objectId"] = op.ObjectID,
+                    ["data1"]    = op.Data1,
+                    ["data2"]    = op.Data2
+                }
+            };
+        };
     }
 
     private void OnGameEvent(ITriggerCondParams condParams)
