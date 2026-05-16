@@ -238,7 +238,7 @@ public sealed class Rotation
     List<SlotResolverData> SlotResolvers;    // 技能槽位列表（决定优先级顺序！）
     List<ISlotSequence> SlotSequences;       // 技能序列（连招、循环段）
     IOpener? Opener;                         // 起手爆发序列
-    IRotationEventHandler? EventHandler;      // 10 个事件回调
+    IRotationEventHandler? EventHandler;      // 12 个事件回调
     List<ITriggerAction> TriggerActions;     // 全局触发器
     List<ITriggerCond> TriggerConditions;    // 全局触发条件
 
@@ -488,6 +488,41 @@ Data.BattleData.RecentActionEffects    // 最近 30s 的技能效果事件
 Data.BattleData.RecentMapEffects       // 最近 30s 的地图效果事件
 ```
 
+### 4.7 Data.FactState — 事实轴状态
+
+当 FactAxis 运行时，可以查询当前副本时间线状态：
+
+```csharp
+Data.FactState              // FactAxis.FactState? 事实轴当前状态快照（未运行时为 null）
+
+// FactState 属性
+state.IsRunning             // bool: 是否在运行
+state.TimelineName          // string: 副本名称
+state.PhaseName             // string: 当前阶段名称
+state.PhaseTime             // double: 当前阶段已过秒数
+state.TotalTime             // double: 战斗总秒数
+state.CurrentEvent          // FactEvent?: 当前活跃/等待中的事件
+state.NextEventTime         // double?: 下一事件的预期秒数
+state.Status                // string: "running" | "waiting_sync" | "waiting_start:xxx" | "waiting_end:xxx"
+state.Suggestions           // List<SkillSuggestionAction>: 即将到达事件的技能建议
+state.Variables             // Dictionary<string, bool>: 运行时变量表
+```
+
+```csharp
+// 使用示例：在 OnBattleUpdate 中根据副本阶段调整策略
+public void OnBattleUpdate(int battleTimeMs)
+{
+    var state = Data.FactState;
+    if (state == null) return;  // FactAxis 未运行
+
+    if (state.PhaseName == "P2 分身阶段")
+    {
+        // 切换为单体/双目标策略
+        _isP2 = true;
+    }
+}
+```
+
 ---
 
 ## 5. 事件回调
@@ -508,6 +543,85 @@ Data.BattleData.RecentMapEffects       // 最近 30s 的地图效果事件
 | `BeforeSpell(Slot, Spell)` | 技能释放前 | 最后的资源检查 |
 | `AfterSpell(Slot, Spell)` | 技能释放后 | 记录状态变更 |
 | `OnSpellCastSuccess(Slot, Spell)` | 读条技能成功判定时 | 滑步时间记录 |
+| `OnGameEvent(ITriggerCondParams)` | 底层游戏事件发生时 | Boss 读条检测、Buff 变化追踪、连线检测等 |
+| `OnPhaseChanged(string, string)` | 事实轴阶段切换时 | 副本阶段策略切换 |
+
+### 新增：游戏事件回调 `OnGameEvent`
+
+`OnGameEvent` 将全部底层游戏事件分发给 ACR。回调在 GameEventHook 线程执行，为只读通知，ACR 作者自行处理线程安全。
+
+**ITriggerCondParams 常见子类型**：
+
+| 类型 | 含义 | 关键字段 |
+|------|------|---------|
+| `ActorCastParams` | Boss 开始读条 | `ActionID`, `CastTime`, `SourceID` |
+| `ActionEffectParams` | 技能效果命中 | `ActionID`, `SourceID`, `TargetOID` |
+| `BuffGainParams` | Buff 获得 | `SourceID`, `StatusID`, `StackCount` |
+| `BuffRemoveParams` | Buff 移除 | `SourceID`, `StatusID` |
+| `TetherCreateParams` | 连线创建 | `TetherID`, `SourceID`, `TargetOID` |
+| `ActorControlDeathParams` | Actor 死亡 | `SourceID`, `TargetID` |
+| `ActorControlTargetIconParams` | 头部标记（点名） | `SourceID`, `IconID` |
+| `NpcYellParams` | NPC 喊话 | `SourceName`, `YellMsg` |
+| `MapEffectParams` | 地图特效 | `PositionIndex`, `Param1` |
+| `EnvControlParams` | 环境变化 | `Index`, `Flag` |
+
+```csharp
+// 使用示例：监听 Boss 读条和点名
+public class BRDEventHandler : IRotationEventHandler
+{
+    private bool _bossCastingRaidwide;
+
+    public void OnGameEvent(ITriggerCondParams eventParams)
+    {
+        switch (eventParams)
+        {
+            case ActorCastParams cast:
+                if (cast.ActionID == 12345) // 某个 Boss AOE ID
+                    _bossCastingRaidwide = true;
+                break;
+
+            case BuffGainParams buff:
+                if (buff.StatusID == 999) // 某个点名 Buff
+                    DService.Instance().Log.Info($"[BRD] 需要处理点名！");
+                break;
+        }
+    }
+
+    // 在 Check 中使用事件收集的信息
+    public int Check()
+    {
+        if (_bossCastingRaidwide && MinstrelReady())
+            return 1;
+        return 0;
+    }
+}
+```
+
+### 新增：阶段切换回调 `OnPhaseChanged`
+
+当 FactAxis 运行时，副本时间线进入新阶段或分支切换时会触发此回调。适用于根据 BOSS 阶段切换 ACR 策略（如 AOE / 单体切换）。
+
+```csharp
+public void OnPhaseChanged(string phaseId, string phaseName)
+{
+    DService.Instance().Log.Info($"[BRD] 阶段切换: {phaseName}");
+
+    switch (phaseId)
+    {
+        case "p1_opening":
+            // P1 开场，不需要特殊处理
+            break;
+        case "p2_clone":
+            // P2 分身阶段，切换为双目标策略
+            _isDualTarget = true;
+            break;
+        case "p3_enrage":
+            // P3 狂暴阶段，全力输出
+            _holdResources = false;
+            break;
+    }
+}
+```
 
 ### 使用示例
 
@@ -522,6 +636,13 @@ public class BRDEventHandler : IRotationEventHandler
         // 检查目标身上的 DoT 剩余时间
         var dotLeft = AuraHelper.GetAuraTimeLeft(Data.Target.Current, 1200); // 风蚀
         _dotTimer = (int)(dotLeft / 1000);
+    }
+
+    // 游戏事件：捕获 Boss 读条
+    public void OnGameEvent(ITriggerCondParams eventParams)
+    {
+        if (eventParams is ActorCastParams cast && cast.ActionID == 12345)
+            DService.Instance().Log.Info($"[BRD] Boss 在读 AOE!");
     }
 
     // 脱战重置
@@ -625,7 +746,8 @@ MainControlHelper.IsPaused          // 是否暂停
 MainControlHelper.TogglePause()     // 切换暂停
 
 // QT（快速切换开关）
-QTHelper.IsEnabled(id)              // 开关状态
+QTHelper.IsEnabled(id)              // 开关状态（字符串 ID）
+QTHelper.IsEnabled(BuiltinQt.Burst) // 开关状态（枚举，推荐）
 QTHelper.GetAll()                   // 所有 QT 开关
 
 // 热键
@@ -763,12 +885,12 @@ public class BRDRotationUI : IRotationUI
         // 主控面板（暂停/保存）
         builder.AddMainControl(showPause: true, showSave: true);
 
-        // 内置 QT
+        // 内置 QT（第二个参数可选，覆盖默认值）
         builder.AddBuiltinQt(BuiltinQt.Burst);
+        builder.AddBuiltinQt(BuiltinQt.Mitigation, true); // 强制默认开启
     }
 }
 ```
-
 ### 7.2 在 IRotationEntry 中使用
 
 ```csharp
@@ -796,7 +918,7 @@ public IRotationUI? GetRotationUI() => new BRDRotationUI();
 | `AddMainControl(showPause, showSave)` | 主控面板 |
 | `AddTooltip(targetId, tooltip)` | 给控件加提示 |
 | `AddHotkeyRow(params ids[])` | 多个热键同行排列 |
-| `AddBuiltinQt(type)` | 注册内置 QT（Burst/Potion/Hold/Mitigation/Dump） |
+| `AddBuiltinQt(type, default?)` | 注册内置 QT（Burst/Potion/Hold/Mitigation/Dump），可选覆盖默认值 |
 
 > **自定义 UI**：如果 `UseCustomUi = true`，`GetRotationUI()` 返回 `null`，你需要自己提供 HTML 文件（放在 ACR DLL 同目录下）。
 
@@ -1135,7 +1257,7 @@ HiAuRo 内置调试面板（Web UI），会显示每个 Resolver：
 | `IRotationEntry` | `GetRotationUI() → IRotationUI?` | 返回 UI 注册 |
 | `ISlotResolver` | `int Check()` | 判断技能是否可用 |
 | `ISlotResolver` | `void Build(Slot slot)` | 构建技能槽位 |
-| `IRotationEventHandler` | 10 个回调（全有默认空实现） | 事件响应 |
+| `IRotationEventHandler` | 12 个回调（全有默认空实现） | 事件响应 |
 
 ### 10.2 你可能用到的
 

@@ -26,6 +26,15 @@ HotkeyEventHandlers ← List<IHotkeyEventHandler>
 - `int Check()` — ≥0 可用（值越大优先级越高），<0 禁止
 - `void Build(Slot slot)` — 构建执行单元
 
+### IRotationEventHandler — 事件回调（12 个）
+- 所有方法有 default 空实现，ACR 作者选择性覆写
+- 生命周期：`OnEnterRotation` / `OnExitRotation` / `OnTerritoryChanged`
+- 战斗状态：`OnPreCombat` / `OnResetBattle` / `OnBattleUpdate`
+- 技能执行：`BeforeSpell` / `AfterSpell` / `OnSpellCastSuccess`
+- 无目标：`OnNoTarget`
+- **游戏事件**：`OnGameEvent(ITriggerCondParams)` — 底层游戏事件分发（Boss读条/Buff/连线等）
+- **事实轴**：`OnPhaseChanged(string, string)` — 副本阶段切换通知
+
 ### IRotationUI — 声明式 UI (IUiBuilder)
 - `AddCheckbox / AddDropdown / AddHotkey / AddTab / AddGroup / AddMainControl`
 - 翻译为 JSON → Web 前端
