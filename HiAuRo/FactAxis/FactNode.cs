@@ -377,9 +377,13 @@ public sealed class FactState
     [JsonIgnore]
     public List<FactEvent> PendingEvents { get; set; } = [];
 
-    /// <summary>查询距指定类游戏事件类型的秒数。无匹配返回 null。</summary>
+    /// <summary>查询距指定游戏事件类型的秒数。无匹配返回 null。</summary>
     public double? NextEventTimeOfType(FactEventType type) =>
         PendingEvents.FirstOrDefault(e => e.Type == type)?.Time - PhaseTime;
+
+    /// <summary>查询距指定类型+技能ID的游戏的秒数。abilityId=0 时不筛ID。</summary>
+    public double? NextEventTimeOfType(FactEventType type, uint abilityId) =>
+        PendingEvents.FirstOrDefault(e => e.Type == type && (abilityId == 0 || e.AbilityId == abilityId))?.Time - PhaseTime;
 
     public void Clear()
     {
