@@ -445,7 +445,7 @@ public sealed class FactTimeline
             if (sync.End <= fightNow) continue;
 
             if (sync.Type != type) continue;
-            if (sync.AbilityIds.Count > 0 && !sync.AbilityIds.Contains(abilityId)) continue;
+            if (sync.AbilityIds is { Count: > 0 } ids && !ids.Contains(abilityId)) continue;
 
             var targetTime = sync.Jump ?? sync.AnchorTime;
             if (targetTime >= double.MaxValue - 1) continue;
@@ -528,6 +528,7 @@ public sealed class FactTimeline
             Data = JsonSerializer.Deserialize<FactTimelineData>(json,
                 new JsonSerializerOptions { PropertyNameCaseInsensitive = true });
             if (Data == null) return false;
+            MigrateTimelineData(Data);
             DService.Instance().Log.Information($"[FactAxis] 已加载: {Data.Name} ({Data.Phases.Count} 阶段)");
             return true;
         }
@@ -551,6 +552,32 @@ public sealed class FactTimeline
         var dir = Path.Combine(DService.Instance().PI.ConfigDirectory.FullName, "FactTimelines");
         var path = Path.Combine(dir, $"{tid}.json");
         if (File.Exists(path)) LoadFromFile(path);
+    }
+
+    private static void MigrateTimelineData(FactTimelineData data)
+    {
+        foreach (var phase in data.Phases)
+            MigratePhaseEvents(phase);
+    }
+
+    private static void MigratePhaseEvents(FactPhase phase)
+    {
+        foreach (var ev in phase.Events)
+            ev.MigrateFromLegacy();
+        if (phase.Switch != null)
+        {
+            foreach (var branch in phase.Switch.Branches)
+            {
+                foreach (var ev in branch.Events)
+                    ev.MigrateFromLegacy();
+                if (branch.Switch != null)
+                {
+                    foreach (var bb in branch.Switch.Branches)
+                        foreach (var ev in bb.Events)
+                            ev.MigrateFromLegacy();
+                }
+            }
+        }
     }
 
     #endregion

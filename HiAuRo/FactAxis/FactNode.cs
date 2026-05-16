@@ -132,8 +132,12 @@ public sealed class FactEvent
             "startsUsing" => FactEventType.StartsUsing,
             _             => FactEventType.None
         };
-        if (StartSync.AbilityIds.Count > 0)
-            AbilityId = StartSync.AbilityIds[0];
+        if (StartSync.AbilityIds is { Count: > 0 } ids)
+            AbilityId = ids[0];
+
+        // 清理旧字段以避免输出冗余
+        StartSync.Type = null;
+        StartSync.AbilityIds = null;
     }
 }
 
@@ -182,12 +186,12 @@ public sealed class FactSyncDef
 {
     // 仅向后兼容反序列化，不参与新格式输出
     [JsonPropertyName("type")]
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public string Type { get; set; } = "";
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public string? Type { get; set; }
 
     [JsonPropertyName("abilityIds")]
-    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    public List<uint> AbilityIds { get; set; } = [];
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public List<uint>? AbilityIds { get; set; }
 
     /// <summary>窗口提前打开秒数（默认 2.5）</summary>
     [JsonPropertyName("windowBefore")]
