@@ -1114,7 +1114,7 @@ function createBranchForAction(actionIdx) {
     var phase = getPhase(currentPhaseIdx);
     if (!phase) return;
     if (!phase.switch) {
-        phase.switch = { sync: { type: 'startsUsing', abilityIds: [] }, branches: [] };
+        phase.switch = { sync: { windowBefore: 2.5, windowAfter: 2.5 }, branches: [] };
     }
     var ev = getEventByPath(selectedEventPath);
     if (!ev || !ev.actions || !ev.actions[actionIdx]) return;
