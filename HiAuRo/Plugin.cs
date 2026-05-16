@@ -13,6 +13,7 @@ using HiAuRo.Decision;
 using HiAuRo.Recording;
 using OmenTools;
 using HiAuRo.ImGuiLib;
+using HiAuRo.Runtime.Intelligence;
 
 namespace HiAuRo;
 
@@ -67,6 +68,23 @@ public partial class Plugin : IDalamudPlugin
             GameEventHook.Instance.Init();
             EncounterRecorder.Instance.Init();
             ExecutionAxis.Instance.Init();
+
+            // 注册 MovementDemand IPC（接收外部分发插件的推送）
+            DService.Instance().PI.GetIpcProvider<string, object>("HiAuRo.AddMovementDemand")
+                .RegisterAction(json =>
+                {
+                    try
+                    {
+                        var demand = System.Text.Json.JsonSerializer.Deserialize<MovementDemand>(json);
+                        if (demand != null)
+                            DemandBuffer.Add(demand);
+                    }
+                    catch (Exception ex)
+                    {
+                        DService.Instance().Log.Debug($"[IPC] AddMovementDemand 反序列化失败: {ex.Message}");
+                    }
+                });
+
             RuntimeCore.Start();
             DecisionEngine.Instance.Init();
             AssistAxis.Instance.Init();
