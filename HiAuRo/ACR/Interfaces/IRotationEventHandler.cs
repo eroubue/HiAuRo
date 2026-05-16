@@ -1,46 +1,45 @@
-using HiAuRo.ACR;
-
 namespace HiAuRo.ACR;
 
 /// <summary>
-/// 战斗事件回调处理接口 —— 对齐 AE 风格，12 个回调
-/// 由 AIRunner 在 Slot 执行过程中同步调用
+/// 战斗事件回调处理接口 —— 12 个回调，全部必须显式实现
+/// 由 AIRunner 在 Slot 执行过程中同步调用（主线程）
+/// 不需要的回调写空方法体
 /// </summary>
 public interface IRotationEventHandler
 {
     /// <summary>非战斗情况下每帧触发（远敏唱歌、T切姿态等）</summary>
-    void OnPreCombat() { }
+    void OnPreCombat();
 
     /// <summary>战斗重置时触发（团灭重来、脱战等）</summary>
-    void OnResetBattle() { }
+    void OnResetBattle();
 
     /// <summary>没目标时触发（舞者转阶段提前跳舞等）</summary>
-    void OnNoTarget() { }
+    void OnNoTarget();
 
     /// <summary>读条判定成功后（读条快结束、可滑步的时间点）</summary>
-    void OnSpellCastSuccess(Slot slot, Spell spell) { }
+    void OnSpellCastSuccess(Slot slot, Spell spell);
 
     /// <summary>技能使用前</summary>
-    void BeforeSpell(Slot slot, Spell spell) { }
+    void BeforeSpell(Slot slot, Spell spell);
 
     /// <summary>技能使用后（DoT刷新后记录是否强化等）</summary>
-    void AfterSpell(Slot slot, Spell spell) { }
+    void AfterSpell(Slot slot, Spell spell);
 
     /// <summary>战斗中每帧触发（最常用的回调）</summary>
-    void OnBattleUpdate(int battleTimeMs) { }
+    void OnBattleUpdate(int battleTimeMs);
 
     /// <summary>切入当前 ACR 时</summary>
-    void OnEnterRotation() { }
+    void OnEnterRotation();
 
     /// <summary>从当前 ACR 退出时</summary>
-    void OnExitRotation() { }
+    void OnExitRotation();
 
     /// <summary>切图时触发</summary>
-    void OnTerritoryChanged() { }
+    void OnTerritoryChanged();
 
     /// <summary>游戏事件分发回调。全部 ITriggerCondParams 子类型均转发，ACR 作者自行类型判断过滤。回调在 GameEventHook 线程执行，为只读通知。</summary>
-    void OnGameEvent(ITriggerCondParams eventParams) { }
+    void OnGameEvent(ITriggerCondParams eventParams);
 
     /// <summary>事实轴阶段切换回调。仅 FactAxis 运行时触发。</summary>
-    void OnPhaseChanged(string phaseId, string phaseName) { }
+    void OnPhaseChanged(string phaseId, string phaseName);
 }
