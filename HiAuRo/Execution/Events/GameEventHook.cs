@@ -26,6 +26,9 @@ public sealed class GameEventHook
         nint effectHeader, nint effectArray, nint effectTail);
     private Hook<ActionEffectDelegate>? _actionEffectHook;
 
+    private delegate long ObjectEffectDelegate(nint gameObject, ushort data1, ushort data2, long a4);
+    private Hook<ObjectEffectDelegate>? _objectEffectHook;
+
     public void Init()
     {
         if (_initialized) return;
@@ -62,6 +65,26 @@ public sealed class GameEventHook
         {
             DService.Instance().Log.Warning($"[GameEventHook] ActionEffect Hook 挂载失败 (可能是版本更新): {ex.Message}");
         }
+
+        try
+        {
+            var sigScanner = DService.Instance().SigScanner;
+            var objectEffectAddr = sigScanner.ScanText("40 53 55 56 57 48 81 EC ?? ?? ?? ?? 48 8B 05 ?? ?? ?? ?? 48 33 C4 48 89 84 24 ?? ?? ?? ?? 0F B7 FA");
+            if (objectEffectAddr != nint.Zero)
+            {
+                _objectEffectHook = DService.Instance().Hook.HookFromAddress<ObjectEffectDelegate>(
+                    objectEffectAddr, OnObjectEffect);
+                _objectEffectHook.Enable();
+            }
+            else
+            {
+                DService.Instance().Log.Warning("[GameEventHook] ObjectEffect 签名未找到，跳过 Hook 挂载");
+            }
+        }
+        catch (Exception ex)
+        {
+            DService.Instance().Log.Warning($"[GameEventHook] ObjectEffect Hook 挂载失败 (可能是版本更新): {ex.Message}");
+        }
     }
 
     public void Shutdown()
@@ -74,6 +97,10 @@ public sealed class GameEventHook
         _actionEffectHook?.Disable();
         _actionEffectHook?.Dispose();
         _actionEffectHook = null;
+
+        _objectEffectHook?.Disable();
+        _objectEffectHook?.Dispose();
+        _objectEffectHook = null;
 
         var csm = CharacterStatusManager.Instance();
         csm.Unreg(OnGainStatus);
@@ -266,6 +293,16 @@ public sealed class GameEventHook
                     TimelineID = ac.P2
                 });
                 break;
+            default:
+                // 未分类的 ActorControl 命令 → 作为 ObjectChange 事件分发
+                Fire(new ObjectChangeParams
+                {
+                    SourceID = ac.SourceID,
+                    TargetID = ac.TargetID,
+                    Data1    = ac.Command,
+                    P1       = ac.P1, P2 = ac.P2, P3 = ac.P3, P4 = ac.P4
+                });
+                break;
         }
     }
 
@@ -426,6 +463,42 @@ public sealed class GameEventHook
         public float X;
         public float Y;
         public float Z;
+    }
+
+    #endregion
+
+    #region ObjectEffect Hook
+
+    /// <summary>
+    /// 从 Splatoon 签名: 40 53 55 56 57 48 81 EC ?? ?? ?? ?? 48 8B 05 ?? ?? ?? ?? 48 33 C4 48 89 84 24 ?? ?? ?? ?? 0F B7 FA
+    /// 函数签名: long ProcessObjectEffect(GameObject* a1, ushort a2, ushort a3, long a4)
+    /// </summary>
+    private long OnObjectEffect(nint gameObjectPtr, ushort data1, ushort data2, long a4)
+    {
+        var result = _objectEffectHook!.Original(gameObjectPtr, data1, data2, a4);
+
+        try
+        {
+            uint objectId = 0;
+            unsafe
+            {
+                if (gameObjectPtr != nint.Zero)
+                    objectId = *(uint*)(gameObjectPtr + 0x74);
+            }
+
+            Fire(new ObjectChangeParams
+            {
+                ObjectID = objectId,
+                Data1 = data1,
+                Data2 = data2
+            });
+        }
+        catch (Exception ex)
+        {
+            DService.Instance().Log.Warning($"[GameEventHook] ObjectEffect 处理异常: {ex.Message}");
+        }
+
+        return result;
     }
 
     #endregion

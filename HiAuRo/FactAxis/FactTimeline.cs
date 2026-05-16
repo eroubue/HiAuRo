@@ -270,6 +270,11 @@ public sealed class FactTimeline
                 MatchActiveSyncs("weather", (uint)weather.NewWeatherId, fightNow);
                 break;
 
+            case ObjectChangeParams objChange:
+                // 用 Data1 作为匹配 ID（ActorControl: Command, ObjectEffect: data1）
+                MatchActiveSyncs("objectChange", objChange.Data1, fightNow);
+                break;
+
             // 以下类型暂无对应的 FactEventType，仅接收不做 Sync 匹配
             case ActorControlTargetableParams:
             case ActorControlCombatParams:
@@ -530,6 +535,7 @@ public sealed class FactTimeline
                 FactEventType.NPCYell           => "npcYell",
                 FactEventType.EnvControl        => "envControl",
                 FactEventType.Weather           => "weather",
+                FactEventType.ObjectChange      => "objectChange",
                 _                               => null
             };
             if (evTypeName == null || evTypeName != gameEventType) continue;

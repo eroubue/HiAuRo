@@ -37,6 +37,7 @@ var EVENT_COLORS = {
     'NPCYell':            '#ff9f0a',
     'EnvControl':         '#a78bfa',
     'Weather':            '#38bdf8',
+    'ObjectChange':       '#fb923c',
     'default':            '#00d4ff'
 };
 
@@ -865,7 +866,7 @@ function renderProps() {
     html += '<div class="prop-row">';
     html += '<span class="prop-label">事件类型</span>';
     html += '<select class="prop-input" onchange="updateEventProp(\'type\', this.value)">';
-    var types = ['None','Ability','StartsUsing','HeadMarker','Tether','AddedCombatant','RemovedCombatant','WasDefeated','GainsEffect','LosesEffect','MapEffect','NPCYell','EnvControl','Weather'];
+    var types = ['None','Ability','StartsUsing','HeadMarker','Tether','AddedCombatant','RemovedCombatant','WasDefeated','GainsEffect','LosesEffect','MapEffect','NPCYell','EnvControl','Weather','ObjectChange'];
     var currentType = ev.type || ev.Type || 'None';
     for (var i = 0; i < types.length; i++) {
         html += '<option value="' + types[i] + '"' + (currentType === types[i] ? ' selected' : '') + '>' + types[i] + '</option>';

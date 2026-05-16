@@ -33,6 +33,8 @@ public enum FactEventType
     EnvControl,
     /// <summary>天气变化 → WeatherChangedParams</summary>
     Weather,
+    /// <summary>对象变化 → ObjectChangeParams</summary>
+    ObjectChange,
 }
 
 #region 数据模型
