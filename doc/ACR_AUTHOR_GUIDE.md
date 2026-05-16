@@ -490,36 +490,50 @@ Data.BattleData.RecentMapEffects       // 最近 30s 的地图效果事件
 
 ### 4.7 Data.FactState — 事实轴状态
 
-当 FactAxis 运行时，可以查询当前副本时间线状态：
+当 FactAxis 运行时，可以查询当前副本时间线状态和事件时间预测：
 
 ```csharp
 Data.FactState              // FactAxis.FactState? 事实轴当前状态快照（未运行时为 null）
 
-// FactState 属性
-state.IsRunning             // bool: 是否在运行
-state.TimelineName          // string: 副本名称
+// 时间维度
 state.PhaseName             // string: 当前阶段名称
 state.PhaseTime             // double: 当前阶段已过秒数
 state.TotalTime             // double: 战斗总秒数
-state.CurrentEvent          // FactEvent?: 当前活跃/等待中的事件
-state.NextEventTime         // double?: 下一事件的预期秒数
-state.Status                // string: "running" | "waiting_sync" | "waiting_start:xxx" | "waiting_end:xxx"
-state.Suggestions           // List<SkillSuggestionAction>: 即将到达事件的技能建议
-state.Variables             // Dictionary<string, bool>: 运行时变量表
+
+// 目标可选中
+state.IsTargetable          // bool? 当前可选中状态（null=未声明）
+state.NextTargetableIn      // double? 距下次变为可占用的秒数（null=无后续声明）
+state.NextUntargetableIn    // double? 距下次变为不可占用的秒数（null=不会再变不可占用）
+
+// 游戏事件时间预测
+state.NextEventTimeOfType(FactEventType.Ability)      // 距下一技能效果秒数
+state.NextEventTimeOfType(FactEventType.StartsUsing)  // 距下一读条秒数
+state.NextEventTimeOfType(FactEventType.HeadMarker)   // 距下一点名秒数
+// ... 支持全部 12 种 FactEventType 枚举值
+
+// 自定义前向扫描
+state.PendingEvents         // List<FactEvent>: 未到达事件（按时序），ACR 可 LINQ 过滤
 ```
 
 ```csharp
-// 使用示例：在 OnBattleUpdate 中根据副本阶段调整策略
 public void OnBattleUpdate(int battleTimeMs)
 {
-    var state = Data.FactState;
-    if (state == null) return;  // FactAxis 未运行
+    var s = Data.FactState;
+    if (s == null) return;
 
-    if (state.PhaseName == "P2 分身阶段")
-    {
-        // 切换为单体/双目标策略
-        _isP2 = true;
-    }
+    // 当前阶段 + 已过时间
+    // s.PhaseName, s.PhaseTime, s.TotalTime
+
+    // 10s内不会变不可占用 → 可以开爆发
+    if (s.NextUntargetableIn == null || s.NextUntargetableIn > 10)
+        _canBurst = true;
+
+    // 下一读条还有多久？
+    var nextCast = s.NextEventTimeOfType(FactEventType.StartsUsing);
+
+    // 自定义：查下一带减伤需求的事件
+    var nextMit = s.PendingEvents
+        .FirstOrDefault(e => e.Actions.Any(a => a is 需求减伤动作));
 }
 ```
 
