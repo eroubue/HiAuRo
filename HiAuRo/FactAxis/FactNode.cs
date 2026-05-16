@@ -176,6 +176,11 @@ public sealed class VariableCondition : FactCondition
 [JsonDerivedType(typeof(SkillSuggestionAction), "skillSuggestion")]
 [JsonDerivedType(typeof(LogMessageAction), "logMessage")]
 [JsonDerivedType(typeof(需求动作), "demand")]
+[JsonDerivedType(typeof(需求减伤动作), "需求减伤")]
+[JsonDerivedType(typeof(需求治疗动作), "需求治疗")]
+[JsonDerivedType(typeof(设置QT动作), "设置QT")]
+[JsonDerivedType(typeof(切换QT动作), "切换QT")]
+[JsonDerivedType(typeof(站位需求动作), "站位需求")]
 public abstract class FactAction
 {
     public abstract void Execute(FactTimeline timeline);
@@ -213,6 +218,7 @@ public sealed class LogMessageAction : FactAction
 }
 
 /// <summary>需求动作 — 告知决策层此处需要多少减伤/治疗</summary>
+[Obsolete("使用 需求减伤动作 / 需求治疗动作 替代")]
 public sealed class 需求动作 : FactAction
 {
     [JsonPropertyName("需求减伤")]
@@ -221,6 +227,54 @@ public sealed class 需求动作 : FactAction
     [JsonPropertyName("需求治疗")]
     public int 需求治疗 { get; set; }
 
+    public override void Execute(FactTimeline timeline) { }
+}
+
+/// <summary>减伤需求 — 事件到达时评估，在技能持续窗口内释放</summary>
+public sealed class 需求减伤动作 : FactAction
+{
+    [JsonPropertyName("value")]
+    public int Value { get; set; }
+    public override void Execute(FactTimeline timeline) { }
+}
+
+/// <summary>治疗需求 — 事件到达时立即分配+释放</summary>
+public sealed class 需求治疗动作 : FactAction
+{
+    [JsonPropertyName("value")]
+    public int Value { get; set; }
+    public override void Execute(FactTimeline timeline) { }
+}
+
+/// <summary>设置 QT — 到达时(或offset后)调 QTHelper.SetValue</summary>
+public sealed class 设置QT动作 : FactAction
+{
+    [JsonPropertyName("qtId")]
+    public string QtId { get; set; } = "";
+    [JsonPropertyName("value")]
+    public bool Value { get; set; }
+    [JsonPropertyName("offset")]
+    public double Offset { get; set; }
+    public override void Execute(FactTimeline timeline) { }
+}
+
+/// <summary>切换 QT — 到达时(或offset后)调 QTHelper.Toggle</summary>
+public sealed class 切换QT动作 : FactAction
+{
+    [JsonPropertyName("qtId")]
+    public string QtId { get; set; } = "";
+    [JsonPropertyName("offset")]
+    public double Offset { get; set; }
+    public override void Execute(FactTimeline timeline) { }
+}
+
+/// <summary>站位需求 — 声明 deadline，位置由辅助轴通过 FactNodeId 关联</summary>
+public sealed class 站位需求动作 : FactAction
+{
+    [JsonPropertyName("deadline")]
+    public double Deadline { get; set; }
+    [JsonPropertyName("role")]
+    public string Role { get; set; } = "All";
     public override void Execute(FactTimeline timeline) { }
 }
 
