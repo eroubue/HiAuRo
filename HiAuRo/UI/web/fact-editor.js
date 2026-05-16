@@ -23,14 +23,19 @@ var MAX_TIME = 300;         // 最大秒数
 var MAX_PHASES = 10;        // 阶段数硬上限
 
 var EVENT_COLORS = {
-    switchBranch:     '#7e57c2',  // 紫色 - 分支切换
-    switchPhase:      '#ff9f0a',  // 橙色 - 阶段切换
-    demand:           '#ff4477',  // 红色 - 需求
-    skillSuggestion:  '#00d4ff',  // 青色 - 技能建议
-    setVariable:      '#00f0a0',  // 绿色 - 设置变量
-    toggleVariable:   '#00f0a0',  // 绿色 - 切换变量
-    logMessage:       '#94a3b8',  // 灰色 - 日志（提高亮度确保在深色背景可见）
-    default:          '#00d4ff'   // 青色 - 默认
+    'None':               '#94a3b8',
+    'Ability':            '#00d4ff',
+    'StartsUsing':        '#ff9f0a',
+    'HeadMarker':         '#ff6b9d',
+    'Tether':             '#4ecdc4',
+    'AddedCombatant':     '#00f0a0',
+    'RemovedCombatant':   '#95e1d3',
+    'WasDefeated':        '#ff4477',
+    'GainsEffect':        '#f0d000',
+    'LosesEffect':        '#f38181',
+    'MapEffect':          '#7e57c2',
+    'NPCYell':            '#ff9f0a',
+    'default':            '#00d4ff'
 };
 
 var BRANCH_COLORS = [
@@ -194,9 +199,9 @@ function getParentInfo(path) {
 }
 
 function getEventColor(ev) {
-    if (!ev || !ev.actions || ev.actions.length === 0) return EVENT_COLORS.default;
-    var type = ev.actions[0].type;
-    return EVENT_COLORS[type] || EVENT_COLORS.default;
+    if (!ev) return EVENT_COLORS.default;
+    var typeName = ev.type || ev.Type || 'None';
+    return EVENT_COLORS[typeName] || EVENT_COLORS.default;
 }
 
 function markDirty() {
@@ -854,6 +859,33 @@ function renderProps() {
     html += '<input class="prop-input" type="number" value="' + (ev.duration || 0) + '" step="0.1" onchange="updateEventNumProp(\'duration\', this.value)">';
     html += '</div>';
 
+    // 事件类型
+    html += '<div class="prop-row">';
+    html += '<span class="prop-label">事件类型</span>';
+    html += '<select class="prop-input" onchange="updateEventProp(\'type\', this.value)">';
+    var types = ['None','Ability','StartsUsing','HeadMarker','Tether','AddedCombatant','RemovedCombatant','WasDefeated','GainsEffect','LosesEffect','MapEffect','NPCYell'];
+    var currentType = ev.type || ev.Type || 'None';
+    for (var i = 0; i < types.length; i++) {
+        html += '<option value="' + types[i] + '"' + (currentType === types[i] ? ' selected' : '') + '>' + types[i] + '</option>';
+    }
+    html += '</select></div>';
+
+    // 能力ID
+    html += '<div class="prop-row">';
+    html += '<span class="prop-label">能力ID</span>';
+    html += '<input class="prop-input" type="number" value="' + (ev.abilityId || 0) + '" onchange="updateEventNumProp(\'abilityId\', this.value)">';
+    html += '</div>';
+
+    // 目标可选中
+    html += '<div class="prop-row">';
+    html += '<span class="prop-label">可选中</span>';
+    html += '<select class="prop-input" onchange="updateTargetable(this.value)">';
+    var tgtVal = ev.targetable;
+    html += '<option value=""' + (tgtVal === undefined || tgtVal === null ? ' selected' : '') + '>-</option>';
+    html += '<option value="true"' + (tgtVal === true ? ' selected' : '') + '>可选中</option>';
+    html += '<option value="false"' + (tgtVal === false ? ' selected' : '') + '>不可选中</option>';
+    html += '</select></div>';
+
     html += '</div>'; // end 基本信息
 
     // ==================== 同步校准 ====================
@@ -862,17 +894,6 @@ function renderProps() {
 
     function renderSyncSection(side, label) {
         if (ev[side]) {
-            html += '<div style="margin-bottom:4px;">';
-            html += '<span style="display:inline-block;width:60px;font-size:11px;color:var(--tx1);">' + label + '</span>';
-            html += '<select class="prop-input" style="width:auto;" onchange="updateSyncProp(\'' + side + '\',\'type\',this.value)">';
-            html += '<option value="startsUsing"' + (ev[side].type === 'startsUsing' ? ' selected' : '') + '>读条</option>';
-            html += '<option value="ability"' + (ev[side].type === 'ability' ? ' selected' : '') + '>技能</option>';
-            html += '</select>';
-            html += '</div>';
-            html += '<div class="prop-row">';
-            html += '<span class="prop-label">技能ID</span>';
-            html += '<input class="prop-input" type="text" value="' + esc((ev[side].abilityIds || []).join(',')) + '" placeholder="逗号分隔" onchange="updateSyncProp(\'' + side + '\',\'abilityIds\',this.value)">';
-            html += '</div>';
             html += '<div class="prop-row">';
             html += '<span class="prop-label">前窗口(s)</span>';
             html += '<input class="prop-input" type="number" value="' + (ev[side].windowBefore != null ? ev[side].windowBefore : 2.5) + '" step="0.5" onchange="updateSyncNumProp(\'' + side + '\',\'windowBefore\',this.value)">';
@@ -1034,6 +1055,16 @@ function updateSyncBoolProp(side, field, value) {
     var ev = getEventByPath(selectedEventPath);
     if (!ev || !ev[side]) return;
     ev[side][field] = !!value;
+    markDirty();
+}
+
+function updateTargetable(val) {
+    if (!selectedEventPath) return;
+    var ev = getEventByPath(selectedEventPath);
+    if (!ev) return;
+    if (val === '') ev.targetable = null;
+    else if (val === 'true') ev.targetable = true;
+    else ev.targetable = false;
     markDirty();
 }
 
