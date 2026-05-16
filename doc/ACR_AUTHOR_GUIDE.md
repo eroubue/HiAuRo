@@ -793,17 +793,17 @@ public void OnGameEvent(ITriggerCondParams eventParams)
 
 ### 6.8 MovementHelper — 移动/TP 快捷操作
 
-在事件回调中可以直接控制角色移动：
+在事件回调中直接控制角色移动，立即执行：
 
 ```csharp
 // 寻路移动到目标位置（依赖 VNavmesh）
 MovementHelper.MoveTo(new Vector3(100, 0, 100));
 
-// 瞬移到坐标（依赖外部 TP 插件）
+// 瞬移到坐标（内部实现）
 MovementHelper.TeleportTo(new Vector3(95, 0, 105));
 
-// 停住不动
-MovementHelper.Hold();
+// 停住移动
+MovementHelper.Stop();
 ```
 
 ```csharp
@@ -811,14 +811,11 @@ MovementHelper.Hold();
 public void OnGameEvent(ITriggerCondParams eventParams)
 {
     if (eventParams is ActorCastParams cast && cast.ActionID == bossAoeId)
-    {
-        // 提前移动到安全点
-        MovementHelper.MoveTo(new Vector3(90, 0, 100), "aoe_safe");
-    }
+        MovementHelper.MoveTo(new Vector3(90, 0, 100));
 }
 ```
 
-> **依赖**：`MoveTo` 需要安装 VNavmesh 插件；`TeleportTo` 需要外部 TP 插件。
+> **MoveTo** 需要安装 VNavmesh 插件；**TeleportTo** 内部实现无需外部依赖。
 
 ### 6.10 其他常用
 

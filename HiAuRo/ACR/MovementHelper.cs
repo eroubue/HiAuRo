@@ -1,42 +1,58 @@
 using System.Numerics;
-using HiAuRo.Runtime.Intelligence;
+using OmenTools;
+using OmenTools.Interop.Game.Models;
+using OmenTools.Interop.Game.Models.Packets.Downstream;
 
 namespace HiAuRo.ACR;
 
 /// <summary>
-/// 移动/TP 快捷操作 —— ACR 在事件回调中直接调用
+/// 移动/TP 快捷操作 —— ACR 在事件回调中直接调用，立即执行
 /// </summary>
 public static class MovementHelper
 {
-    /// <summary>寻路移动到目标位置（依赖 VNavmesh）</summary>
-    public static void MoveTo(Vector3 target, string demandId = "manual")
+    private static unsafe ActorSetPosPacket.Delegate? _tpFunc;
+    private static readonly object _lock = new();
+
+    /// <summary>寻路移动到目标位置（依赖 VNavmesh IPC）</summary>
+    public static void MoveTo(Vector3 target)
     {
-        DemandBuffer.Add(new MovementDemand
+        try
         {
-            Id = demandId,
-            Type = DemandType.MoveTo,
-            TargetPos = target,
-        });
+            DService.Instance().PI
+                .GetIpcSubscriber<Vector3, bool, bool>("vnavmesh.SimpleMove.PathfindAndMoveTo")
+                .InvokeFunc(target, false);
+        }
+        catch { /* VNavmesh 未安装 */ }
     }
 
-    /// <summary>瞬移到目标位置（依赖外部 TP 插件）</summary>
-    public static void TeleportTo(Vector3 target, string demandId = "manual")
+    /// <summary>瞬移到目标位置（内部实现，通过 ActorSetPos 封包）</summary>
+    public static unsafe void TeleportTo(Vector3 target)
     {
-        DemandBuffer.Add(new MovementDemand
+        var localPlayer = DService.Instance().ObjectTable.LocalPlayer;
+        if (localPlayer == null) return;
+
+        if (_tpFunc == null)
         {
-            Id = demandId,
-            Type = DemandType.TP,
-            TargetPos = target,
-        });
+            lock (_lock)
+            {
+                _tpFunc ??= ActorSetPosPacket.Signature.GetDelegate<ActorSetPosPacket.Delegate>();
+            }
+        }
+        if (_tpFunc == null) return;
+
+        var packet = new ActorSetPosPacket(target);
+        _tpFunc(localPlayer.EntityID, &packet);
     }
 
-    /// <summary>停住不动</summary>
-    public static void Hold(string demandId = "manual")
+    /// <summary>停住移动</summary>
+    public static void Stop()
     {
-        DemandBuffer.Add(new MovementDemand
+        try
         {
-            Id = demandId,
-            Type = DemandType.Hold,
-        });
+            DService.Instance().PI
+                .GetIpcSubscriber<object>("vnavmesh.Path.Stop")
+                .InvokeAction();
+        }
+        catch { /* VNavmesh 未安装 */ }
     }
 }
