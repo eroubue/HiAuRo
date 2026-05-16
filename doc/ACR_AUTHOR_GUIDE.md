@@ -408,15 +408,15 @@ public sealed partial class Spell
 ### 4.1 Data.Me — 自己
 
 ```csharp
-Data.Me.Object               // IPlayerCharacter? 自身角色对象
-Data.Me.Name                 // 角色名
-Data.Me.ClassJob             // 当前职业 ID
-Data.Me.CurrentLevel         // 当前等级
-Data.Me.IsMoving             // 是否移动中
-Data.Me.IsInParty            // 是否在队伍中
-Data.Me.DistanceToObject2D(target)  // 到目标的 2D 距离
-Data.Me.DistanceToObject3D(target)  // 到目标的 3D 距离
-Data.Me.HasStatus(statusId, out index) // 自己是否有某状态
+Me.Object               // IPlayerCharacter? 自身角色对象
+Me.Name                 // 角色名
+Me.ClassJob             // 当前职业 ID
+Me.CurrentLevel         // 当前等级
+Me.IsMoving             // 是否移动中
+Me.IsInParty            // 是否在队伍中
+Me.DistanceToObject2D(target)  // 到目标的 2D 距离
+Me.DistanceToObject3D(target)  // 到目标的 3D 距离
+Me.HasStatus(statusId, out index) // 自己是否有某状态
 ```
 
 ### 4.2 Data.Target — 目标
@@ -945,24 +945,24 @@ public class BRDRotationUI : IRotationUI
 
         // Tab 1: 基础设置
         builder.AddGroup("buffs", "Buff 相关");
-        builder.AddCheckbox("useSongs", "自动唱歌", true);
-        builder.AddCheckbox("usePeloton", "脱战自动速行", false);
+        builder.AddCheckbox("自动唱歌", true);
+        builder.AddCheckbox("脱战自动速行", false);
 
         builder.AddGroup("dots", "DoT 续费");
-        builder.AddSlider("dotRefresh", "提前续费秒数", 1, 5, 3);
+        builder.AddSlider("提前续费秒数", 1, 5, 3);
 
         builder.AddGroup("opener", "起手爆发");
-        builder.AddDropdown("openerType", "起手类型",
+        builder.AddDropdown("起手类型",
             ["标准起手", "双爆发起手", "2.47 特化"], "标准起手");
 
         // Tab 2: AOE 设置
         builder.AddGroup("aoeSettings", "AOE");
-        builder.AddIntInput("aoeCount", "AOE 触发敌人数量", 3, 1, 1);
-        builder.AddCheckbox("useShadowbite", "使用影噬箭", true);
+        builder.AddIntInput("AOE 触发敌人数量", 3, 1, 1);
+        builder.AddCheckbox("使用影噬箭", true);
 
         // Tab 3: 热键
         builder.AddGroup("hotkeys", "快捷操作");
-        builder.AddHotkey("burst", "手动爆发", "Ctrl+Shift+F");
+        builder.AddHotkey("手动爆发", "Ctrl+Shift+F");
         builder.AddHotkeyRow("burst", "pause");
 
         // 主控面板（暂停/保存）
@@ -990,18 +990,20 @@ public IRotationUI? GetRotationUI() => new BRDRotationUI();
 | `AddGroup(id, title)` | 创建分组（折叠面板） |
 | `AddSeparator()` | 分隔线 |
 | `AddSameLine()` | 下一个控件同行 |
-| `AddCheckbox(id, label, default)` | 勾选框 |
-| `AddSlider(id, label, min, max, default)` | 滑块 |
-| `AddDropdown(id, label, options[], default)` | 下拉菜单 |
-| `AddHotkey(id, label, defaultKey, visible)` | 热键按钮 |
-| `AddIntInput(id, label, default, step, stepFast)` | 整数输入框 |
+| `AddCheckbox(label, default)` | 勾选框（id=label 自动生成） |
+| `AddSlider(label, min, max, default)` | 滑块 |
+| `AddDropdown(label, options[], default)` | 下拉菜单 |
+| `AddHotkey(label, defaultKey, visible?)` | 热键按钮 |
+| `AddIntInput(label, default, step?, stepFast?)` | 整数输入框 |
 | `AddLabel(id, text)` | 文本标签 |
-| `AddQtHotkey(label, resolver, visible)` | QT 热键 |
-| `AddQtToggle(id, label, default, tooltip?, color?, visible)` | QT 开关 |
-| `AddMainControl(showPause, showSave)` | 主控面板 |
+| `AddQtHotkey(label, resolver, visible?)` | QT 热键 |
+| `AddQtToggle(label, default, tooltip?, color?, visible?)` | QT 开关 |
+| `AddMainControl(showPause?, showSave?)` | 主控面板 |
 | `AddTooltip(targetId, tooltip)` | 给控件加提示 |
 | `AddHotkeyRow(params ids[])` | 多个热键同行排列 |
-| `AddBuiltinQt(type, default?)` | 注册内置 QT（Burst/Potion/Hold/Mitigation/Dump），可选覆盖默认值 |
+| `AddBuiltinQt(type, default?)` | 注册内置 QT |
+
+> 所有控件方法保留旧版 `(id, label, ...)` 签名，向后兼容。
 
 > **自定义 UI**：如果 `UseCustomUi = true`，`GetRotationUI()` 返回 `null`，你需要自己提供 HTML 文件（放在 ACR DLL 同目录下）。
 
@@ -1140,7 +1142,7 @@ public class NearestEnemyTarget : ITargetResolver
         var nearest = Data.Objects.Enemies
             .OfType<IBattleChara>()
             .Where(e => e.IsTargetable && !e.IsDead)
-            .OrderBy(e => Data.Me.DistanceToObject2D(e))
+            .OrderBy(e => Me.DistanceToObject2D(e))
             .FirstOrDefault();
         if (nearest == null) return false;
         agent = nearest;
@@ -1204,7 +1206,7 @@ public class HeavyShot : ISlotResolver
 {
     public int Check()
     {
-        if (Data.Me.CurrentLevel < 1) return -1;  // 没学会
+        if (Me.CurrentLevel < 1) return -1;  // 没学会
         return 0;
     }
 
@@ -1308,7 +1310,7 @@ public class AoeSkill : ISlotResolver
 
 | 坑 | 正确做法 |
 |----|---------|
-| 用 `Svc.ClientState.LocalPlayer` | 已废弃，用 `Data.Me.Object` |
+| 用 `Svc.ClientState.LocalPlayer` | 已废弃，用 `Me.Object` |
 | 迭代 `IPartyMember.GameObject` 多次 | `Data.Party` 每帧只扫描一次，直接用预分类列表 |
 | 只用 `BattleNpcSubKind.Enemy` 判断敌人 | 直接用 `Data.Objects.Enemies`，框架已做完整分类 |
 | 多线程访问游戏数据 | 所有 ACR 逻辑在主线程 Tick 中执行，不需要加锁 |
