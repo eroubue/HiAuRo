@@ -892,7 +892,7 @@ function renderProps() {
     html += '<div class="prop-section">';
     html += '<div class="prop-section-header">同步校准</div>';
 
-    function renderSyncSection(side, label) {
+    function renderSyncSection(side) {
         if (ev[side]) {
             html += '<div class="prop-row">';
             html += '<span class="prop-label">前窗口(s)</span>';
@@ -920,12 +920,12 @@ function renderProps() {
             }
             html += '<button class="btn danger" style="margin-bottom:8px;" onclick="removeSync(\'' + side + '\')">移除</button>';
         } else {
-            html += '<button class="btn" style="margin-bottom:4px;" onclick="addSync(\'' + side + '\')">+ 添加' + label + '</button>';
+            html += '<button class="btn" style="margin-bottom:4px;" onclick="addSync(\'' + side + '\')">+ 添加</button>';
         }
     }
 
-    renderSyncSection('startSync', '开始同步');
-    renderSyncSection('endSync', '结束同步');
+    renderSyncSection('startSync');
+    renderSyncSection('endSync');
 
     html += '</div>'; // end 同步校准
 
@@ -1021,7 +1021,7 @@ function updateEventNumProp(field, value) {
 function addSync(side) {
     var ev = getEventByPath(selectedEventPath);
     if (!ev) return;
-    ev[side] = { type: 'startsUsing', abilityIds: [] };
+    ev[side] = { windowBefore: 2.5, windowAfter: 2.5 };
     markDirty();
 }
 
@@ -1029,17 +1029,6 @@ function removeSync(side) {
     var ev = getEventByPath(selectedEventPath);
     if (!ev) return;
     delete ev[side];
-    markDirty();
-}
-
-function updateSyncProp(side, field, value) {
-    var ev = getEventByPath(selectedEventPath);
-    if (!ev || !ev[side]) return;
-    if (field === 'abilityIds') {
-        ev[side][field] = value ? value.split(',').map(function(s) { return parseInt(s.trim()) || 0; }).filter(function(id) { return id > 0; }) : [];
-    } else {
-        ev[side][field] = value;
-    }
     markDirty();
 }
 
