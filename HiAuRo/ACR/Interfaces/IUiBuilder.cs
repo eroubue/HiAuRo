@@ -25,6 +25,6 @@ public interface IUiBuilder
     /// <summary>一行多个 hotkey（按传入 ID 顺序排列）</summary>
     void AddHotkeyRow(params string[] hotkeyIds);
 
-    /// <summary>注册 HiAuRo 内置通用 QT</summary>
-    void AddBuiltinQt(BuiltinQt type);
+    /// <summary>注册 HiAuRo 内置通用 QT。defaultValue 为 null 时使用内置默认值</summary>
+    void AddBuiltinQt(BuiltinQt type, bool? defaultValue = null);
 }

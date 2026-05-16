@@ -12,16 +12,6 @@ public sealed class UiBuilderImpl : HiAuRo.ACR.IUiBuilder
     private string _currentTab = string.Empty;
     private string _currentGroup = string.Empty;
 
-    /// <summary>内置 QT 映射表</summary>
-    private static readonly Dictionary<BuiltinQt, (string Id, string Label, bool Default)> BuiltinQtMap = new()
-    {
-        [BuiltinQt.Burst] = ("__builtin_burst", "爆发", false),
-        [BuiltinQt.Potion] = ("__builtin_potion", "爆发药", false),
-        [BuiltinQt.Hold] = ("__builtin_hold", "停手", false),
-        [BuiltinQt.Mitigation] = ("__builtin_mitigation", "自动减伤", true),
-        [BuiltinQt.Dump] = ("__builtin_dump", "清空资源", false),
-    };
-
     /// <summary>获取收集到的所有控件定义</summary>
     public List<UiControlDef> GetControls() => [.. _controls];
 
@@ -93,13 +83,15 @@ public sealed class UiBuilderImpl : HiAuRo.ACR.IUiBuilder
         _controls.Add(new UiControlDef("__hkrow__", "hotkeyRow", _currentGroup, string.Empty, null,
             Options: hotkeyIds));
 
-    public void AddBuiltinQt(BuiltinQt type)
+    public void AddBuiltinQt(BuiltinQt type, bool? defaultValue = null)
     {
-        if (!BuiltinQtMap.TryGetValue(type, out var info)) return;
+        var id = type.GetId();
+        var label = type.GetLabel();
+        var defaultVal = defaultValue ?? type.GetDefault();
         // 同一个内置 QT 不重复注册
-        if (_controls.Any(c => c.Id == info.Id)) return;
-        QTHelper.Register(info.Id, info.Label, info.Default);
-        _controls.Add(new UiControlDef(info.Id, "qttoggle", _currentGroup, info.Label, info.Default,
+        if (_controls.Any(c => c.Id == id)) return;
+        QTHelper.Register(id, label, defaultVal);
+        _controls.Add(new UiControlDef(id, "qttoggle", _currentGroup, label, defaultVal,
             Meta: new { defaultVisible = true }));
     }
 }

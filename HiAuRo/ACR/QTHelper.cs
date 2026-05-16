@@ -43,6 +43,9 @@ public static class QTHelper
         }
     }
 
+    /// <summary>获取内置 QT 当前值</summary>
+    public static bool IsEnabled(BuiltinQt type) => IsEnabled(type.GetId());
+
     /// <summary>设置 QT 值</summary>
     public static void SetValue(string id, bool value)
     {
@@ -57,6 +60,9 @@ public static class QTHelper
         }
         if (changed) OnChanged?.Invoke(id, value);
     }
+
+    /// <summary>设置内置 QT 值</summary>
+    public static void SetValue(BuiltinQt type, bool value) => SetValue(type.GetId(), value);
 
     /// <summary>翻转 QT 值</summary>
     public static void Toggle(string id)
@@ -75,6 +81,9 @@ public static class QTHelper
         if (changed) OnChanged?.Invoke(id, newValue);
     }
 
+    /// <summary>翻转内置 QT 值</summary>
+    public static void Toggle(BuiltinQt type) => Toggle(type.GetId());
+
     /// <summary>获取 QtData 引用（返回副本，线程安全）</summary>
     public static QtData? Get(string id)
     {
@@ -83,6 +92,9 @@ public static class QTHelper
             return _data.TryGetValue(id, out var qt) ? qt with { } : null;
         }
     }
+
+    /// <summary>获取内置 QtData 引用</summary>
+    public static QtData? Get(BuiltinQt type) => Get(type.GetId());
 
     /// <summary>获取所有 QT 开关（按注册顺序）</summary>
     public static List<QtData> GetAll()
