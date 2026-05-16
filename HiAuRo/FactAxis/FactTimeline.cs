@@ -23,7 +23,7 @@ public sealed class FactTimeline
     private readonly Dictionary<string, bool> _variables = [];
     private long _timebase;
     private double _phaseStartTime;
-    private readonly List<FactSyncDef> _activeSyncs = [];
+    private readonly List<(FactSyncDef Sync, FactEvent Event)> _activeSyncs = [];
     private int _nextSyncEnd;
     private FactPhase? _currentPhase;
     private List<FactEvent> _currentEvents = [];
@@ -295,6 +295,8 @@ public sealed class FactTimeline
             AdvanceTimedEvents(fightNow);
         }
 
+        State.PendingEvents = _currentEvents.Skip(_eventIndex).ToList();
+
         CollectActiveWindows(fightNow);
 
         if (_waitingSwitch)
@@ -342,6 +344,8 @@ public sealed class FactTimeline
                 {
                     ev.ActualStart = fightNow;
                     RunActions(ev);
+                    if (ev.Targetable != null)
+                        State.IsTargetable = ev.Targetable.Value;
                     ev.Reached = true;
 
                     if (ev.Duration.HasValue && ev.Duration.Value > 0)
@@ -411,7 +415,7 @@ public sealed class FactTimeline
                 e.StartSync.AnchorTime = e.Time;
                 e.StartSync.Start = e.Time - e.StartSync.WindowBefore;
                 e.StartSync.End = e.Time + e.StartSync.WindowAfter;
-                _activeSyncs.Add(e.StartSync);
+                _activeSyncs.Add((e.StartSync, e));
             }
         }
         if (phase.Switch != null)
@@ -419,16 +423,16 @@ public sealed class FactTimeline
             phase.Switch.Sync.AnchorTime = double.MaxValue;
             phase.Switch.Sync.Start = 0;
             phase.Switch.Sync.End = double.MaxValue;
-            _activeSyncs.Add(phase.Switch.Sync);
+            _activeSyncs.Add((phase.Switch.Sync, null!)); // Switch sync 无关联 FactEvent
         }
-        _activeSyncs.Sort((a, b) => a.Start.CompareTo(b.Start));
+        _activeSyncs.Sort((a, b) => a.Sync.Start.CompareTo(b.Sync.Start));
     }
 
     private void CollectActiveWindows(double fightNow)
     {
         while (_nextSyncEnd < _activeSyncs.Count)
         {
-            var sync = _activeSyncs[_nextSyncEnd];
+            var sync = _activeSyncs[_nextSyncEnd].Sync;
             if (sync.Start <= fightNow)
                 _nextSyncEnd++;
             else
@@ -436,16 +440,27 @@ public sealed class FactTimeline
         }
     }
 
-    private void MatchActiveSyncs(string type, uint abilityId, double fightNow)
+    private void MatchActiveSyncs(string gameEventType, uint abilityId, double fightNow)
     {
         for (int i = 0; i < _nextSyncEnd; i++)
         {
-            var sync = _activeSyncs[i];
+            var (sync, ev) = _activeSyncs[i];
             if (sync.Start > fightNow) break;
             if (sync.End <= fightNow) continue;
 
-            if (sync.Type != type) continue;
-            if (sync.AbilityIds is { Count: > 0 } ids && !ids.Contains(abilityId)) continue;
+            // Switch sync — 跳过（由 TrySwitchBranch 单独处理）
+            if (ev == null) continue;
+
+            if (ev.Type == FactEventType.None) continue;
+
+            var evTypeName = ev.Type switch
+            {
+                FactEventType.Ability     => "ability",
+                FactEventType.StartsUsing => "startsUsing",
+                _                         => null
+            };
+            if (evTypeName == null || evTypeName != gameEventType) continue;
+            if (ev.AbilityId != 0 && ev.AbilityId != abilityId) continue;
 
             var targetTime = sync.Jump ?? sync.AnchorTime;
             if (targetTime >= double.MaxValue - 1) continue;
