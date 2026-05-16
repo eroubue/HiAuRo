@@ -1406,9 +1406,10 @@ Spell.Idle                            // 空操作占位符
 
 ## 参考
 
+- [HiAuRo 示例 ACR (完整参考实现)](https://github.com/denghaoxuan991876906/HiAuRo-SampleACR)
 - [HiAuRo 架构设计](./ARCHITECTURE.md)
 - [HiAuRo 项目章程](./PROJECT.md)
 - [HiAuRo 需求文档](./REQUIREMENTS.md)
 - [OmenTools 使用指南](./OMEN_TOOLS_USAGE.md)
 
-> **下一步**：读完本指南后，建议找一个已有的 ACR 源码参考（如外部 Oblivion 目录下的 BLM ACR），对照学习实际写法。
+> **下一步**：读完本指南后，建议克隆 [HiAuRo-SampleACR](https://github.com/denghaoxuan991876906/HiAuRo-SampleACR) 示例仓库对照学习实际写法。
