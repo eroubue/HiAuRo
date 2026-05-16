@@ -2,6 +2,7 @@ using HiAuRo.ACR;
 using HiAuRo.Data;
 using HiAuRo.Decision;
 using HiAuRo.Execution;
+using HiAuRo.Execution.Events;
 using HiAuRo.FactAxis;
 using HiAuRo.Infrastructure;
 using HiAuRo.Runtime.Intelligence;
@@ -79,6 +80,10 @@ public sealed class AIRunner
         CurrentEntry.OnEnterRotation();
         CurrentRotation?.EventHandler?.OnEnterRotation();
 
+        // 订阅游戏事件和阶段事件，转发给 ACR
+        GameEventHook.Instance.OnEventFired += OnGameEvent;
+        FactTimeline.Instance.PhaseChanged += OnPhaseChanged;
+
         _loaded = true;
     }
 
@@ -86,6 +91,10 @@ public sealed class AIRunner
     public void Unload()
     {
         if (!_loaded) return;
+
+        // 取消事件订阅，防止卸载后仍收到转发
+        GameEventHook.Instance.OnEventFired -= OnGameEvent;
+        FactTimeline.Instance.PhaseChanged -= OnPhaseChanged;
 
         CurrentRotation?.EventHandler?.OnExitRotation();
         CurrentEntry?.OnExitRotation();
@@ -541,5 +550,17 @@ public sealed class AIRunner
             return true;
         }
         return false;
+    }
+
+    /// <summary>转发游戏事件到当前 ACR 的 EventHandler</summary>
+    private void OnGameEvent(ITriggerCondParams eventParams)
+    {
+        CurrentRotation?.EventHandler?.OnGameEvent(eventParams);
+    }
+
+    /// <summary>转发阶段切换到当前 ACR 的 EventHandler</summary>
+    private void OnPhaseChanged(string phaseId, string phaseName)
+    {
+        CurrentRotation?.EventHandler?.OnPhaseChanged(phaseId, phaseName);
     }
 }
