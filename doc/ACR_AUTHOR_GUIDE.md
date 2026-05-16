@@ -13,7 +13,7 @@
 3. [核心接口详解](#3-核心接口详解)
 4. [数据层速览](#4-数据层速览)
 5. [事件回调](#5-事件回调)
-6. [工具类速查](#6-工具类速查)（含 6.8 HiAuRo.Helper 职业辅助库）
+6. [工具类速查](#6-工具类速查)（含 6.7 SlotHelper + 6.10 HiAuRo.Helper）
 7. [UI 注册](#7-ui-注册)
 8. [高级特性](#8-高级特性)
 9. [实战技巧与常见错误](#9-实战技巧与常见错误)
@@ -665,11 +665,15 @@ public class BRDEventHandler : IRotationEventHandler
         _dotTimer = (int)(dotLeft / 1000);
     }
 
-    // 游戏事件：捕获 Boss 读条
+    // 游戏事件：捕获 Boss 读条，立即使用减伤
     public void OnGameEvent(ITriggerCondParams eventParams)
     {
         if (eventParams is ActorCastParams cast && cast.ActionID == 12345)
-            DService.Instance().Log.Info($"[BRD] Boss 在读 AOE!");
+        {
+            var slot = new Slot();
+            slot.Add(new Spell(7561, SpellTargetType.Self)); // 策动
+            SlotHelper.Execute(slot);
+        }
     }
 
     // 脱战重置
@@ -761,7 +765,33 @@ TargetHelper.GetCastingSpellTiming(target)        // 目标读条剩余毫秒数
 TargetHelper.GetMostCanTargetObjects(id, min, r)  // 找最佳 AOE 目标
 ```
 
-### 6.7 其他常用
+### 6.7 SlotHelper — 回调中手动释放技能
+
+在事件回调（`OnGameEvent` / `OnBattleUpdate` 等）中，可以直接向框架提交 Slot 执行：
+
+```csharp
+// 立即执行（主线程同步）
+SlotHelper.Execute(new Slot(new Spell(7561, SpellTargetType.Self)));
+
+// 加入 SpellQueue 排队执行（下次队列处理时）
+SlotHelper.Enqueue(new Slot(new Spell(7561, SpellTargetType.Self)));
+```
+
+```csharp
+// 使用示例：监听到 Boss 读条后立即使用减伤
+public void OnGameEvent(ITriggerCondParams eventParams)
+{
+    if (eventParams is ActorCastParams cast && cast.ActionID == 12345)
+    {
+        // Boss 在读 AOE，立即放策动
+        var slot = new Slot();
+        slot.Add(new Spell(7561, SpellTargetType.Self));
+        SlotHelper.Execute(slot);
+    }
+}
+```
+
+### 6.9 其他常用
 
 ```csharp
 // 道具
@@ -785,7 +815,7 @@ HotkeyHelper.GetBinding(id)         // 当前绑定键
 MathHelper.CountInSector(center, dir, radius, halfAngleDeg)  // 扇形内敌人数
 ```
 
-### 6.8 HiAuRo.Helper — 职业数据辅助库（强烈推荐）
+### 6.10 HiAuRo.Helper — 职业数据辅助库（强烈推荐）
 
 > **GitHub**：[https://github.com/denghaoxuan991876906/HiAuRo.Helper](https://github.com/denghaoxuan991876906/HiAuRo.Helper)
 
