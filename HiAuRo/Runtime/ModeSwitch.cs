@@ -1,5 +1,6 @@
 using HiAuRo.Execution;
 using HiAuRo.FactAxis;
+using HiAuRo.Infrastructure;
 using OmenTools;
 
 namespace HiAuRo.Runtime;
@@ -56,22 +57,34 @@ public static class ModeSwitch
         }
     }
 
-    public static void TryAutoSwitchToExecutionAxis()
+    /// <summary>切图时按配置优先级自动切换模式</summary>
+    public static void TryAutoSwitch()
     {
         if (CurrentMode != Mode.None) return;
 
         var territoryId = OmenTools.OmenService.GameState.TerritoryType;
         if (territoryId == 0) return;
 
-        var path = System.IO.Path.Combine(
-            DService.Instance().PI.ConfigDirectory.FullName,
-            "ExecutionTimelines",
-            $"{territoryId}.json");
+        var configDir = DService.Instance().PI.ConfigDirectory.FullName;
+        bool hasExec = System.IO.File.Exists(System.IO.Path.Combine(configDir, "ExecutionTimelines", $"{territoryId}.json"));
+        bool hasFact = System.IO.File.Exists(System.IO.Path.Combine(configDir, "FactTimelines", $"{territoryId}.json"));
 
-        if (System.IO.File.Exists(path))
+        var autoSwitch = PluginConfig.Instance.AutoSwitch;
+
+        if (hasExec && hasFact)
+        {
+            SetMode(autoSwitch == AutoSwitchMode.Fact优先 ? Mode.FactAxis : Mode.ExecutionAxis);
+            DService.Instance().Log.Information($"[ModeSwitch] 双 JSON 存在, 优先级={autoSwitch}, 切换={CurrentMode}");
+        }
+        else if (hasExec)
         {
             SetMode(Mode.ExecutionAxis);
-            DService.Instance().Log.Information($"[ModeSwitch] 自动切换执行轴: territoryId={territoryId}");
+            DService.Instance().Log.Information($"[ModeSwitch] 自动切换执行轴: {territoryId}");
+        }
+        else if (hasFact && PluginConfig.Instance.FactAxis.Observe)
+        {
+            SetMode(Mode.FactAxis);
+            DService.Instance().Log.Information($"[ModeSwitch] 自动切换事实轴: {territoryId}");
         }
     }
 }

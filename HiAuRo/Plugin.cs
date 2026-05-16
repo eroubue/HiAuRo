@@ -70,7 +70,7 @@ public partial class Plugin : IDalamudPlugin
             RuntimeCore.Start();
             DecisionEngine.Instance.Init();
             AssistAxis.Instance.Init();
-            ModeSwitch.TryAutoSwitchToExecutionAxis();
+            ModeSwitch.TryAutoSwitch();
             CombatContext.StateChanged += OnCombatStateChanged;
 
             ACR.HotkeyHelper.OnExecuted += OnHotkeyExecuted;
@@ -184,7 +184,7 @@ public partial class Plugin : IDalamudPlugin
     private static void OnCombatStateChanged(CombatContext.State oldState, CombatContext.State newState)
     {
         if (newState is CombatContext.State.OutOfCombat or CombatContext.State.InCombat)
-            ModeSwitch.TryAutoSwitchToExecutionAxis();
+            ModeSwitch.TryAutoSwitch();
     }
 
     internal async Task UploadCatalogAsync()
