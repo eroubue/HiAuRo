@@ -1,7 +1,8 @@
 namespace HiAuRo.ACR;
 
 /// <summary>
-/// 战斗事件回调处理接口 —— 12 个回调，全部必须显式实现
+/// 战斗事件回调处理接口 —— 10 个回调，全部必须显式实现
+/// OnEnterRotation/OnExitRotation 已在 IRotationEntry 上定义，此处不重复
 /// 由 AIRunner 在 Slot 执行过程中同步调用（主线程）
 /// 不需要的回调写空方法体
 /// </summary>
@@ -27,12 +28,6 @@ public interface IRotationEventHandler
 
     /// <summary>战斗中每帧触发（最常用的回调）</summary>
     void OnBattleUpdate(int battleTimeMs);
-
-    /// <summary>切入当前 ACR 时</summary>
-    void OnEnterRotation();
-
-    /// <summary>从当前 ACR 退出时</summary>
-    void OnExitRotation();
 
     /// <summary>切图时触发</summary>
     void OnTerritoryChanged();

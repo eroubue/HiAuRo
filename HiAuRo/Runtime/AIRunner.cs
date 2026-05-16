@@ -78,7 +78,6 @@ public sealed class AIRunner
         }
 
         CurrentEntry.OnEnterRotation();
-        CurrentRotation?.EventHandler?.OnEnterRotation();
 
         // 订阅游戏事件和阶段事件，转发给 ACR
         GameEventHook.Instance.OnEventFired += OnGameEvent;
@@ -96,7 +95,6 @@ public sealed class AIRunner
         GameEventHook.Instance.OnEventFired -= OnGameEvent;
         FactTimeline.Instance.PhaseChanged -= OnPhaseChanged;
 
-        CurrentRotation?.EventHandler?.OnExitRotation();
         CurrentEntry?.OnExitRotation();
 
         // 注销 Rotation 级热键处理器
