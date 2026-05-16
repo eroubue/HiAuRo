@@ -635,10 +635,13 @@ public void OnBattleUpdate(int battleTimeMs)
         _dumpResources = true;
     }
 
-    // 游戏事件时间查询
+    // 游戏事件时间查询（按类型）
     double? nextCast   = s.NextEventTimeOfType(FactEventType.StartsUsing);
     double? nextDamage = s.NextEventTimeOfType(FactEventType.Ability);
-    double? nextMarker = s.NextEventTimeOfType(FactEventType.HeadMarker);
+
+    // 游戏事件时间查询（按类型 + 特定技能ID）
+    double? nextAoe    = s.NextEventTimeOfType(FactEventType.Ability, 10589);  // 只查ID=10589
+    double? nextSpread = s.NextEventTimeOfType(FactEventType.HeadMarker, 0x017F);
 
     // 自定义前向扫描
     var nextMitEvent = s.PendingEvents

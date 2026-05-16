@@ -506,10 +506,11 @@ state.NextTargetableIn      // double? 距下次变为可占用的秒数（null=
 state.NextUntargetableIn    // double? 距下次变为不可占用的秒数（null=不会再变不可占用）
 
 // 游戏事件时间预测
-state.NextEventTimeOfType(FactEventType.Ability)      // 距下一技能效果秒数
-state.NextEventTimeOfType(FactEventType.StartsUsing)  // 距下一读条秒数
-state.NextEventTimeOfType(FactEventType.HeadMarker)   // 距下一点名秒数
-// ... 支持全部 12 种 FactEventType 枚举值
+state.NextEventTimeOfType(FactEventType.Ability)            // 距下一技能效果秒数
+state.NextEventTimeOfType(FactEventType.Ability, 46295)     // 距ID=46295的技能效果秒数
+state.NextEventTimeOfType(FactEventType.StartsUsing)        // 距下一读条秒数
+state.NextEventTimeOfType(FactEventType.HeadMarker, 0x017F) // 距ID=0x017F的分散点名秒数
+// abilityId=0 时不筛ID，等价于无参版本；传具体ID则只匹配该ID的事件
 
 // 自定义前向扫描
 state.PendingEvents         // List<FactEvent>: 未到达事件（按时序），ACR 可 LINQ 过滤
