@@ -1,6 +1,7 @@
 using System.Linq;
 using System.Numerics;
 using Dalamud.Interface.Windowing;
+using HiAuRo.FactAxis;
 using HiAuRo.Infrastructure;
 using HiAuRo.ImGuiLib;
 using HiAuRo.Runtime;
@@ -56,6 +57,11 @@ public sealed class MainWindow : Window
             if (ImGui.BeginTabItem("录制"))
             {
                 DrawRecording();
+                ImGui.EndTabItem();
+            }
+            if (ImGui.BeginTabItem("事实轴"))
+            {
+                DrawFactAxisTab();
                 ImGui.EndTabItem();
             }
             if (ImGui.BeginTabItem("日志"))
@@ -404,6 +410,65 @@ public sealed class MainWindow : Window
         }
 
         if (changed) _saveConfig();
+    }
+
+    private void DrawFactAxisTab()
+    {
+        var flags = PluginConfig.Instance.FactAxis;
+        bool changed = false;
+
+        ImGui.Text("观测");
+        ImGui.Separator();
+        changed |= ImGui.Checkbox("时间线观测", ref flags.Observe);
+
+        ImGui.Text("QT 调控");
+        ImGui.Separator();
+        changed |= ImGui.Checkbox("QT 调控", ref flags.QtControl);
+
+        ImGui.Text("决策分配");
+        ImGui.Separator();
+        changed |= ImGui.Checkbox("团队减伤分配", ref flags.TeamMitigation);
+        changed |= ImGui.Checkbox("单人减伤分配", ref flags.PersonalMitigation);
+        changed |= ImGui.Checkbox("团队治疗分配", ref flags.TeamHealing);
+        changed |= ImGui.Checkbox("技能强制释放", ref flags.ForceExecute);
+
+        ImGui.Text("移动");
+        ImGui.Separator();
+        changed |= ImGui.Checkbox("MoveTo", ref flags.MoveTo);
+        changed |= ImGui.Checkbox("TP", ref flags.TP);
+        changed |= ImGui.Checkbox("Hold", ref flags.Hold);
+
+        ImGui.Text("移动模式");
+        ImGui.Separator();
+        var modes = new[] { "NavMesh", "TP", "NavMesh + TP兜底" };
+        int modeIdx = (int)flags.MovementMode;
+        if (ImGui.Combo("移动模式", ref modeIdx, modes, modes.Length))
+        {
+            flags.MovementMode = (MovementMode)modeIdx;
+            changed = true;
+        }
+
+        if (changed)
+        {
+            _saveConfig();
+        }
+
+        // 显示当前事实轴状态
+        ImGui.Text("运行时状态");
+        ImGui.Separator();
+        var state = FactTimeline.Instance.State;
+        ImGui.Text($"状态: {(state.IsRunning ? "运行中" : "未启动")}");
+        if (state.IsRunning)
+        {
+            ImGui.Text($"副本: {state.TimelineName}");
+            ImGui.Text($"阶段: {state.PhaseName} | {state.Status}");
+            ImGui.Text($"时间: 阶段{state.PhaseTime:F1}s / 总{state.TotalTime:F1}s");
+            if (state.CurrentEvent != null)
+                ImGui.Text($"当前事件: {state.CurrentEvent.Name}");
+
+            var mode = ModeSwitch.CurrentMode;
+            ImGui.Text($"模式: {mode}");
+        }
     }
 
     private static void DrawRecording()

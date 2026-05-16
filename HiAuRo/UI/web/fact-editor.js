@@ -2,6 +2,18 @@
 // HiAuRo 事实轴编辑器 — 数据模型与工具函数
 // ============================================================
 
+// ==================== UUID 生成 ====================
+
+function generateUUID() {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) {
+        return crypto.randomUUID();
+    }
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        var r = Math.random() * 16 | 0;
+        return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+    });
+}
+
 // ==================== 常量 ====================
 
 var TIME_STEP = 5;          // 每格秒数
@@ -1374,7 +1386,7 @@ function handleContextAction(action) {
             var phase = getPhase(currentPhaseIdx);
             if (!phase) break;
             var newEv = {
-                id: 'ev' + (phase.events.length + 1),
+                id: generateUUID(),
                 name: '新事件',
                 time: ctxMenuClickTime,
                 duration: 0,
@@ -1787,7 +1799,7 @@ function importRecordingToPhase() {
         if (actionId) name += '#' + actionId;
 
         var fe = {
-            id: 'rec_' + (phase.events.length + imported + 1),
+            id: generateUUID(),
             name: name,
             time: timeSec,
             duration: 0,
