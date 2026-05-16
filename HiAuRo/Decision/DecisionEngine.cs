@@ -25,25 +25,35 @@ public sealed class DecisionEngine
         LoadBuiltinSkills();
     }
 
-    /// <summary>
-    /// 根据事实轴需求 + 当前队伍状态，计算本帧决策
-    /// </summary>
-    /// <param name="需求减伤">需求值，0=无</param>
-    /// <param name="需求治疗">需求值，0=无</param>
+    /// <summary>治疗需求 — 事件到达时立即分配（适合 HoT/盾预先铺）</summary>
+    public DecisionOutput 计算治疗(int 需求治疗)
+    {
+        _output = new DecisionOutput();
+        if (需求治疗 <= 0) return _output;
+        var 队伍 = GetAvailableRoles();
+        分配治疗(需求治疗, 队伍);
+        return _output;
+    }
+
+    /// <summary>减伤需求 — 事件到达时评估，在窗口内延迟释放</summary>
+    public DecisionOutput 计算减伤(int 需求减伤)
+    {
+        _output = new DecisionOutput();
+        if (需求减伤 <= 0) return _output;
+        var 队伍 = GetAvailableRoles();
+        分配减伤(需求减伤, 队伍);
+        return _output;
+    }
+
+    /// <summary>[Obsolete] 旧版联合计算 — 请使用 计算减伤() / 计算治疗()</summary>
+    [System.Obsolete("使用 计算减伤() / 计算治疗()")]
     public DecisionOutput 计算(int 需求减伤, int 需求治疗)
     {
         _output = new DecisionOutput();
-
         if (需求减伤 == 0 && 需求治疗 == 0) return _output;
-
         var 队伍 = GetAvailableRoles();
-
-        if (需求减伤 > 0)
-            分配减伤(需求减伤, 队伍);
-
-        if (需求治疗 > 0)
-            分配治疗(需求治疗, 队伍);
-
+        if (需求减伤 > 0) 分配减伤(需求减伤, 队伍);
+        if (需求治疗 > 0) 分配治疗(需求治疗, 队伍);
         return _output;
     }
 
