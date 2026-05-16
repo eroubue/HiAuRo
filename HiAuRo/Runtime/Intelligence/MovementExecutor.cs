@@ -2,13 +2,15 @@ using System.Numerics;
 using HiAuRo.FactAxis;
 using HiAuRo.Infrastructure;
 using OmenTools;
+using OmenTools.Interop.Game.Models;
+using OmenTools.Interop.Game.Models.Packets.Downstream;
 
 namespace HiAuRo.Runtime.Intelligence;
 
 /// <summary>
 /// 移动执行器 — 消费 ActiveDemands，通过 VNavmesh IPC 驱动角色移动。
 /// MoveTo: 寻路 + deadline 调度 + TP 兜底
-/// TP: 坐标瞬移
+/// TP: 坐标瞬移（内部实现，通过 ActorSetPos 封包）
 /// Hold: 停止 + 阻塞 duration 秒
 /// </summary>
 public sealed class MovementExecutor
@@ -18,6 +20,9 @@ public sealed class MovementExecutor
 
     private readonly HashSet<string> _executedDemandIds = new();
     private readonly Dictionary<string, double> _startedMoveDemands = new();
+
+    private static unsafe ActorSetPosPacket.Delegate? _actorSetPosFunc;
+    private static readonly object _tpInitLock = new();
     private long _holdUntilMs;
 
     // 移动参数（参考 BossMod）
@@ -156,9 +161,31 @@ public sealed class MovementExecutor
         }
     }
 
-    private static void 瞬移(Vector3 pos, float? heading)
+    private static unsafe void 瞬移(Vector3 pos, float? heading)
     {
-        // TP 瞬移 — 由外部插件通过封包/内存完成
-        DService.Instance().Log.Debug($"[Movement] TP to ({pos.X:F1}, {pos.Y:F1}, {pos.Z:F1})");
+        var localPlayer = DService.Instance().ObjectTable.LocalPlayer;
+        if (localPlayer == null) return;
+
+        if (_actorSetPosFunc == null)
+        {
+            lock (_tpInitLock)
+            {
+                if (_actorSetPosFunc == null)
+                {
+                    _actorSetPosFunc = ActorSetPosPacket.Signature.GetDelegate<ActorSetPosPacket.Delegate>();
+                }
+            }
+        }
+        if (_actorSetPosFunc == null) return;
+
+        try
+        {
+            var packet = new ActorSetPosPacket(pos);
+            _actorSetPosFunc(localPlayer.EntityID, &packet);
+        }
+        catch (Exception ex)
+        {
+            DService.Instance().Log.Warning($"[Movement] TP 执行失败: {ex.Message}");
+        }
     }
 }
