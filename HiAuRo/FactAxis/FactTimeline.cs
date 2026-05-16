@@ -1,6 +1,7 @@
 using System.Text.Json;
 using HiAuRo.ACR;
 using HiAuRo.Execution.Events;
+using HiAuRo.Infrastructure;
 
 namespace HiAuRo.FactAxis;
 
@@ -28,6 +29,8 @@ public sealed class FactTimeline
     private FactEvent? _waitingStartSync;  // 等待开始 Sync 的事件
     private FactEvent? _waitingEndSync;    // 等待结束 Sync 的事件
     private bool _waitingSwitch;
+    // QT offset 延迟执行
+    private readonly List<(FactAction Action, double ExecuteAt)> _pendingQtActions = new();
     private uint _previousTerritoryId;
 
     private FactTimeline() { }
@@ -93,6 +96,7 @@ public sealed class FactTimeline
         _waitingStartSync = null;
         _waitingEndSync = null;
         _waitingSwitch = false;
+        _pendingQtActions.Clear();
         _variables.Clear();
         State.Clear();
 
@@ -246,6 +250,24 @@ public sealed class FactTimeline
     private FactState BuildState()
     {
         var fightNow = FightNow;
+
+        // 检查到期 pending QT actions
+        for (int i = _pendingQtActions.Count - 1; i >= 0; i--)
+        {
+            var (qtAction, executeAt) = _pendingQtActions[i];
+            if (fightNow >= executeAt)
+            {
+                if (PluginConfig.Instance.FactAxis.QtControl)
+                {
+                    if (qtAction is 切换QT动作 toggleAction)
+                        QTHelper.Toggle(toggleAction.QtId);
+                    else if (qtAction is 设置QT动作 setAction)
+                        QTHelper.SetValue(setAction.QtId, setAction.Value);
+                }
+                _pendingQtActions.RemoveAt(i);
+            }
+        }
+
         double phaseTime = _phaseStartTime > 0 ? fightNow - _phaseStartTime : fightNow;
 
         // 检查 forcejump：时间到即跳
@@ -336,7 +358,29 @@ public sealed class FactTimeline
         if (ev.ActionsDone) return;
         foreach (var action in ev.Actions)
         {
-            try { action.Execute(this); }
+            try
+            {
+                switch (action)
+                {
+                    case 设置QT动作 qtSet when qtSet.Offset != 0:
+                        _pendingQtActions.Add((qtSet, ev.Time + qtSet.Offset));
+                        break;
+                    case 设置QT动作 qtSet:
+                        if (PluginConfig.Instance.FactAxis.QtControl)
+                            QTHelper.SetValue(qtSet.QtId, qtSet.Value);
+                        break;
+                    case 切换QT动作 qtToggle when qtToggle.Offset != 0:
+                        _pendingQtActions.Add((qtToggle, ev.Time + qtToggle.Offset));
+                        break;
+                    case 切换QT动作 qtToggle:
+                        if (PluginConfig.Instance.FactAxis.QtControl)
+                            QTHelper.Toggle(qtToggle.QtId);
+                        break;
+                    default:
+                        action.Execute(this);
+                        break;
+                }
+            }
             catch (Exception ex) { DService.Instance().Log.Error($"[FactAxis] 动作异常: {ex}"); }
         }
         ev.ActionsDone = true;
