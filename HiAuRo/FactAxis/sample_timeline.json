@@ -11,34 +11,52 @@
           "id": "pull",
           "name": "开战",
           "time": 0,
+          "targetable": true,
           "actions": [{ "type": "logMessage", "message": "极朱雀 战斗开始" }]
         },
         {
           "id": "raidwide",
           "name": "第一次全场AOE",
           "time": 8,
+          "type": "StartsUsing",
+          "abilityId": 10589,
           "duration": 3,
-          "startSync": { "type": "startsUsing", "abilityIds": [10589], "windowBefore": 10.0, "windowAfter": 5.0 },
-          "endSync": { "type": "ability", "abilityIds": [10589], "windowBefore": 2.5, "windowAfter": 2.5 },
+          "startSync": { "windowBefore": 10.0, "windowAfter": 5.0 },
+          "endSync": { "windowBefore": 2.5, "windowAfter": 2.5 },
           "actions": [
-            { "type": "demand", "需求减伤": 30, "需求治疗": 800 },
+            { "type": "需求减伤", "value": 30 },
+            { "type": "需求治疗", "value": 800 },
             { "type": "skillSuggestion", "skillId": 7561, "label": "策动 (10%减伤)", "priority": "high" },
-            { "type": "logMessage", "message": "全场AOE → 需要减伤30% + 治疗800" }
+            { "type": "logMessage", "message": "全场AOE → 减伤30% + 治疗800" }
           ]
         },
         {
           "id": "tankbuster",
           "name": "死刑",
           "time": 16,
+          "type": "StartsUsing",
+          "abilityId": 10590,
           "duration": 2,
-          "startSync": { "type": "startsUsing", "abilityIds": [10590], "windowBefore": 8.0, "windowAfter": 4.0 },
+          "startSync": { "windowBefore": 8.0, "windowAfter": 4.0 },
           "actions": [
             { "type": "skillSuggestion", "skillId": 7559, "label": "行吟", "priority": "optional" }
           ]
+        },
+        {
+          "id": "boss_jump",
+          "name": "Boss 跳走",
+          "time": 30,
+          "targetable": false
+        },
+        {
+          "id": "boss_land",
+          "name": "Boss 落地",
+          "time": 40,
+          "targetable": true
         }
       ],
       "switch": {
-        "sync": { "type": "startsUsing", "abilityIds": [10591] },
+        "sync": { "windowBefore": 5.0, "windowAfter": 5.0 },
         "actions": [
           { "type": "setVariable", "variableName": "phase1Completed", "value": true },
           { "type": "logMessage", "message": "P1 结束" }
@@ -57,15 +75,17 @@
                 "id": "p2_aoe",
                 "name": "P2全场AOE",
                 "time": 8,
-                "startSync": { "type": "startsUsing", "abilityIds": [10592], "windowBefore": 10.0, "windowAfter": 5.0 },
+                "type": "StartsUsing",
+                "abilityId": 10592,
+                "startSync": { "windowBefore": 10.0, "windowAfter": 5.0 },
                 "actions": [
-                  { "type": "demand", "需求减伤": 20, "需求治疗": 0 },
+                  { "type": "需求减伤", "value": 20 },
                   { "type": "skillSuggestion", "skillId": 7561, "label": "策动", "priority": "high" }
                 ]
               }
             ],
             "switch": {
-              "sync": { "type": "startsUsing", "abilityIds": [10593] },
+              "sync": { "windowBefore": 5.0, "windowAfter": 5.0 },
               "branches": [
                 {
                   "name": "P3",
