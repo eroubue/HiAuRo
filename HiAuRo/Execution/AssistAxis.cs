@@ -21,6 +21,13 @@ public sealed class AssistAxis
     internal Spell? _forceSpell;
     private bool _paused;
     private bool _autoLoadDisabled;
+
+    /// <summary>是否允许自动加载</summary>
+    public bool AutoLoadEnabled
+    {
+        get => !_autoLoadDisabled;
+        set => _autoLoadDisabled = !value;
+    }
     private uint _previousTerritoryId;
     private CancellationTokenSource? _cts;
     private readonly Dictionary<TreeCondNode, TaskCompletionSource<bool>> _waitingConds = [];

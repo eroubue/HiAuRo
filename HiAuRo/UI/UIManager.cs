@@ -33,6 +33,9 @@ internal class UIManager : IDisposable
     /// <summary>WebSocket 桥接</summary>
     public WebUiBridge? Bridge => _uiBridge;
 
+    /// <summary>Web 服务器端口</summary>
+    public int WebServerPort => _uiServer?.Port ?? 5678;
+
     /// <summary>Browsingway IPC 服务</summary>
     public BrowsingwayIpc? BrowsingwayIpc => _browsingwayIpc;
 

@@ -66,6 +66,16 @@ public sealed class MainWindow : Window
                 DrawFactAxisTab();
                 ImGui.EndTabItem();
             }
+            if (ImGui.BeginTabItem("执行轴"))
+            {
+                DrawExecutionAxisTab();
+                ImGui.EndTabItem();
+            }
+            if (ImGui.BeginTabItem("辅助轴"))
+            {
+                DrawAssistAxisTab();
+                ImGui.EndTabItem();
+            }
             if (ImGui.BeginTabItem("日志"))
             {
                 DrawLog();
@@ -470,6 +480,163 @@ public sealed class MainWindow : Window
 
             var mode = ModeSwitch.CurrentMode;
             ImGui.Text($"模式: {mode}");
+        }
+    }
+
+    private void DrawExecutionAxisTab()
+    {
+        var config = PluginConfig.Instance;
+        var axis = Execution.ExecutionAxis.Instance;
+        var port = Plugin.Instance._uiManager?.WebServerPort ?? 5678;
+
+        // 自动加载
+        ImGui.Text("加载");
+        ImGui.Separator();
+        var autoLoad = config.ExecutionAxisAutoLoad;
+        if (ImGui.Checkbox("进副本自动加载", ref autoLoad))
+        {
+            config.ExecutionAxisAutoLoad = autoLoad;
+            axis.AutoLoadEnabled = autoLoad;
+            _saveConfig();
+        }
+
+        // 当前状态
+        ImGui.Spacing();
+        ImGui.TextColored(axis.IsRunning
+            ? new Vector4(0, 1, 0, 1)
+            : new Vector4(0.6f, 0.6f, 0.6f, 1),
+            axis.IsRunning ? $"● 运行中 — {axis.TimelineName}" : "○ 未启动");
+
+        // 轴文件选择
+        ImGui.Spacing();
+        ImGui.Text("轴文件");
+        ImGui.Separator();
+
+        var dir = Path.Combine(DService.Instance().PI.ConfigDirectory.FullName, "ExecutionTimelines");
+        var files = Directory.Exists(dir)
+            ? Directory.GetFiles(dir, "*.json").Select(f => Path.GetFileName(f)!).ToArray()
+            : [];
+        var fileNames = files.Length > 0 ? files : ["(无文件)"];
+
+        int selectedIdx = 0;
+        if (!string.IsNullOrEmpty(axis.TimelineName))
+        {
+            var match = fileNames.FirstOrDefault(f => f == $"{axis.TerritoryId}.json");
+            if (match != null) selectedIdx = Array.IndexOf(fileNames, match);
+        }
+        if (selectedIdx < 0) selectedIdx = 0;
+
+        if (ImGui.Combo("选择文件", ref selectedIdx, fileNames, fileNames.Length))
+        {
+            var chosen = fileNames[selectedIdx];
+            if (chosen != "(无文件)")
+            {
+                var path = Path.Combine(dir!, chosen);
+                axis.LoadFromFile(path);
+            }
+        }
+
+        ImGui.Spacing();
+
+        // 手动加载/卸载
+        if (axis.IsRunning)
+        {
+            if (ImGui.Button("卸载"))
+                axis.Shutdown();
+        }
+        else
+        {
+            if (ImGui.Button("加载当前副本"))
+                axis.AutoLoadTimeline();
+        }
+
+        // 打开编辑器
+        ImGui.Spacing();
+        ImGui.Separator();
+        ImGui.Text("编辑器");
+        ImGui.Separator();
+        if (ImGui.Button("打开 axflow 编辑器"))
+        {
+            try { System.Diagnostics.Process.Start("explorer.exe", $"http://localhost:{port}/axflow-editor.html"); }
+            catch { }
+        }
+        if (ImGui.Button("打开通用编辑器"))
+        {
+            try { System.Diagnostics.Process.Start("explorer.exe", $"http://localhost:{port}/editor.html"); }
+            catch { }
+        }
+    }
+
+    private void DrawAssistAxisTab()
+    {
+        var config = PluginConfig.Instance;
+        var axis = Execution.AssistAxis.Instance;
+        var port = Plugin.Instance._uiManager?.WebServerPort ?? 5678;
+
+        // 自动加载
+        ImGui.Text("加载");
+        ImGui.Separator();
+        var autoLoad = config.AssistAxisAutoLoad;
+        if (ImGui.Checkbox("进副本自动加载", ref autoLoad))
+        {
+            config.AssistAxisAutoLoad = autoLoad;
+            if (autoLoad) axis.LoadAssistTimeline();
+            else axis.UnloadAssistTimeline();
+            _saveConfig();
+        }
+
+        // 当前状态
+        ImGui.Spacing();
+        ImGui.TextColored(axis.IsRunning
+            ? new Vector4(0, 1, 0, 1)
+            : new Vector4(0.6f, 0.6f, 0.6f, 1),
+            axis.IsRunning ? $"● 运行中 — {axis.TimelineName}" : "○ 未启动");
+
+        // 轴文件选择
+        ImGui.Spacing();
+        ImGui.Text("轴文件");
+        ImGui.Separator();
+
+        var dir = Path.Combine(DService.Instance().PI.ConfigDirectory.FullName, "AssistTimelines");
+        var files = Directory.Exists(dir)
+            ? Directory.GetFiles(dir, "*.txt").Select(f => Path.GetFileName(f)!).ToArray()
+            : [];
+        var fileNames = files.Length > 0 ? files : ["(无文件)"];
+
+        int selectedIdx = 0;
+        if (ImGui.Combo("选择文件", ref selectedIdx, fileNames, fileNames.Length))
+        {
+            var chosen = fileNames[selectedIdx];
+            if (chosen != "(无文件)")
+            {
+                var path = Path.Combine(dir!, chosen);
+                axis.LoadFromFile(path);
+            }
+        }
+
+        ImGui.Spacing();
+
+        // 手动操作
+        if (axis.IsRunning)
+        {
+            if (ImGui.Button("卸载"))
+                axis.UnloadAssistTimeline();
+        }
+        else
+        {
+            if (ImGui.Button("加载当前副本"))
+                axis.LoadAssistTimeline();
+        }
+
+        // 打开编辑器
+        ImGui.Spacing();
+        ImGui.Separator();
+        ImGui.Text("编辑器");
+        ImGui.Separator();
+        if (ImGui.Button("打开编辑器"))
+        {
+            try { System.Diagnostics.Process.Start("explorer.exe", $"http://localhost:{port}/editor.html?axis=assist"); }
+            catch { }
         }
     }
 

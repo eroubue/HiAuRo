@@ -213,9 +213,13 @@ public sealed class ExecutionAxis
         return LoadFromJson(File.ReadAllText(filePath));
     }
 
+    /// <summary>是否允许自动加载</summary>
+    public bool AutoLoadEnabled { get; set; } = true;
+
     /// <summary>自动加载当前副本触发树</summary>
     public void AutoLoadTimeline()
     {
+        if (!AutoLoadEnabled) return;
         var territoryId = OmenTools.OmenService.GameState.TerritoryType;
         if (territoryId == 0) return;
         var dir = Path.Combine(DService.Instance().PI.ConfigDirectory.FullName, "ExecutionTimelines");

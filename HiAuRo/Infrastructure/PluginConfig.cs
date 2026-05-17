@@ -99,6 +99,11 @@ public sealed class PluginConfig : IPluginConfiguration
     public FactAxisFlags FactAxis { get; set; } = new();
     /// <summary>自动切换模式</summary>
     public AutoSwitchMode AutoSwitch { get; set; } = AutoSwitchMode.Execution优先;
+
+    /// <summary>执行轴 — 进副本自动加载时间轴</summary>
+    public bool ExecutionAxisAutoLoad { get; set; } = true;
+    /// <summary>辅助轴 — 进副本自动加载时间轴</summary>
+    public bool AssistAxisAutoLoad { get; set; } = false;
 }
 
 /// <summary>CEF 悬浮窗设置</summary>

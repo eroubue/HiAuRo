@@ -72,6 +72,7 @@ public static class ACRLifecycle
     public static void Update()
     {
         CheckJobSwitch();
+        PushImGuiState(); // 每帧同步 QT/Hotkey/运行状态到 ImGui overlay
 
         var state = CombatContext.CurrentState;
         if (state == CombatContext.State.Idle || state == CombatContext.State.Zoning)
@@ -90,6 +91,14 @@ public static class ACRLifecycle
 
         _resetCalled = false;
         Runner.Update();
+    }
+
+    /// <summary>每帧同步 QT/Hotkey/运行状态到 ImGuiOverlayState（ImGui 模式下）</summary>
+    private static void PushImGuiState()
+    {
+        if (Plugin.IsWebUI || CurrentEntry == null) return;
+        ImGuiOverlayState.UpdateStatus(CurrentAcrName, RuntimeCore.IsRunning,
+            ACR.MainControlHelper.IsPaused, ACR.HotkeyHelper.GetAll(), ACR.QTHelper.GetAll());
     }
 
     private static void CheckJobSwitch()

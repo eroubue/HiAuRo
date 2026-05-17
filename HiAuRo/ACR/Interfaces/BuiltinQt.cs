@@ -47,20 +47,20 @@ public static class BuiltinQtHelper
         BuiltinQt.Hold => "停手",
         BuiltinQt.Mitigation => "自动减伤",
         BuiltinQt.Dump => "清空资源",
-        BuiltinQt.AoE => "群体攻击",
-        BuiltinQt.TTK => "击杀时间",
+        BuiltinQt.AoE => "AOE",
+        BuiltinQt.TTK => "TTK",
         _ => throw new System.ArgumentOutOfRangeException(nameof(type), type, null)
     };
 
     /// <summary>获取内置 QT 默认开关值</summary>
     public static bool GetDefault(this BuiltinQt type) => type switch
     {
-        BuiltinQt.Burst => false,
+        BuiltinQt.Burst => true,
         BuiltinQt.Potion => false,
         BuiltinQt.Hold => false,
         BuiltinQt.Mitigation => true,
         BuiltinQt.Dump => false,
-        BuiltinQt.AoE => false,
+        BuiltinQt.AoE => true,
         BuiltinQt.TTK => false,
         _ => throw new System.ArgumentOutOfRangeException(nameof(type), type, null)
     };

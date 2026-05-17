@@ -17,9 +17,9 @@ public sealed class HotkeyResolver_技能 : IHotkeyResolver
     /// <param name="label">显示名称</param>
     /// <param name="spellId">技能 ID</param>
     /// <param name="defaultKey">默认绑定键</param>
-    public HotkeyResolver_技能(string id, string label, uint spellId, string defaultKey = "")
+    public HotkeyResolver_技能(string label, uint spellId, string defaultKey = "")
     {
-        Id = id;
+        Id = label + Guid.NewGuid().ToString("N")[0..8];
         Label = label;
         _spellId = spellId;
         DefaultKey = defaultKey;
