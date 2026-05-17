@@ -91,6 +91,12 @@ sealed class HiAuRoContextImpl
         return Data.Objects.Enemies.Count(e => Data.Me.DistanceToObject2D(e) <= range);
     }
 
+    public int GetEnemyCountNearTarget(float range)
+    {
+        var target = Data.Target.Current;
+        return ACR.TargetHelper.GetNearbyEnemyCount(target, range);
+    }
+
     // ── 自身属性 ──
 
     public float GetHPPercent()
@@ -184,6 +190,7 @@ static class EmitProxy
                 ("OnIsMoving",               typeof(Func<bool>)),
                 ("OnIsInCombat",             typeof(Func<bool>)),
                 ("OnGetNearbyEnemyCount",    typeof(Func<float, int>)),
+                ("OnGetEnemyCountNearTarget",typeof(Func<float, int>)),
                 ("OnGetHPPercent",           typeof(Func<float>)),
                 ("OnGetCurrentLevel",        typeof(Func<int>)),
                 ("OnIsCurrentTargetInvincible", typeof(Func<bool>)),
@@ -219,6 +226,7 @@ static class EmitProxy
                 ("IsMoving",               "OnIsMoving",               0),
                 ("IsInCombat",             "OnIsInCombat",             0),
                 ("GetNearbyEnemyCount",    "OnGetNearbyEnemyCount",    1),
+                ("GetEnemyCountNearTarget","OnGetEnemyCountNearTarget",1),
                 ("GetHPPercent",           "OnGetHPPercent",           0),
                 ("GetCurrentLevel",        "OnGetCurrentLevel",        0),
                 ("IsCurrentTargetInvincible", "OnIsCurrentTargetInvincible", 0),
@@ -273,6 +281,7 @@ static class EmitProxy
             proxyType.GetField("OnIsMoving")!.SetValue(null, (Func<bool>)impl.IsMoving);
             proxyType.GetField("OnIsInCombat")!.SetValue(null, (Func<bool>)impl.IsInCombat);
             proxyType.GetField("OnGetNearbyEnemyCount")!.SetValue(null, (Func<float, int>)impl.GetNearbyEnemyCount);
+            proxyType.GetField("OnGetEnemyCountNearTarget")!.SetValue(null, (Func<float, int>)impl.GetEnemyCountNearTarget);
             proxyType.GetField("OnGetHPPercent")!.SetValue(null, (Func<float>)impl.GetHPPercent);
             proxyType.GetField("OnGetCurrentLevel")!.SetValue(null, (Func<int>)impl.GetCurrentLevel);
             proxyType.GetField("OnIsCurrentTargetInvincible")!.SetValue(null, (Func<bool>)impl.IsCurrentTargetInvincible);
