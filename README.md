@@ -30,7 +30,6 @@ public class MyAcr : IRotationEntry
 ```bash
 git clone --recurse-submodules https://github.com/denghaoxuan991876906/HiAuRo
 cd HiAuRo
-export DALAMUD_HOME=/path/to/XIVLauncherCN/addon/Hooks/dev
 dotnet build HiAuRo.slnx -c Release
 ```
 

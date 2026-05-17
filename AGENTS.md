@@ -10,7 +10,6 @@ HiAuRo is a FFXIV Dalamud **combat assist framework** (.NET 10, Dalamud.NET.Sdk 
 dotnet build HiAuRo.slnx -c Release -nologo
 ```
 
-**构建环境**：代码开发在 WSL 中，但 `dotnet build` 需要在 **Windows 环境**中执行（Dalamud SDK 依赖 Windows-only 的 Dalamud Hooks 和 FFXIV 游戏进程）。在 WSL 中直接运行 `dotnet build` 会因缺少 `/home/haiya/dalamud_hooks/` 和 CefSharp 包而失败。通过 WSL 的 `cmd.exe /c "dotnet build ..."` 在 Windows 端执行。
 
 ## Architecture Rules
 
@@ -22,11 +21,6 @@ dotnet build HiAuRo.slnx -c Release -nologo
 4. New capabilities are **additive** — never rewrite familiar workflows.
 5. ACR interfaces stay close to AEAssist conventions for ACR author familiarity.
 
-## Technology Choices
-
-- **OmenTools** (NOT ECommons) — `DService.Init(pluginInterface)` / `DService.Uninit()` for lifecycle. All Dalamud services accessed via `DService.*`. ImGuiOm for ImGui wrappers.
-- **CEF + Web UI** (NOT ImGui for panels) — Kestrel HTTP + WebSocket (`localhost:5678`), HTML/CSS/JS frontend. CEF renders in-game via D3D11 shared textures (adapted from Browsingway). Browser dev at `localhost:5678`, no game needed for UI work.
-- **No AEAssist runtime dependency** — HiAuRo is a standalone Dalamud plugin.
 
 ## Project Layout
 
