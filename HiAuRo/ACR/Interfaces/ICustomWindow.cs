@@ -7,7 +7,7 @@ namespace HiAuRo.ACR;
 /// </summary>
 public interface ICustomWindow
 {
-    /// <summary>窗口唯一标识 & 标题</summary>
+    /// <summary>窗口唯一标识、标题</summary>
     string Name { get; }
 
     /// <summary>null = 自动大小</summary>

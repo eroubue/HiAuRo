@@ -21,11 +21,13 @@ public sealed class TriggerCond_连线 : ITriggerCond
 {
     private readonly uint _tetherId;
 
+    /// <param name="tetherId">连线 ID</param>
     public TriggerCond_连线(uint tetherId)
     {
         _tetherId = tetherId;
     }
 
+    /// <summary>检测是否有指定连线生效</summary>
     public bool Handle(ITriggerCondParams? condParams = null)
     {
         // 需要 Tether 内存读取，暂未实现

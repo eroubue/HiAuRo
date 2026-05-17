@@ -11,14 +11,20 @@ namespace HiAuRo.Runtime;
 /// </summary>
 public static class ACRLifecycle
 {
+    /// <summary>AI 运行器</summary>
     public static AIRunner Runner { get; } = new();
+    /// <summary>当前 ACR 入口</summary>
     public static IRotationEntry? CurrentEntry { get; private set; }
+    /// <summary>当前 ACR 名称</summary>
     public static string CurrentAcrName => CurrentEntry?.AuthorName ?? "无ACR";
+    /// <summary>当前 ACR 作者</summary>
     public static string CurrentAuthor => CurrentEntry?.AuthorName ?? "";
+    /// <summary>当前职业 ID</summary>
     public static uint CurrentJobId { get; private set; }
     /// <summary>ISettingsProvider 缓存（供显式 save 遍历）</summary>
     private static readonly Dictionary<string, (IRotationEntry Entry, Type SettingsType)> _settingsProviders = [];
     private static readonly object _settingsLock = new();
+    /// <summary>是否正在加载 Rotation</summary>
     public static bool IsLoadingRotation { get; private set; }
 
     /// <summary>外部 ACR: JobId → (Factory, SettingDir)</summary>

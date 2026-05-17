@@ -19,21 +19,31 @@ public static class Theme
 
     // ── 主题切换 ──
 
-    public enum ThemeMode { Light = 0, Dark = 1 }
+    /// <summary>主题模式</summary>
+    public enum ThemeMode
+    {
+        /// <summary>亮色主题</summary>
+        Light = 0,
+        /// <summary>暗色主题</summary>
+        Dark = 1
+    }
 
     private static ThemeMode _mode = ThemeMode.Light;
+    /// <summary>当前主题模式</summary>
     public static ThemeMode Mode
     {
         get => _mode;
         set { _mode = value; Tokens = value == ThemeMode.Light ? Light : Dark; }
     }
 
+    /// <summary>当前主题令牌</summary>
     public static ThemeTokens Tokens { get; private set; } = Light!;
 
     static Theme() { }
 
     // ── 亮色令牌 (Ant Design 5 默认) ──
 
+    /// <summary>亮色主题令牌</summary>
     public static readonly ThemeTokens Light = new()
     {
         BgBase        = Hex(0xFFFFFFFF),
@@ -81,6 +91,7 @@ public static class Theme
 
     // ── 暗色令牌 ──
 
+    /// <summary>暗色主题令牌</summary>
     public static readonly ThemeTokens Dark = new()
     {
         BgBase        = Hex(0xFF000000),
@@ -128,112 +139,211 @@ public static class Theme
 
     // ── 动态颜色代理 (Theme.Colors.XXX 自动跟随当前主题) ──
 
+    /// <summary>动态颜色代理（自动跟随当前主题）</summary>
     public static class Colors
     {
+        /// <summary>布局背景色</summary>
         public static Vector4 BgLayout        => Tokens.BgLayout;
+        /// <summary>容器背景色</summary>
         public static Vector4 BgContainer     => Tokens.BgContainer;
+        /// <summary>浮层背景色</summary>
         public static Vector4 BgElevated      => Tokens.BgElevated;
+        /// <summary>悬停背景色</summary>
         public static Vector4 BgHover         => Tokens.BgHover;
+        /// <summary>高亮背景色</summary>
         public static Vector4 BgSpotlight     => Tokens.BgSpotlight;
 
+        /// <summary>毛玻璃底色</summary>
         public static Vector4 GlassBg         => Tokens.GlassBg;
+        /// <summary>毛玻璃高光色</summary>
         public static Vector4 GlassHighlight  => Tokens.GlassHighlight;
+        /// <summary>毛玻璃暗部色</summary>
         public static Vector4 GlassShade      => Tokens.GlassShade;
+        /// <summary>毛玻璃边框色</summary>
         public static Vector4 GlassBorder     => Tokens.GlassBorder;
+        /// <summary>毛玻璃投影色</summary>
         public static Vector4 GlassShadow     => Tokens.GlassShadow;
 
+        /// <summary>主要文字色</summary>
         public static Vector4 TextPrimary     => Tokens.TextPrimary;
+        /// <summary>次要文字色</summary>
         public static Vector4 TextSecondary   => Tokens.TextSecondary;
+        /// <summary>第三级文字色</summary>
         public static Vector4 TextTertiary    => Tokens.TextTertiary;
 
+        /// <summary>品牌蓝</summary>
         public static Vector4 AccentBlue      => Tokens.AccentBlue;
+        /// <summary>品牌绿</summary>
         public static Vector4 AccentGreen     => Tokens.AccentGreen;
+        /// <summary>品牌红</summary>
         public static Vector4 AccentRed       => Tokens.AccentRed;
+        /// <summary>品牌橙</summary>
         public static Vector4 AccentOrange    => Tokens.AccentOrange;
 
+        /// <summary>边框色</summary>
         public static Vector4 Border          => Tokens.Border;
+        /// <summary>次要边框色</summary>
         public static Vector4 BorderSecondary => Tokens.BorderSecondary;
+        /// <summary>激活边框色</summary>
         public static Vector4 BorderActive    => Tokens.AccentBlue;
 
+        /// <summary>一级填充色</summary>
         public static Vector4 FillPrimary     => Tokens.FillPrimary;
+        /// <summary>二级填充色</summary>
         public static Vector4 FillSecondary   => Tokens.FillSecondary;
+        /// <summary>三级填充色</summary>
         public static Vector4 FillTertiary    => Tokens.FillTertiary;
 
+        /// <summary>开关轨道开启色</summary>
         public static Vector4 SwitchTrackOn   => Tokens.SwitchTrackOn;
+        /// <summary>开关轨道关闭色</summary>
         public static Vector4 SwitchTrackOff  => Tokens.SwitchTrackOff;
+        /// <summary>开关旋钮色</summary>
         public static Vector4 SwitchKnob      => Tokens.SwitchKnob;
 
+        /// <summary>滑块轨道色</summary>
         public static Vector4 SliderTrack     => Tokens.SliderTrack;
+        /// <summary>滑块滑轨色</summary>
         public static Vector4 SliderRail      => Tokens.SliderRail;
 
+        /// <summary>侧边栏激活色</summary>
         public static Vector4 SidebarActive      => Tokens.SidebarActive;
+        /// <summary>侧边栏激活边框色</summary>
         public static Vector4 SidebarActiveBorder => Tokens.SidebarActiveBorder;
 
+        /// <summary>标签激活文字色</summary>
         public static Vector4 TagActiveText => Tokens.TagActiveText;
     }
 
     // ── 圆角 (Ant Design 5) ──
 
+    /// <summary>超小圆角</summary>
     public const float RadiusXS = 2f;
+    /// <summary>小圆角</summary>
     public const float RadiusSM = 4f;
+    /// <summary>中圆角</summary>
     public const float RadiusMD = 6f;
+    /// <summary>大圆角</summary>
     public const float RadiusLG = 8f;
 
     // ── 间距 ──
 
+    /// <summary>超小间距</summary>
     public static readonly Vector2 PaddingXS  = new(4, 2);
+    /// <summary>小间距</summary>
     public static readonly Vector2 PaddingSM  = new(8, 4);
+    /// <summary>中间距</summary>
     public static readonly Vector2 PaddingMD  = new(12, 8);
+    /// <summary>项目间距</summary>
     public static readonly Vector2 ItemSpacing = new(8, 6);
 
     // ── 字号 ──
 
+    /// <summary>小字号</summary>
     public const float FontSizeSM = 11f;
+    /// <summary>中字号</summary>
     public const float FontSizeMD = 13f;
+    /// <summary>大字号</summary>
     public const float FontSizeLG = 16f;
 
     // ── 动画 ──
 
+    /// <summary>动画速度</summary>
     public const float AnimSpeed = 12f;
 
     // ── 阴影 ──
 
+    /// <summary>阴影偏移</summary>
     public const float ShadowOffset = 2f;
+    /// <summary>阴影模糊</summary>
     public const float ShadowBlur = 8f;
 }
 
 /// <summary>
 /// 主题令牌集合 — Ant Design 5 设计体系
 /// </summary>
+/// <summary>主题令牌集合 — Ant Design 5 设计体系</summary>
 public class ThemeTokens
 {
     // ── 背景 ──
-    public Vector4 BgBase, BgLayout, BgContainer, BgElevated, BgHover, BgSpotlight;
+    /// <summary>基础背景色</summary>
+    public Vector4 BgBase;
+    /// <summary>布局背景色</summary>
+    public Vector4 BgLayout;
+    /// <summary>容器背景色</summary>
+    public Vector4 BgContainer;
+    /// <summary>浮层背景色</summary>
+    public Vector4 BgElevated;
+    /// <summary>悬停背景色</summary>
+    public Vector4 BgHover;
+    /// <summary>高亮背景色</summary>
+    public Vector4 BgSpotlight;
 
     // ── 毛玻璃叠加 ──
-    public Vector4 GlassBg, GlassHighlight, GlassShade, GlassBorder, GlassShadow;
+    /// <summary>毛玻璃底色</summary>
+    public Vector4 GlassBg;
+    /// <summary>毛玻璃高光色</summary>
+    public Vector4 GlassHighlight;
+    /// <summary>毛玻璃暗部色</summary>
+    public Vector4 GlassShade;
+    /// <summary>毛玻璃边框色</summary>
+    public Vector4 GlassBorder;
+    /// <summary>毛玻璃投影色</summary>
+    public Vector4 GlassShadow;
 
     // ── 文字 ──
-    public Vector4 TextPrimary, TextSecondary, TextTertiary;
+    /// <summary>主要文字色</summary>
+    public Vector4 TextPrimary;
+    /// <summary>次要文字色</summary>
+    public Vector4 TextSecondary;
+    /// <summary>第三级文字色</summary>
+    public Vector4 TextTertiary;
 
     // ── 品牌色 ──
-    public Vector4 AccentBlue, AccentGreen, AccentRed, AccentOrange;
+    /// <summary>品牌蓝</summary>
+    public Vector4 AccentBlue;
+    /// <summary>品牌绿</summary>
+    public Vector4 AccentGreen;
+    /// <summary>品牌红</summary>
+    public Vector4 AccentRed;
+    /// <summary>品牌橙</summary>
+    public Vector4 AccentOrange;
 
     // ── 边框 ──
-    public Vector4 Border, BorderSecondary;
+    /// <summary>边框色</summary>
+    public Vector4 Border;
+    /// <summary>次要边框色</summary>
+    public Vector4 BorderSecondary;
 
     // ── 填充层级 ──
-    public Vector4 FillPrimary, FillSecondary, FillTertiary;
+    /// <summary>一级填充色</summary>
+    public Vector4 FillPrimary;
+    /// <summary>二级填充色</summary>
+    public Vector4 FillSecondary;
+    /// <summary>三级填充色</summary>
+    public Vector4 FillTertiary;
 
     // ── 开关 ──
-    public Vector4 SwitchTrackOn, SwitchTrackOff, SwitchKnob;
+    /// <summary>开关轨道开启色</summary>
+    public Vector4 SwitchTrackOn;
+    /// <summary>开关轨道关闭色</summary>
+    public Vector4 SwitchTrackOff;
+    /// <summary>开关旋钮色</summary>
+    public Vector4 SwitchKnob;
 
     // ── 滑块 ──
-    public Vector4 SliderTrack, SliderRail;
+    /// <summary>滑块轨道色</summary>
+    public Vector4 SliderTrack;
+    /// <summary>滑块滑轨色</summary>
+    public Vector4 SliderRail;
 
     // ── 侧边栏 ──
-    public Vector4 SidebarActive, SidebarActiveBorder;
+    /// <summary>侧边栏激活色</summary>
+    public Vector4 SidebarActive;
+    /// <summary>侧边栏激活边框色</summary>
+    public Vector4 SidebarActiveBorder;
 
     // ── 标签 ──
+    /// <summary>标签激活文字色</summary>
     public Vector4 TagActiveText;
 }

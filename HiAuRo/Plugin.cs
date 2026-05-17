@@ -17,6 +17,7 @@ using HiAuRo.Runtime.Intelligence;
 
 namespace HiAuRo;
 
+/// <summary>HiAuRo 插件入口</summary>
 public partial class Plugin : IDalamudPlugin
 {
     private readonly IDalamudPluginInterface _pluginInterface;
@@ -30,11 +31,13 @@ public partial class Plugin : IDalamudPlugin
     private readonly MainWindow _mainWindow;
     private readonly WindowSystem _windowSystem;
 
+    /// <summary>插件实例单例</summary>
     public static Plugin Instance { get; private set; } = null!;
 
     /// <summary>保存配置到磁盘</summary>
     public static void SaveConfig() => Instance?._pluginInterface.SavePluginConfig(Instance._config);
 
+    /// <summary>Initializes a new instance of the <see cref="Plugin"/> class</summary>
     public Plugin(IDalamudPluginInterface pluginInterface)
     {
         try
@@ -230,6 +233,7 @@ public partial class Plugin : IDalamudPlugin
             : $"[HiAuRo] 上传失败: {result.Message}");
     }
 
+    /// <summary>释放插件资源</summary>
     public void Dispose()
     {
         CombatContext.StateChanged -= OnCombatStateChanged;
@@ -444,6 +448,7 @@ public partial class Plugin : IDalamudPlugin
         });
     }
 
+    /// <summary>显示组件展示窗口</summary>
     public void ShowDemoWindow()
     {
         _uiManager?.ShowDemoWindow();
@@ -485,12 +490,14 @@ public partial class Plugin : IDalamudPlugin
 
     #region 日志
 
+    /// <summary>输出调试日志（受 DebugEnabled 开关控制）</summary>
     public void LogDebug(string message)
     {
         if (_config.DebugEnabled)
             DService.Instance().Log.Debug($"[Debug] {message}");
     }
 
+    /// <summary>输出格式化调试日志（受 DebugEnabled 开关控制）</summary>
     public void LogDebug(string messageTemplate, params object[] args)
     {
         if (_config.DebugEnabled)

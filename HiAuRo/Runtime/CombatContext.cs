@@ -10,6 +10,7 @@ namespace HiAuRo.Runtime;
 /// </summary>
 public static class CombatContext
 {
+    /// <summary>战斗状态枚举</summary>
     public enum State
     {
         /// <summary>未初始化 / 未登录</summary>
@@ -22,8 +23,10 @@ public static class CombatContext
         Zoning
     }
 
+    /// <summary>当前战斗状态</summary>
     public static State CurrentState { get; private set; } = State.Idle;
 
+    /// <summary>是否在战斗中</summary>
     public static bool IsInCombat => CurrentState == State.InCombat;
 
     /// <summary>状态变更事件</summary>
@@ -33,6 +36,7 @@ public static class CombatContext
     private static bool _wasBetweenAreas = true;
     private static bool _initialized;
 
+    /// <summary>每帧检查战斗状态变化</summary>
     public static void Check()
     {
         if (!GameState.IsLoggedIn)
@@ -71,6 +75,7 @@ public static class CombatContext
         _wasBetweenAreas = nowBetweenAreas;
     }
 
+    /// <summary>重置战斗状态</summary>
     public static void Reset()
     {
         if (CurrentState != State.Idle)

@@ -121,6 +121,7 @@ public sealed class WebUiBridge : IDisposable
         }
     }
 
+    /// <summary>释放所有 WebSocket 连接和资源</summary>
     public void Dispose()
     {
         lock (_lock)

@@ -17,6 +17,7 @@ public sealed class MainWindow : Window
     private readonly PluginConfig _config;
     private readonly Action _saveConfig;
 
+    /// <summary>Initializes a new instance of the <see cref="MainWindow"/> class</summary>
     public MainWindow(PluginConfig config, Action saveConfig) : base("HiAuRo##Main")
     {
         _config = config;
@@ -25,6 +26,7 @@ public sealed class MainWindow : Window
         IsOpen = false;
     }
 
+    /// <summary>绘制窗口</summary>
     public override void Draw()
     {
         if (ImGui.BeginTabBar("##HiAuRoTabs"))

@@ -12,12 +12,11 @@ public sealed class TriggerCondParams_检查职能 : ITriggerCondParams
     public JobsCategory CategoryType;
 }
 
-[TriggerDisplay("检查职能", "检测自身队伍职能（Tank/Healer/DPS 等）")]
-[TriggerTypeName("TriggerCondCheckPartyRole")]
-
 /// <summary>
 /// 检测自身是否属于指定队伍职能
 /// </summary>
+[TriggerDisplay("检查职能", "检测自身队伍职能（Tank/Healer/DPS 等）")]
+[TriggerTypeName("TriggerCondCheckPartyRole")]
 public sealed class TriggerCond_检查职能 : ITriggerCond
 {
     private readonly JobsCategory _categoryType;
@@ -28,6 +27,7 @@ public sealed class TriggerCond_检查职能 : ITriggerCond
         _categoryType = categoryType;
     }
 
+    /// <summary>检测自身是否属于指定队伍职能</summary>
     public bool Handle(ITriggerCondParams? condParams = null)
     {
         var jobId = Me.ClassJob;

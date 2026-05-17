@@ -5,12 +5,24 @@ using OmenTools;
 
 namespace HiAuRo.Runtime;
 
+/// <summary>模式切换管理 —— 执行轴/事实轴/无模式</summary>
 public static class ModeSwitch
 {
-    public enum Mode { None, ExecutionAxis, FactAxis }
+    /// <summary>模式枚举</summary>
+    public enum Mode
+    {
+        /// <summary>无模式</summary>
+        None,
+        /// <summary>执行轴模式</summary>
+        ExecutionAxis,
+        /// <summary>事实轴模式</summary>
+        FactAxis
+    }
 
+    /// <summary>当前模式</summary>
     public static Mode CurrentMode { get; private set; } = Mode.None;
 
+    /// <summary>设置模式</summary>
     public static void SetMode(Mode newMode)
     {
         if (CurrentMode == newMode) return;
@@ -41,8 +53,10 @@ public static class ModeSwitch
         }
     }
 
+    /// <summary>获取当前模式</summary>
     public static Mode GetMode() => CurrentMode;
 
+    /// <summary>切换事实轴开关</summary>
     public static void ToggleFactAxis()
     {
         if (CurrentMode == Mode.FactAxis)

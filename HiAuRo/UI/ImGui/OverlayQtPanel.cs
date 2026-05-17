@@ -11,10 +11,14 @@ public sealed class OverlayQtPanel : OverlayBase
 {
     private readonly Action _saveConfig;
 
+    /// <summary>不允许缩放</summary>
     protected override bool AllowResize => false;
+    /// <summary>无边距</summary>
     protected override Vector2 ContentPadding => Vector2.Zero;
+    /// <summary>内容起始偏移</summary>
     protected override Vector2 ContentOffset => new(6, 6);
 
+    /// <summary>Initializes a new instance of the <see cref="OverlayQtPanel"/> class</summary>
     public OverlayQtPanel(PluginConfig config, Action saveConfig) : base("HiAuRoQtPanel##Overlay", config)
     {
         _saveConfig = saveConfig;
@@ -27,6 +31,7 @@ public sealed class OverlayQtPanel : OverlayBase
         };
     }
 
+    /// <summary>预绘制时计算窗口尺寸</summary>
     protected override void OnPreDraw()
     {
         // 根据内容网格计算初始窗口大小
@@ -46,6 +51,7 @@ public sealed class OverlayQtPanel : OverlayBase
         ImGui.SetNextWindowSize(new Vector2(w, h), ImGuiCond.Always);
     }
 
+    /// <summary>绘制 QT 面板内容</summary>
     protected override void DrawContent()
     {
         var qts = ImGuiOverlayState.Qts;
@@ -68,8 +74,7 @@ public sealed class OverlayQtPanel : OverlayBase
             if (!visible) continue;
 
             ImGui.PushID(qt.Id);
-            TagWithClick(qt.Label, qt.Value, qt.Color);
-            if (ImGui.IsItemClicked())
+            if (TagWithClick(qt.Label, qt.Value, qt.Color))
                 HiAuRo.ACR.QTHelper.Toggle(qt.Id);
             if (!string.IsNullOrEmpty(qt.Tooltip) && ImGui.IsItemHovered())
                 ImGui.SetTooltip(qt.Tooltip);
@@ -79,7 +84,7 @@ public sealed class OverlayQtPanel : OverlayBase
         }
     }
 
-    private static void TagWithClick(string label, bool active, string? colorHex)
+    private static bool TagWithClick(string label, bool active, string? colorHex)
     {
         var activeColor = Theme.Colors.AccentGreen;
         if (!string.IsNullOrEmpty(colorHex))
@@ -103,11 +108,13 @@ public sealed class OverlayQtPanel : OverlayBase
         ImGui.PushStyleColor(ImGuiCol.ButtonHovered, color);
         ImGui.PushStyleColor(ImGuiCol.ButtonActive, color);
         ImGui.PushStyleColor(ImGuiCol.Text, textColor);
-        ImGui.Button(label, btnSize);
+        var clicked = ImGui.Button(label, btnSize);
         ImGui.PopStyleColor(4);
         ImGui.PopStyleVar(2);
+        return clicked;
     }
 
+    /// <summary>保存窗口位置</summary>
     protected override void SavePosition(Vector2 pos)
     {
         _config.OverlayQtPanelX = pos.X;

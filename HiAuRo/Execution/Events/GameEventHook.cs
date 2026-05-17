@@ -8,9 +8,12 @@ using IFramework = Dalamud.Plugin.Services.IFramework;
 
 namespace HiAuRo.Execution.Events;
 
+/// <summary>游戏事件钩子 — 通过 Hook + 回调监听游戏内事件并分发到执行轴</summary>
 public sealed class GameEventHook
 {
+    /// <summary>单例</summary>
     public static GameEventHook Instance { get; } = new();
+    /// <summary>事件触发回调</summary>
     public event Action<ITriggerCondParams>? OnEventFired;
 
     private void Fire(ITriggerCondParams p)
@@ -29,6 +32,7 @@ public sealed class GameEventHook
     private delegate long ObjectEffectDelegate(nint gameObject, ushort data1, ushort data2, long a4);
     private Hook<ObjectEffectDelegate>? _objectEffectHook;
 
+    /// <summary>初始化游戏事件钩子（注册 Hook + 回调）</summary>
     public void Init()
     {
         if (_initialized) return;
@@ -87,6 +91,7 @@ public sealed class GameEventHook
         }
     }
 
+    /// <summary>关闭游戏事件钩子（清理 Hook + 回调）</summary>
     public void Shutdown()
     {
         if (!_initialized) return;
@@ -572,7 +577,9 @@ public sealed class GameEventHook
     #endregion
 }
 
+/// <summary>聊天消息参数 — ChatMessage</summary>
 public sealed class ChatMessageParams : ITriggerCondParams
 {
+    /// <summary>消息内容</summary>
     public string Message = "";
 }

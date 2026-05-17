@@ -10,8 +10,10 @@ public static class SettingMgr
 {
     private static string? _configDir;
 
+    /// <summary>配置目录路径</summary>
     public static string ConfigDirectory => _configDir ?? string.Empty;
 
+    /// <summary>初始化设置管理器</summary>
     public static void Init(string configDir)
     {
         _configDir = configDir;
@@ -21,24 +23,28 @@ public static class SettingMgr
 
     #region 全局 / 职业设置
 
+    /// <summary>获取全局设置</summary>
     public static T GetSetting<T>() where T : class, new()
     {
         var path = GetGlobalSettingPath<T>();
         return Load<T>(path) ?? new T();
     }
 
+    /// <summary>获取职业设置</summary>
     public static T GetJobSetting<T>(string jobName) where T : class, new()
     {
         var path = GetJobSettingPath<T>(jobName);
         return Load<T>(path) ?? new T();
     }
 
+    /// <summary>保存全局设置</summary>
     public static void SaveSetting<T>(T setting) where T : class
     {
         var path = GetGlobalSettingPath<T>();
         Save(path, setting);
     }
 
+    /// <summary>保存职业设置</summary>
     public static void SaveJobSetting<T>(string jobName, T setting) where T : class
     {
         var path = GetJobSettingPath<T>(jobName);

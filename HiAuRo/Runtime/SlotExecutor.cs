@@ -11,11 +11,13 @@ public sealed class SlotExecutor
 {
     private readonly AIRunner _runner;
 
+    /// <summary>Initializes a new instance of the <see cref="SlotExecutor"/> class</summary>
     public SlotExecutor(AIRunner runner)
     {
         _runner = runner;
     }
 
+    /// <summary>执行 Slot</summary>
     public void ExecuteSlot(Slot slot)
     {
         var handler = _runner.EventHandler;

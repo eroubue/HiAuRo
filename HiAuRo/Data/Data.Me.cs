@@ -7,7 +7,7 @@ public static partial class Data
 {
     /// <summary>
     /// 玩家自身数据 —— 转发 LocalPlayerState.*
-    /// 别名 "Me" = AE 风格：Core.Me 对应 HiAuRo.Data.Me
+    /// 别名 "Me" = AE 风格：Core.Me 对应 HiAuRo.Data.Me</summary>
     public static class Me
     {
         public static IPlayerCharacter? Object => LocalPlayerState.Object;

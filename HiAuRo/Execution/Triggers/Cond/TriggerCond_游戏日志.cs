@@ -21,11 +21,13 @@ public sealed class TriggerCond_游戏日志 : ITriggerCond
 {
     private readonly string _messagePattern;
 
+    /// <param name="messagePattern">日志消息匹配模式</param>
     public TriggerCond_游戏日志(string messagePattern)
     {
         _messagePattern = messagePattern;
     }
 
+    /// <summary>检测游戏日志中是否出现指定消息</summary>
     public bool Handle(ITriggerCondParams? condParams = null)
     {
         // 需要 ChatLog Hook，暂未实现

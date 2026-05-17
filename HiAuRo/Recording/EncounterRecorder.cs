@@ -7,8 +7,10 @@ using OmenTools.Dalamud.Services.ObjectTable.Abstractions.ObjectKinds;
 
 namespace HiAuRo.Recording;
 
+/// <summary>副本录制器 — 录制战斗事件用于调试/可视化回放</summary>
 public sealed class EncounterRecorder
 {
+    /// <summary>录制器单例</summary>
     public static EncounterRecorder Instance { get; } = new();
 
     private readonly CombatClock _clock = new();
@@ -23,6 +25,7 @@ public sealed class EncounterRecorder
 
     #region 生命周期
 
+    /// <summary>初始化录制器</summary>
     public void Init()
     {
         if (_initialized) return;
@@ -39,6 +42,7 @@ public sealed class EncounterRecorder
         _bossNpcIds.Clear();
     }
 
+    /// <summary>关闭录制器</summary>
     public void Shutdown()
     {
         if (!_initialized) return;
@@ -193,13 +197,16 @@ public sealed class EncounterRecorder
 
     #region Public properties (for ImGui panel)
 
+    /// <summary>是否正在录制</summary>
     public bool IsRecording
     {
         get { lock (_lock) { return _current != null; } }
     }
 
+    /// <summary>已录制秒数</summary>
     public int ElapsedSeconds => (int)(_clock.Now / 1000);
 
+    /// <summary>当前录制文件名</summary>
     public string CurrentFileName
     {
         get
@@ -214,6 +221,7 @@ public sealed class EncounterRecorder
         }
     }
 
+    /// <summary>获取录制文件列表</summary>
     public (string Name, string Path)[] GetRecordFiles()
     {
         if (!Directory.Exists(_saveDir)) return [];

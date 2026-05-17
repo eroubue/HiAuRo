@@ -3,11 +3,11 @@ using FFXIVClientStructs.FFXIV.Client.Game;
 
 namespace HiAuRo.Execution.Triggers.Action;
 
-[TriggerDisplay("吃药", "使用指定物品")]
-[TriggerTypeName("TriggerActionUsePotion")]
 /// <summary>
 /// 使用消耗品（爆发药/回复药）
 /// </summary>
+[TriggerDisplay("吃药", "使用指定物品")]
+[TriggerTypeName("TriggerActionUsePotion")]
 public sealed class TriggerAction_吃药 : ITriggerAction
 {
     private readonly uint _itemId;
@@ -18,6 +18,7 @@ public sealed class TriggerAction_吃药 : ITriggerAction
         _itemId = itemId;
     }
 
+    /// <summary>使用消耗品</summary>
     public bool Handle()
     {
         OmenTools.OmenService.UseActionManager.Instance().UseAction(

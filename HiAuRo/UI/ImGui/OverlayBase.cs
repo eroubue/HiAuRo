@@ -10,6 +10,7 @@ namespace HiAuRo.ImGuiLib;
 /// </summary>
 public abstract class OverlayBase : Window
 {
+    /// <summary>插件配置</summary>
     protected readonly PluginConfig _config;
     private bool _isDragging;
     private bool _isResizing;
@@ -22,9 +23,12 @@ public abstract class OverlayBase : Window
     [Flags]
     private enum ResizeEdge { None = 0, Left = 1, Right = 2, Top = 4, Bottom = 8 }
 
+    /// <summary>是否允许缩放</summary>
     protected virtual bool AllowResize => true;
+    /// <summary>内容边距</summary>
     protected virtual Vector2 ContentPadding => Theme.PaddingSM;
 
+    /// <summary>Initializes a new instance of the <see cref="OverlayBase"/> class</summary>
     protected OverlayBase(string name, PluginConfig config) : base(name)
     {
         _config = config;
@@ -39,6 +43,7 @@ public abstract class OverlayBase : Window
         ShowCloseButton = false;
     }
 
+    /// <summary>绘制内容</summary>
     protected abstract void DrawContent();
 
     /// <summary>网格内容起始偏移（子类可覆写，默认 0）</summary>
@@ -60,6 +65,7 @@ public abstract class OverlayBase : Window
         }
     }
 
+    /// <summary>预绘制</summary>
     public override void PreDraw()
     {
         // 子类在下一帧 Begin 前设定尺寸
@@ -72,14 +78,16 @@ public abstract class OverlayBase : Window
         ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, ContentPadding);
     }
 
+    /// <summary>后绘制</summary>
     public override void PostDraw()
     {
         ImGui.PopStyleVar(2);
     }
 
-    /// <summary>在 PreDraw 中设置窗口尺寸（SetNextWindowSize）</summary>
+    /// <summary>在 PreDraw 中设置窗口尺寸</summary>
     protected virtual void OnPreDraw() { }
 
+    /// <summary>绘制窗口</summary>
     public override void Draw()
     {
         HandleInteraction();
@@ -156,14 +164,18 @@ public abstract class OverlayBase : Window
                       && mousePos.Y >= winPos.Y && mousePos.Y <= winPos.Y + winSize.Y;
             if (!inside) return;
 
-            if (_resizeEdge != ResizeEdge.None && ImGui.IsMouseClicked(ImGuiMouseButton.Left))
+            // 用 IsMouseDragging 启动拖拽/缩放，避免 IsMouseClicked 与子控件按钮点击冲突
+            // !IsAnyItemActive 防止与 Slider/拖拽控件 等已捕获鼠标的 ImGui 控件冲突
+            if (_resizeEdge != ResizeEdge.None && ImGui.IsMouseDragging(ImGuiMouseButton.Left)
+                && !ImGui.IsAnyItemActive())
             {
                 _isResizing = true;
                 _dragStartMouse = mousePos;
                 _dragStartPos = winPos;
                 _dragStartSize = winSize;
             }
-            else if (_resizeEdge == ResizeEdge.None && ImGui.IsMouseClicked(ImGuiMouseButton.Left))
+            else if (_resizeEdge == ResizeEdge.None && ImGui.IsMouseDragging(ImGuiMouseButton.Left)
+                && !ImGui.IsAnyItemActive())
             {
                 _isDragging = true;
                 _dragStartMouse = mousePos;
@@ -212,7 +224,7 @@ public abstract class OverlayBase : Window
 
         if (_isDragging)
         {
-            if (ImGui.IsMouseDragging(ImGuiMouseButton.Left))
+            if (ImGui.IsMouseDown(ImGuiMouseButton.Left))
                 ImGui.SetWindowPos(_dragStartPos + (mousePos - _dragStartMouse));
             else
             {
@@ -222,5 +234,6 @@ public abstract class OverlayBase : Window
         }
     }
 
+    /// <summary>保存窗口位置</summary>
     protected abstract void SavePosition(Vector2 pos);
 }

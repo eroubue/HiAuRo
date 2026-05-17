@@ -10,11 +10,16 @@ namespace HiAuRo.FactAxis;
 /// </summary>
 public sealed class FactTimeline
 {
+    /// <summary>事实轴单例</summary>
     public static FactTimeline Instance { get; } = new();
 
+    /// <summary>时间线数据</summary>
     public FactTimelineData? Data { get; private set; }
+    /// <summary>是否已初始化</summary>
     public bool Initialized { get; private set; }
+    /// <summary>是否在运行</summary>
     public bool IsRunning { get; private set; }
+    /// <summary>运行时状态</summary>
     public FactState State { get; } = new();
 
     /// <summary>阶段切换事件（phaseId, phaseName）。EnterPhase 和 TrySwitchBranch 中触发。</summary>
@@ -43,6 +48,7 @@ public sealed class FactTimeline
 
     #region 生命周期
 
+    /// <summary>初始化事实轴</summary>
     public void Init()
     {
         if (Initialized) return;
@@ -50,6 +56,7 @@ public sealed class FactTimeline
         AutoLoadTimeline();
     }
 
+    /// <summary>启动事实轴时间线</summary>
     public void Start()
     {
         if (!Initialized || Data == null) return;
@@ -69,6 +76,7 @@ public sealed class FactTimeline
         DService.Instance().Log.Information($"[FactAxis] 启动 (timebase): {Data.Name}");
     }
 
+    /// <summary>停止事实轴时间线</summary>
     public void Stop()
     {
         if (!IsRunning) return;
@@ -77,6 +85,7 @@ public sealed class FactTimeline
         DService.Instance().Log.Information($"[FactAxis] 停止: {State.PhaseName}, 战斗 {FightNow:F1}s");
     }
 
+    /// <summary>完全关闭事实轴</summary>
     public void Shutdown()
     {
         GameEventHook.Instance.OnEventFired -= OnGameEvent;
@@ -294,14 +303,18 @@ public sealed class FactTimeline
 
     #region 变量
 
+    /// <summary>获取变量值</summary>
     public bool GetVariable(string name) => _variables.TryGetValue(name, out var v) && v;
+    /// <summary>设置变量值</summary>
     public void SetVariable(string name, bool value) => _variables[name] = value;
+    /// <summary>切换变量值</summary>
     public void ToggleVariable(string name) => _variables[name] = !GetVariable(name);
 
     #endregion
 
     #region 每帧更新
 
+    /// <summary>每帧更新事实轴时间线</summary>
     public FactState Update(int battleTimeMs)
     {
         if (!Initialized || Data == null || !IsRunning)
@@ -619,6 +632,7 @@ public sealed class FactTimeline
 
     #region 加载
 
+    /// <summary>从 JSON 字符串加载时间线</summary>
     public bool LoadFromJson(string json)
     {
         try
@@ -637,12 +651,14 @@ public sealed class FactTimeline
         }
     }
 
+    /// <summary>从文件加载时间线</summary>
     public bool LoadFromFile(string path)
     {
         if (!File.Exists(path)) return false;
         return LoadFromJson(File.ReadAllText(path));
     }
 
+    /// <summary>自动加载当前副本的时间线</summary>
     public void AutoLoadTimeline()
     {
         var tid = OmenTools.OmenService.GameState.TerritoryType;

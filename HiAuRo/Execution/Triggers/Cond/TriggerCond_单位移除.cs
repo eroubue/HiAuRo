@@ -22,11 +22,13 @@ public sealed class TriggerCond_单位移除 : ITriggerCond
 {
     private readonly uint _dataId;
 
+    /// <param name="dataId">单位 DataId</param>
     public TriggerCond_单位移除(uint dataId)
     {
         _dataId = dataId;
     }
 
+    /// <summary>检测指定 DataId 的单位是否已移除</summary>
     public bool Handle(ITriggerCondParams? condParams = null)
     {
         foreach (var obj in Objects.All)

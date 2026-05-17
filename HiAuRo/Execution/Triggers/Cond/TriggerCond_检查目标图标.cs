@@ -22,11 +22,13 @@ public sealed class TriggerCond_检查目标图标 : ITriggerCond
 {
     private readonly uint _iconId;
 
+    /// <param name="iconId">图标 ID</param>
     public TriggerCond_检查目标图标(uint iconId)
     {
         _iconId = iconId;
     }
 
+    /// <summary>检测目标是否有指定图标</summary>
     public bool Handle(ITriggerCondParams? condParams = null)
     {
         // 先查当前目标

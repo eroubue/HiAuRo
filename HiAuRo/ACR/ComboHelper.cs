@@ -41,7 +41,7 @@ public static class ComboHelper
     public static bool ComboInWindow(uint spellId, int windowMs = 15000)
         => LastComboSpellId == spellId && ComboTimer > 0;
 
-    /// <summary>连击是否即将过期（< 500ms，基于游戏原生计时器）</summary>
+    /// <summary>连击是否即将过期</summary>
     public static bool ComboAboutToExpire(uint spellId, int withinMs = 500)
         => LastComboSpellId == spellId && ComboTimer <= withinMs / 1000f;
 }

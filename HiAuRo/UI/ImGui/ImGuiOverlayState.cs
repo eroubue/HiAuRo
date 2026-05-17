@@ -9,8 +9,11 @@ namespace HiAuRo.ImGuiLib;
 /// </summary>
 public static class ImGuiOverlayState
 {
+    /// <summary>是否运行中</summary>
     public static bool IsRunning;
+    /// <summary>是否已暂停</summary>
     public static bool IsPaused;
+    /// <summary>当前 ACR 名称</summary>
     public static string AcrName { get; set; } = "无ACR";
 
     /// <summary>ACR 声明的 UI 控件列表</summary>

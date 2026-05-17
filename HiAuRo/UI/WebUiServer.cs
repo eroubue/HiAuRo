@@ -16,12 +16,14 @@ public sealed class WebUiServer
     /// <summary>实际监听的端口（5678 或 5679）</summary>
     public int Port { get; private set; } = 5678;
 
+    /// <summary>Initializes a new instance of the <see cref="WebUiServer"/> class</summary>
     public WebUiServer(string webRoot, WebUiBridge bridge)
     {
         _webRoot = webRoot;
         _bridge = bridge;
     }
 
+    /// <summary>启动服务器</summary>
     public void Start()
     {
         _cts = new CancellationTokenSource();
@@ -46,6 +48,7 @@ public sealed class WebUiServer
         _ = Task.Run(() => ListenLoop(_cts.Token));
     }
 
+    /// <summary>停止服务器</summary>
     public void Stop()
     {
         _cts?.Cancel();

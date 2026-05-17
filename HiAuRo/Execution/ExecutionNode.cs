@@ -8,10 +8,15 @@ namespace HiAuRo.Execution;
 /// </summary>
 public abstract class TriggerNode
 {
+    /// <summary>节点 ID</summary>
     public int Id { get; set; }
+    /// <summary>显示名称</summary>
     public string DisplayName { get; set; } = "";
+    /// <summary>备注</summary>
     public string Remark { get; set; } = "";
+    /// <summary>标签</summary>
     public string Tag { get; set; } = "";
+    /// <summary>是否启用</summary>
     public bool Enable { get; set; } = true;
 
     /// <summary>异步求值。Task 完成 = 节点终结（对齐 AE）</summary>
@@ -22,12 +27,14 @@ public abstract class TriggerNode
         return await OnExecute(ctx);
     }
 
+    /// <summary>子类实现的异步求值逻辑</summary>
     protected abstract Task<bool> OnExecute(EvalContext ctx);
 }
 
 /// <summary>组合节点</summary>
 public abstract class TriggerCompositeNode : TriggerNode
 {
+    /// <summary>子节点列表</summary>
     public List<TriggerNode> Childs { get; set; } = [];
 }
 
@@ -42,8 +49,10 @@ public abstract class TriggerLeafNode : TriggerNode { }
 /// </summary>
 public sealed class TreeSequence : TriggerCompositeNode
 {
+    /// <summary>是否忽略子节点失败结果</summary>
     public bool IgnoreNodeResult { get; set; }
 
+    /// <summary>依次执行子节点，支持短路</summary>
     protected override async Task<bool> OnExecute(EvalContext ctx)
     {
         foreach (var child in Childs)
@@ -66,8 +75,10 @@ public sealed class TreeSequence : TriggerCompositeNode
 /// </summary>
 public sealed class TreeParallel : TriggerCompositeNode
 {
+    /// <summary>竞赛模式：最先完成的胜出</summary>
     public bool AnyReturn { get; set; }
 
+    /// <summary>并行执行所有子节点</summary>
     protected override async Task<bool> OnExecute(EvalContext ctx)
     {
         if (AnyReturn)
@@ -93,6 +104,7 @@ public sealed class TreeParallel : TriggerCompositeNode
 /// </summary>
 public sealed class TreeSelect : TriggerCompositeNode
 {
+    /// <summary>依次尝试子节点，第一个成功返回</summary>
     protected override async Task<bool> OnExecute(EvalContext ctx)
     {
         foreach (var child in Childs)
@@ -110,8 +122,10 @@ public sealed class TreeSelect : TriggerCompositeNode
 /// </summary>
 public sealed class TreeLoop : TriggerCompositeNode
 {
+    /// <summary>循环次数</summary>
     public int Times { get; set; } = 1;
 
+    /// <summary>重复执行子节点 Times 次</summary>
     protected override async Task<bool> OnExecute(EvalContext ctx)
     {
         for (int i = 0; i < Times; i++)
@@ -133,7 +147,9 @@ public sealed class TreeLoop : TriggerCompositeNode
 /// </summary>
 public sealed class TreeScriptNode : TriggerLeafNode
 {
+    /// <summary>是否仅检查（不等待）</summary>
     public bool OnlyCheck { get; set; }
+    /// <summary>脚本内容</summary>
     public string Script { get; set; } = "";
 
     /// <summary>
@@ -143,6 +159,7 @@ public sealed class TreeScriptNode : TriggerLeafNode
 
     private ITriggerScript? _compiled;
 
+    /// <summary>编译并执行脚本，OnlyCheck 时立即返回，否则进入等待</summary>
     protected override async Task<bool> OnExecute(EvalContext ctx)
     {
         if (string.IsNullOrWhiteSpace(Script)) return true;
@@ -188,7 +205,14 @@ public sealed class TreeScriptNode : TriggerLeafNode
 
 #region 叶子节点
 
-public enum CondLogicType { And = 0, Or = 1 }
+/// <summary>条件逻辑类型</summary>
+public enum CondLogicType
+{
+    /// <summary>与（所有条件都必须满足）</summary>
+    And = 0,
+    /// <summary>或（任一条件满足即可）</summary>
+    Or = 1
+}
 
 /// <summary>
 /// 条件节点
@@ -197,11 +221,16 @@ public enum CondLogicType { And = 0, Or = 1 }
 /// </summary>
 public sealed class TreeCondNode : TriggerLeafNode
 {
+    /// <summary>触发条件列表</summary>
     public List<ITriggerCond> TriggerConds { get; set; } = [];
+    /// <summary>条件逻辑类型（And/Or）</summary>
     public CondLogicType CondLogicType { get; set; } = CondLogicType.And;
+    /// <summary>是否只检查一次</summary>
     public bool CheckOnce { get; set; }
+    /// <summary>是否反转条件结果</summary>
     public bool ReverseResult { get; set; }
 
+    /// <summary>CheckOnce 立即检查，否则等待条件满足</summary>
     protected override async Task<bool> OnExecute(EvalContext ctx)
     {
         if (CheckOnce)
@@ -245,8 +274,10 @@ public sealed class TreeCondNode : TriggerLeafNode
 /// <summary>动作节点 — 总是成功</summary>
 public sealed class TreeActionNode : TriggerLeafNode
 {
+    /// <summary>触发动作列表</summary>
     public List<ITriggerAction> TriggerActions { get; set; } = [];
 
+    /// <summary>依次执行所有触发动作</summary>
     protected override Task<bool> OnExecute(EvalContext ctx)
     {
         foreach (var action in TriggerActions)
@@ -261,8 +292,10 @@ public sealed class TreeActionNode : TriggerLeafNode
 /// <summary>延迟节点 — await Coroutine.DelayAsync</summary>
 public sealed class TreeDelayNode : TriggerLeafNode
 {
+    /// <summary>延迟秒数</summary>
     public double Delay { get; set; }
 
+    /// <summary>异步等待延迟时间</summary>
     protected override async Task<bool> OnExecute(EvalContext ctx)
     {
         if (ctx.IsDisposed) return false;
@@ -274,7 +307,9 @@ public sealed class TreeDelayNode : TriggerLeafNode
 /// <summary>打印调试信息</summary>
 public sealed class TreePrintDebugInfoNode : TriggerLeafNode
 {
+    /// <summary>调试信息内容</summary>
     public string Info { get; set; } = "";
+    /// <summary>输出调试日志</summary>
     protected override Task<bool> OnExecute(EvalContext ctx)
     {
         DService.Instance().Log.Information($"[TriggerNode] {Info}");
@@ -285,7 +320,9 @@ public sealed class TreePrintDebugInfoNode : TriggerLeafNode
 /// <summary>清除等待条件</summary>
 public sealed class TreeClearWaitNode : TriggerLeafNode
 {
+    /// <summary>是否仅清除前置节点</summary>
     public bool OnlyPreNode { get; set; } = true;
+    /// <summary>清除操作（当前为 no-op）</summary>
     protected override Task<bool> OnExecute(EvalContext ctx) => Task.FromResult(true);
 }
 
@@ -293,18 +330,25 @@ public sealed class TreeClearWaitNode : TriggerLeafNode
 
 #region 上下文
 
+/// <summary>求值上下文 — 传递执行轴运行时状态</summary>
 public sealed class EvalContext
 {
+    /// <summary>是否已释放</summary>
     public bool IsDisposed { get; set; }
+    /// <summary>战斗时间（毫秒）</summary>
     public int BattleTimeMs { get; set; }
+    /// <summary>变量字典</summary>
     public Dictionary<string, int> Variables { get; } = [];
 
+    /// <summary>获取变量值</summary>
     public int GetVariable(string name) =>
         Variables.TryGetValue(name, out var v) ? v : 0;
 
+    /// <summary>设置变量值</summary>
     public void SetVariable(string name, int value) =>
         Variables[name] = value;
 
+    /// <summary>重置上下文状态</summary>
     public void Reset()
     {
         IsDisposed = false;

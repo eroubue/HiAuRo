@@ -3,11 +3,11 @@ using HiAuRo.Runtime;
 
 namespace HiAuRo.Execution.Triggers.Action;
 
-[TriggerDisplay("设置Rotation", "切换当前Rotation到指定职业")]
-[TriggerTypeName("TriggerActionSetRotation")]
 /// <summary>
 /// 切换当前 ACR Rotation（停当前 Rotation → 启动新 Rotation）
 /// </summary>
+[TriggerDisplay("设置Rotation", "切换当前Rotation到指定职业")]
+[TriggerTypeName("TriggerActionSetRotation")]
 public sealed class TriggerAction_设置Rotation : ITriggerAction
 {
     private readonly uint _targetJobId;
@@ -18,6 +18,7 @@ public sealed class TriggerAction_设置Rotation : ITriggerAction
         _targetJobId = targetJobId;
     }
 
+    /// <summary>切换当前 ACR Rotation</summary>
     public bool Handle()
     {
         // 通知 ACRLifecycle 切换职业（会触发 on/off 事件）

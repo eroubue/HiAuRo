@@ -5,6 +5,7 @@ namespace HiAuRo.Runtime.Intelligence;
 /// </summary>
 public sealed class IntelligenceEngine
 {
+    /// <summary>智能层单例</summary>
     public static IntelligenceEngine Instance { get; } = new();
 
     /// <summary>当前激活的需求（已释放待执行）</summary>

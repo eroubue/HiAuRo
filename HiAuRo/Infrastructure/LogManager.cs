@@ -5,10 +5,16 @@ using HiAuRo.ACR;
 
 namespace HiAuRo.Infrastructure;
 
+/// <summary>日志条目记录</summary>
+/// <param name="Timestamp">时间戳</param>
+/// <param name="Type">类型</param>
+/// <param name="Content">内容</param>
 public record LogEntry(DateTime Timestamp, string Type, string Content);
 
+/// <summary>日志管理器 —— 内存环形缓冲 + 文件持久化</summary>
 public sealed class LogManager : IDisposable
 {
+    /// <summary>日志管理器单例</summary>
     public static LogManager Instance { get; } = new();
 
     private const int MaxEntries = 5000;
@@ -32,6 +38,7 @@ public sealed class LogManager : IDisposable
         "CastTime", "PosX", "PosY", "PosZ", "Message", "SourceName", "YellMsg", "Name"
     };
 
+    /// <summary>初始化日志管理器</summary>
     public void Init(string configDir)
     {
         // 先释放旧的 writer，防止泄露
@@ -61,6 +68,7 @@ public sealed class LogManager : IDisposable
         }
     }
 
+    /// <summary>记录触发条件事件日志</summary>
     public void Log(ITriggerCondParams? p)
     {
         if (p == null) return;
@@ -99,17 +107,20 @@ public sealed class LogManager : IDisposable
         }
     }
 
+    /// <summary>获取所有日志条目</summary>
     public IReadOnlyList<LogEntry> GetEntries()
     {
         return _entries.ToArray();
     }
 
+    /// <summary>清空日志</summary>
     public void Clear()
     {
         while (_entries.TryDequeue(out _)) { }
         _sequence = 0;
     }
 
+    /// <summary>释放日志文件资源</summary>
     public void Dispose()
     {
         try

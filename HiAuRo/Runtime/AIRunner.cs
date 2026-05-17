@@ -14,14 +14,22 @@ namespace HiAuRo.Runtime;
 /// </summary>
 public sealed class AIRunner
 {
+    /// <summary>当前 ACR 入口</summary>
     public IRotationEntry? CurrentEntry { get; private set; }
+    /// <summary>当前 Rotation</summary>
     public Rotation? CurrentRotation { get; private set; }
+    /// <summary>AI 循环实例</summary>
     public IAILoop? AiLoop { get; private set; }
+    /// <summary>事件处理器</summary>
     public IRotationEventHandler? EventHandler => CurrentRotation?.EventHandler;
 
+    /// <summary>技能队列</summary>
     public SpellQueue SpellQueue { get; } = new();
+    /// <summary>起手管理器</summary>
     public OpenerMgr OpenerMgr { get; } = new();
+    /// <summary>Slot 执行器</summary>
     public SlotExecutor SlotExecutor { get; private set; }
+    /// <summary>倒计时处理器</summary>
     public CountDownHandler CountDownHandler { get; } = new();
 
     private int _battleTimeMs;
@@ -46,6 +54,7 @@ public sealed class AIRunner
     private CombatContext.State _prevState; // 用于检测战斗状态切换
     private uint _lastTerritoryId; // 用于检测切图
 
+    /// <summary>Initializes a new instance of the <see cref="AIRunner"/> class</summary>
     public AIRunner()
     {
         SlotExecutor = new SlotExecutor(this);
@@ -447,27 +456,7 @@ public sealed class AIRunner
                         }
                     }
                     break;
-
-                case 需求动作 oldDemand:
-                    // 兼容旧格式
-                    if (!_processedHealEventIds.Contains(ev.Id) && oldDemand.需求治疗 > 0 && flags.TeamHealing)
-                    {
-                        _processedHealEventIds.Add(ev.Id);
-                        var outHeal = DecisionEngine.Instance.计算治疗(oldDemand.需求治疗);
-                        执行分配技能(outHeal);
-                    }
-                    if (!_processedMitEventIds.Contains(ev.Id) && oldDemand.需求减伤 > 0 && (flags.TeamMitigation || flags.PersonalMitigation))
-                    {
-                        _processedMitEventIds.Add(ev.Id);
-                        var outMit = DecisionEngine.Instance.计算减伤(oldDemand.需求减伤);
-                        foreach (var alloc in outMit.减伤分配)
-                        {
-                            int durSec = 10;
-                            long damageMs = (long)((ev.Time + (ev.Duration ?? 0)) * 1000);
-                            _pendingMits.Add(new PendingMitigation(ev.Id, alloc.技能ID, alloc.技能名称, damageMs - durSec * 1000, damageMs));
-                        }
-                    }
-                    break;
+                
             }
         }
     }

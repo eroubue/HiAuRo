@@ -63,10 +63,22 @@ public static class ComponentLibrary
     // 图标集 (DrawList 矢量绘制)
     // ═══════════════════════════════════════════════════
 
+    /// <summary>图标类型</summary>
     public enum IconType
     {
-        Play, Stop, Pause, Save,
-        ChevronDown, ChevronUp,
+        /// <summary>播放</summary>
+        Play,
+        /// <summary>停止</summary>
+        Stop,
+        /// <summary>暂停</summary>
+        Pause,
+        /// <summary>保存</summary>
+        Save,
+        /// <summary>向下箭头</summary>
+        ChevronDown,
+        /// <summary>向上箭头</summary>
+        ChevronUp,
+        /// <summary>关闭</summary>
         Close
     }
 
@@ -126,7 +138,16 @@ public static class ComponentLibrary
     // 图标按钮 (AntdUI Icon Button 风格)
     // ═══════════════════════════════════════════════════
 
-    public enum IconButtonStyle { Fill, Outline, Text }
+    /// <summary>图标按钮样式</summary>
+    public enum IconButtonStyle
+    {
+        /// <summary>填充样式</summary>
+        Fill,
+        /// <summary>边框样式</summary>
+        Outline,
+        /// <summary>文字样式</summary>
+        Text
+    }
 
     /// <summary>
     /// AntdUI 风格图标按钮 — 大尺寸、大圆角、清晰图标
@@ -191,31 +212,31 @@ public static class ComponentLibrary
     // Ant Design 5 按钮变体
     // ═══════════════════════════════════════════════════
 
-    // ── Primary 主按钮 (蓝色填充) ──
+    /// <summary>主按钮（蓝色填充）</summary>
     public static bool PrimaryButton(string label, Vector2? size = null)
         => FillButton(label, Theme.Colors.AccentBlue, size);
 
-    // ── Danger 危险按钮 (红色填充) ──
+    /// <summary>危险按钮（红色填充）</summary>
     public static bool DangerButton(string label, Vector2? size = null)
         => FillButton(label, Theme.Colors.AccentRed, size);
 
-    // ── Success 成功按钮 (绿色填充) ──
+    /// <summary>成功按钮（绿色填充）</summary>
     public static bool SuccessButton(string label, Vector2? size = null)
         => FillButton(label, Theme.Colors.AccentGreen, size);
 
-    // ── Warning 警告按钮 (橙色填充) ──
+    /// <summary>警告按钮（橙色填充）</summary>
     public static bool WarningButton(string label, Vector2? size = null)
         => FillButton(label, Theme.Colors.AccentOrange, size);
 
-    // ── Default 默认按钮 (白底灰边) ──
+    /// <summary>默认按钮（白底灰边）</summary>
     public static bool DefaultButton(string label, Vector2? size = null)
         => OutlineButton(label, Theme.Colors.Border, Theme.Colors.TextPrimary, size);
 
-    // ── Text 文字按钮 (透明背景) ──
+    /// <summary>文字按钮（透明背景）</summary>
     public static bool TextButton(string label, Vector2? size = null)
         => GhostButton(label, Theme.Colors.AccentBlue, size);
 
-    // ── Link 链接按钮 ──
+    /// <summary>链接按钮</summary>
     public static bool LinkButton(string label, Vector2? size = null)
     {
         ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, Theme.RadiusSM);
@@ -293,13 +314,15 @@ public static class ComponentLibrary
         return clicked;
     }
 
-    // ── 旧版兼容 ──
+    /// <summary>旧版 Button（等同于 PrimaryButton）</summary>
     public static bool Button(string label, Vector2? size = null, bool disabled = false)
         => PrimaryButton(label, size);
 
+    /// <summary>自定义颜色填充按钮</summary>
     public static bool AccentButton(string label, Vector4 color, Vector2? size = null)
         => FillButton(label, color, size);
 
+    /// <summary>旧版 OutlineButton（等同于 DefaultButton）</summary>
     public static bool OutlineButton(string label, Vector2? size = null)
         => DefaultButton(label, size);
 
@@ -384,6 +407,7 @@ public static class ComponentLibrary
     // 分割竖线
     // ═══════════════════════════════════════════════════
 
+    /// <summary>分割竖线</summary>
     public static void VSplit()
     {
         ImGui.TextColored(Theme.Colors.BorderSecondary, "│");
@@ -393,6 +417,7 @@ public static class ComponentLibrary
     // 开关 (AntdUI Switch 风格)
     // ═══════════════════════════════════════════════════
 
+    /// <summary>开关控件</summary>
     public static bool Switch(string id, ref bool value)
     {
         ImGui.PushStyleColor(ImGuiCol.FrameBg, value ? Theme.Colors.SwitchTrackOn : Theme.Colors.SwitchTrackOff);
@@ -407,6 +432,7 @@ public static class ComponentLibrary
         return changed;
     }
 
+    /// <summary>带标签的开关控件</summary>
     public static bool Switch(string id, string label, ref bool value)
     {
         ImGui.AlignTextToFramePadding();
@@ -420,6 +446,7 @@ public static class ComponentLibrary
     // 滑块
     // ═══════════════════════════════════════════════════
 
+    /// <summary>滑块控件</summary>
     public static bool Slider(string id, string label, ref float value, float min, float max, string format = "%.1f")
     {
         ImGui.PushStyleColor(ImGuiCol.FrameBg, Theme.Colors.SliderRail);
@@ -434,6 +461,7 @@ public static class ComponentLibrary
         return changed;
     }
 
+    /// <summary>整数滑块控件</summary>
     public static bool SliderInt(string id, string label, ref int value, int min, int max)
     {
         ImGui.PushStyleColor(ImGuiCol.FrameBg, Theme.Colors.SliderRail);
@@ -452,6 +480,7 @@ public static class ComponentLibrary
     // 下拉选择器
     // ═══════════════════════════════════════════════════
 
+    /// <summary>下拉选择器</summary>
     public static bool Select(string id, string label, ref int selectedIndex, string[] options)
     {
         ImGui.PushStyleColor(ImGuiCol.FrameBg, Theme.Colors.FillSecondary);
@@ -471,6 +500,7 @@ public static class ComponentLibrary
     // 标签页
     // ═══════════════════════════════════════════════════
 
+    /// <summary>标签页控件</summary>
     public static bool Tabs(string id, ref int activeTab, string[] tabNames)
     {
         var changed = false;
@@ -496,6 +526,7 @@ public static class ComponentLibrary
 
     private static int _cardCounter;
 
+    /// <summary>开始卡片容器</summary>
     public static void CardBegin(string? title = null, Vector4? bgColor = null)
     {
         var cardId = title ?? $"card_{Interlocked.Increment(ref _cardCounter)}";
@@ -513,6 +544,7 @@ public static class ComponentLibrary
         }
     }
 
+    /// <summary>结束卡片容器</summary>
     public static void CardEnd()
     {
         ImGui.EndChild();
@@ -524,6 +556,7 @@ public static class ComponentLibrary
     // 标签芯片 (Tag)
     // ═══════════════════════════════════════════════════
 
+    /// <summary>标签芯片</summary>
     public static void Tag(string label, bool active, Vector4? activeColor = null, Vector4? inactiveColor = null)
     {
         var color = active ? (activeColor ?? Theme.Colors.AccentGreen) : (inactiveColor ?? Theme.Colors.FillSecondary);
@@ -543,6 +576,7 @@ public static class ComponentLibrary
     // 分割线
     // ═══════════════════════════════════════════════════
 
+    /// <summary>分割线</summary>
     public static void Divider()
     {
         ImGui.Spacing();
@@ -556,6 +590,7 @@ public static class ComponentLibrary
     // Badge 徽标
     // ═══════════════════════════════════════════════════
 
+    /// <summary>徽标</summary>
     public static void Badge(bool active, Vector4? activeColor = null)
     {
         var color = active ? (activeColor ?? Theme.Colors.AccentGreen) : Theme.Colors.TextTertiary;
@@ -571,6 +606,7 @@ public static class ComponentLibrary
     // 数字输入
     // ═══════════════════════════════════════════════════
 
+    /// <summary>数字输入框</summary>
     public static bool InputNumber(string id, string label, ref int value, int step = 1, int stepFast = 10)
     {
         ImGui.PushStyleColor(ImGuiCol.FrameBg, Theme.Colors.FillSecondary);
@@ -588,6 +624,7 @@ public static class ComponentLibrary
     // 文本标签
     // ═══════════════════════════════════════════════════
 
+    /// <summary>文本标签</summary>
     public static void Label(string text)
     {
         ImGui.TextColored(Theme.Colors.TextPrimary, text);

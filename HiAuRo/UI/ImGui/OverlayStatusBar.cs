@@ -18,7 +18,9 @@ public sealed class OverlayStatusBar : OverlayBase
     private int _tabBarVersion;
     private bool _wasExpanded;
 
+    /// <summary>无边距</summary>
     protected override Vector2 ContentPadding => Vector2.Zero;
+    /// <summary>内容起始偏移</summary>
     protected override Vector2 ContentOffset => new(12, 10);
 
     private static readonly Vector2 _minExpandedSize = new(320, 180);
@@ -29,6 +31,7 @@ public sealed class OverlayStatusBar : OverlayBase
         new("__hk_setup__", "tab", null, "热键设置", null),
     ];
 
+    /// <summary>Initializes a new instance of the <see cref="OverlayStatusBar"/> class</summary>
     public OverlayStatusBar(PluginConfig config, Action saveConfig) : base("HiAuRoStatusBar##Overlay", config)
     {
         _saveConfig = saveConfig;
@@ -41,6 +44,7 @@ public sealed class OverlayStatusBar : OverlayBase
         };
     }
 
+    /// <summary>预绘制时设置窗口尺寸</summary>
     protected override void OnPreDraw()
     {
         if (!_config.OverlayStatusBarExpanded)
@@ -59,6 +63,7 @@ public sealed class OverlayStatusBar : OverlayBase
         }
     }
 
+    /// <summary>绘制状态栏内容</summary>
     protected override void DrawContent()
     {
         var expanded = _config.OverlayStatusBarExpanded;
@@ -259,6 +264,7 @@ public sealed class OverlayStatusBar : OverlayBase
         }
     }
 
+    /// <summary>保存窗口位置</summary>
     protected override void SavePosition(Vector2 pos)
     {
         _config.OverlayStatusBarX = pos.X;

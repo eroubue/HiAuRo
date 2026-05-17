@@ -15,6 +15,7 @@ namespace HiAuRo.Runtime.Intelligence;
 /// </summary>
 public sealed class MovementExecutor
 {
+    /// <summary>移动执行器单例</summary>
     public static MovementExecutor Instance { get; } = new();
     private MovementExecutor() { }
 
@@ -29,6 +30,7 @@ public sealed class MovementExecutor
     private const float 基础移速 = 6.0f;
     private const float 安全缓冲 = 0.5f;
 
+    /// <summary>重置执行器状态</summary>
     public void Reset()
     {
         _executedDemandIds.Clear();
@@ -36,6 +38,7 @@ public sealed class MovementExecutor
         _holdUntilMs = 0;
     }
 
+    /// <summary>每帧更新移动执行</summary>
     public void Update(FactState state)
     {
         var flags = PluginConfig.Instance.FactAxis;

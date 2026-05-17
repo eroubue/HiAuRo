@@ -12,10 +12,14 @@ public sealed class OverlayHotkeyPanel : OverlayBase
 {
     private readonly Action _saveConfig;
 
+    /// <summary>不允许缩放</summary>
     protected override bool AllowResize => false;
+    /// <summary>无边距</summary>
     protected override Vector2 ContentPadding => Vector2.Zero;
+    /// <summary>内容起始偏移</summary>
     protected override Vector2 ContentOffset => new(6, 6);
 
+    /// <summary>Initializes a new instance of the <see cref="OverlayHotkeyPanel"/> class</summary>
     public OverlayHotkeyPanel(PluginConfig config, Action saveConfig) : base("HiAuRoHotkeyPanel##Overlay", config)
     {
         _saveConfig = saveConfig;
@@ -28,6 +32,7 @@ public sealed class OverlayHotkeyPanel : OverlayBase
         };
     }
 
+    /// <summary>预绘制时计算窗口尺寸</summary>
     protected override void OnPreDraw()
     {
         // 根据内容网格计算初始窗口大小
@@ -47,6 +52,7 @@ public sealed class OverlayHotkeyPanel : OverlayBase
         ImGui.SetNextWindowSize(new Vector2(w, h), ImGuiCond.Always);
     }
 
+    /// <summary>绘制热键面板内容</summary>
     protected override void DrawContent()
     {
         var hotkeys = ImGuiOverlayState.Hotkeys;
@@ -137,6 +143,7 @@ public sealed class OverlayHotkeyPanel : OverlayBase
         return wrap?.Handle ?? 0;
     }
 
+    /// <summary>保存窗口位置</summary>
     protected override void SavePosition(Vector2 pos)
     {
         _config.OverlayHotkeyPanelX = pos.X;

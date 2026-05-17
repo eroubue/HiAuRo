@@ -8,6 +8,7 @@ namespace HiAuRo.Runtime;
 /// </summary>
 public sealed class Coroutine
 {
+    /// <summary>协程调度器单例</summary>
     public static Coroutine Instance { get; } = new();
 
     private readonly List<CoroutineWait> _waiting = [];
@@ -71,6 +72,7 @@ public sealed class Coroutine
         _waiting.Clear();
     }
 
+    /// <summary>协程等待状态</summary>
     public sealed class CoroutineWait
     {
         internal long DueTime;
@@ -78,6 +80,7 @@ public sealed class Coroutine
         internal Action? Callback;
         internal bool Cancelled;
 
+        /// <summary>是否已完成</summary>
         public bool IsCompleted => !Cancelled && (Condition != null ? Condition() : Environment.TickCount64 >= DueTime);
     }
 }

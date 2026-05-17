@@ -13,6 +13,7 @@ public static class ACRLoader
     private static readonly List<Assembly> _loadedAcrAssemblies = [];
     private static readonly HashSet<string> _hostPrefixes = ["HiAuRo", "OmenTools", "Dalamud", "FFXIVClientStructs", "Lumina", "ImGuiNET", "TerraFX", "System.", "Microsoft."];
 
+    /// <summary>已加载的 ACR 程序集列表</summary>
     public static IReadOnlyList<Assembly> LoadedAcrAssemblies => _loadedAcrAssemblies.AsReadOnly();
 
     /// <summary>扫描并加载所有外部 ACR，注册到 ACRLifecycle</summary>
@@ -98,10 +99,21 @@ public static class ACRLoader
             }
 
             // HiAuRo.Helper: 优先用 HelperUpdater 已初始化 _ctx 的程序集，避免 ALC 隔离导致 _ctx=null
-            if (name.Name == "HiAuRo.Helper" && HelperUpdater.HelperAssembly != null)
+            if (name.Name == "HiAuRo.Helper")
             {
-                DService.Instance().Log.Debug($"[ACRLoader]   → 共享 HelperUpdater 的 HiAuRo.Helper 程序集");
-                return HelperUpdater.HelperAssembly;
+                if (HelperUpdater.HelperAssembly != null)
+                {
+                    DService.Instance().Log.Debug($"[ACRLoader]   → 共享 HelperUpdater 的 HiAuRo.Helper 程序集");
+                    return HelperUpdater.HelperAssembly;
+                }
+
+                // 未加载 → 已有缓存文件则同步加载，避免 ACR ALC 内产生独立副本导致 _ctx=null
+                HelperUpdater.TryLoadLocalSync();
+                if (HelperUpdater.HelperAssembly != null)
+                {
+                    DService.Instance().Log.Debug($"[ACRLoader]   → 同步触发 HelperUpdater 缓存加载后共享");
+                    return HelperUpdater.HelperAssembly;
+                }
             }
 
             // 其它宿主程序集（OmenTools, Dalamud 等）：

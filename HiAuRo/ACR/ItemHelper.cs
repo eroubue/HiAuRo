@@ -15,7 +15,7 @@ public static class ItemHelper
 
         // 等待冷却后重试（爆发药通常有 CD）
         await CoroutineHelper.Wait(500);
-        TryUseItem(itemId, isHq);
+        _ = TryUseItem(itemId, isHq);
     }
 
     /// <summary>尝试使用物品，返回是否成功</summary>

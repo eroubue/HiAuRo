@@ -22,11 +22,13 @@ public sealed class TriggerCond_倒计时 : ITriggerCond
 {
     private readonly int _timeLeftSec;
 
+    /// <param name="timeLeftSec">倒计时剩余秒数阈值</param>
     public TriggerCond_倒计时(int timeLeftSec)
     {
         _timeLeftSec = timeLeftSec;
     }
 
+    /// <summary>检测副本战斗倒计时是否达到指定剩余秒数</summary>
     public bool Handle(ITriggerCondParams? condParams = null)
     {
         try

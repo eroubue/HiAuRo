@@ -15,6 +15,7 @@ public sealed class AILoop_Normal : IAILoop
     /// <summary>ACR Debug 面板数据（每帧刷新，只读访问）</summary>
     public IReadOnlyList<ResolverDebugInfo> DebugResolvers => _debugInfos;
 
+    /// <summary>Initializes a new instance of the <see cref="AILoop_Normal"/> class</summary>
     public AILoop_Normal(List<SlotResolverData> resolvers)
     {
         _resolvers = resolvers;
@@ -27,6 +28,7 @@ public sealed class AILoop_Normal : IAILoop
             });
     }
 
+    /// <summary>获取下一个待执行的 Slot</summary>
     public Slot? GetNextSlot(bool blockBuild = false)
     {
         // 每帧重置 debug 数据

@@ -7,98 +7,130 @@ namespace HiAuRo.Execution;
 
 #region JSON Schema — 对齐 AE 触发树格式
 
+/// <summary>执行时间线数据 — 对齐 AE TriggerlineData 格式</summary>
 public sealed class ExecutionTimelineData
 {
+    /// <summary>时间线名称</summary>
     [JsonPropertyName("Name")]
     public string Name { get; set; } = "";
 
+    /// <summary>副本 ID</summary>
     [JsonPropertyName("TerritoryTypeId")]
     public uint TerritoryId { get; set; }
 
+    /// <summary>备注</summary>
     [JsonPropertyName("Note")]
     public string Note { get; set; } = "";
 
+    /// <summary>暴露的变量名列表</summary>
     [JsonPropertyName("ExposedVars")]
     public List<string> ExposedVarNames { get; set; } = [];
 
+    /// <summary>树根节点数据</summary>
     [JsonPropertyName("TreeRoot")]
     public TriggerNodeData? TreeRoot { get; set; }
 
+    /// <summary>暴露的变量字典</summary>
     [JsonIgnore]
     public Dictionary<string, int> ExposedVars { get; } = [];
 
+    /// <summary>根节点</summary>
     [JsonIgnore]
     public TriggerCompositeNode? Root { get; set; }
 }
 
+/// <summary>触发树节点数据 — JSON 反序列化中间格式</summary>
 public sealed class TriggerNodeData
 {
+    /// <summary>节点类型名称（JSON $type）</summary>
     [JsonPropertyName("$type")]
     public string TypeName { get; set; } = "";
 
+    /// <summary>显示名称</summary>
     [JsonPropertyName("DisplayName")]
     public string DisplayName { get; set; } = "";
 
+    /// <summary>节点 ID</summary>
     [JsonPropertyName("Id")]
     public int Id { get; set; }
 
+    /// <summary>是否启用</summary>
     [JsonPropertyName("Enable")]
     public bool Enable { get; set; } = true;
 
+    /// <summary>备注</summary>
     [JsonPropertyName("Remark")]
     public string Remark { get; set; } = "";
 
+    /// <summary>标签</summary>
     [JsonPropertyName("Tag")]
     public string Tag { get; set; } = "";
 
+    /// <summary>子节点列表</summary>
     [JsonPropertyName("Childs")]
     public List<TriggerNodeData>? Childs { get; set; }
 
+    /// <summary>是否忽略子节点失败结果</summary>
     [JsonPropertyName("IgnoreNodeResult")]
     public bool? IgnoreNodeResult { get; set; }
 
+    /// <summary>是否任意子节点成功即可</summary>
     [JsonPropertyName("AnyReturn")]
     public bool? AnyReturn { get; set; }
 
+    /// <summary>死亡时是否停止</summary>
     [JsonPropertyName("StopWhenDead")]
     public bool? StopWhenDead { get; set; }
 
+    /// <summary>循环次数</summary>
     [JsonPropertyName("Times")]
     public int? Times { get; set; }
 
+    /// <summary>延迟时间（秒）</summary>
     [JsonPropertyName("Delay")]
     public double? Delay { get; set; }
 
+    /// <summary>条件逻辑类型</summary>
     [JsonPropertyName("CondLogicType")]
     public CondLogicType? CondLogicType { get; set; }
 
+    /// <summary>是否只检查一次</summary>
     [JsonPropertyName("CheckOnce")]
     public bool? CheckOnce { get; set; }
 
+    /// <summary>是否反转条件结果</summary>
     [JsonPropertyName("ReverseResult")]
     public bool? ReverseResult { get; set; }
 
+    /// <summary>触发条件列表</summary>
     [JsonPropertyName("TriggerConds")]
     public List<JsonElement>? TriggerConds { get; set; }
 
+    /// <summary>触发动作列表</summary>
     [JsonPropertyName("TriggerActions")]
     public List<JsonElement>? TriggerActions { get; set; }
 
+    /// <summary>是否仅检查（脚本节点）</summary>
     [JsonPropertyName("OnlyCheck")]
     public bool? OnlyCheck { get; set; }
 
+    /// <summary>脚本内容</summary>
     [JsonPropertyName("Script")]
     public string? Script { get; set; }
 
+    /// <summary>事实轴节点 ID</summary>
     [JsonPropertyName("factNodeId")]
     public string? FactNodeId { get; set; }
 
+    /// <summary>调试信息</summary>
     [JsonPropertyName("Info")]
     public string? Info { get; set; }
 
+    /// <summary>是否仅前置节点</summary>
     [JsonPropertyName("OnlyPreNode")]
     public bool? OnlyPreNode { get; set; }
 
+    /// <summary>转换为 AST 节点</summary>
     public TriggerNode ToNode()
     {
         var type = TypeName.Split(',').FirstOrDefault()?.Split('.').Last() ?? "";
@@ -495,6 +527,7 @@ internal sealed class TriggerAction_SetVariable : ITriggerAction
 
 #region 加载器 + 类型注册
 
+/// <summary>执行 JSON 加载器 — 解析 AE 格式触发树 JSON</summary>
 public static class ExecutionJsonLoader
 {
     private static readonly Dictionary<string, Type> _condTypes = [];
@@ -567,6 +600,7 @@ public static class ExecutionJsonLoader
         return false;
     }
 
+    /// <summary>从 JSON 字符串解析执行时间线</summary>
     public static ExecutionTimelineData? FromJson(string json)
     {
         try
@@ -590,6 +624,7 @@ public static class ExecutionJsonLoader
         }
     }
 
+    /// <summary>从文件加载执行时间线</summary>
     public static ExecutionTimelineData? FromFile(string filePath)
     {
         if (!File.Exists(filePath))

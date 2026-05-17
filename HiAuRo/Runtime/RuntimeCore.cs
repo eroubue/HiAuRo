@@ -5,8 +5,10 @@ namespace HiAuRo.Runtime;
 /// </summary>
 public static class RuntimeCore
 {
+    /// <summary>是否正在运行</summary>
     public static bool IsRunning { get; private set; }
 
+    /// <summary>启动 Tick 循环</summary>
     public static void Start()
     {
         if (IsRunning) return;
@@ -15,6 +17,7 @@ public static class RuntimeCore
         IsRunning = true;
     }
 
+    /// <summary>停止 Tick 循环</summary>
     public static void Stop()
     {
         if (!IsRunning) return;

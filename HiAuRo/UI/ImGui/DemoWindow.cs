@@ -20,6 +20,7 @@ public sealed class DemoWindow : Window
     private int _demoTab;
     private readonly string[] _demoTabNames = ["常规", "高级", "关于"];
 
+    /// <summary>Initializes a new instance of the <see cref="DemoWindow"/> class</summary>
     public DemoWindow() : base("HiAuRo 组件展示##Gallery")
     {
         SizeConstraints = new WindowSizeConstraints
@@ -30,6 +31,7 @@ public sealed class DemoWindow : Window
         IsOpen = false;
     }
 
+    /// <summary>绘制窗口</summary>
     public override void Draw()
     {
         // 主题切换

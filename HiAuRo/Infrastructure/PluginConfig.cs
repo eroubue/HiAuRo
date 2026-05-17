@@ -3,10 +3,24 @@ using Dalamud.Configuration;
 namespace HiAuRo.Infrastructure;
 
 /// <summary>UI 渲染模式</summary>
-public enum UIMode { WebUI = 0, ImGui = 1 }
+/// <summary>UI 渲染模式</summary>
+public enum UIMode
+{
+    /// <summary>WebUI 模式</summary>
+    WebUI = 0,
+    /// <summary>ImGui 模式</summary>
+    ImGui = 1
+}
 
 /// <summary>ImGui 主题模式</summary>
-public enum ImGuiThemeMode { Light = 0, Dark = 1 }
+/// <summary>ImGui 主题模式</summary>
+public enum ImGuiThemeMode
+{
+    /// <summary>亮色主题</summary>
+    Light = 0,
+    /// <summary>暗色主题</summary>
+    Dark = 1
+}
 
 /// <summary>
 /// HiAuRo 主配置对象 —— 走 Dalamud 原生 IPluginConfiguration 序列化
@@ -16,9 +30,13 @@ public sealed class PluginConfig : IPluginConfiguration
     /// <summary>全局配置实例</summary>
     public static PluginConfig Instance { get; internal set; } = null!;
 
+    /// <summary>配置版本</summary>
     public int Version { get; set; } = 1;
+    /// <summary>是否启用 Debug 日志</summary>
     public bool DebugEnabled { get; set; }
+    /// <summary>上次使用的插件版本</summary>
     public string? LastSeenPluginVersion { get; set; }
+    /// <summary>插件加载次数</summary>
     public int LoadCount { get; set; }
 
     /// <summary>技能队列窗口 (ms)</summary>
@@ -77,39 +95,78 @@ public sealed class PluginConfig : IPluginConfiguration
     /// <summary>GitHub 分支名</summary>
     public string CatalogBranch { get; set; } = "main";
 
+    /// <summary>事实轴配置标记</summary>
     public FactAxisFlags FactAxis { get; set; } = new();
+    /// <summary>自动切换模式</summary>
     public AutoSwitchMode AutoSwitch { get; set; } = AutoSwitchMode.Execution优先;
 }
 
+/// <summary>CEF 悬浮窗设置</summary>
 public sealed class OverlayWindowSetting
 {
+    /// <summary>窗口名称</summary>
     public string Name { get; set; } = "";
+    /// <summary>URL</summary>
     public string Url { get; set; } = "";
+    /// <summary>宽度</summary>
     public int Width { get; set; } = 640;
+    /// <summary>高度</summary>
     public int Height { get; set; } = 480;
+    /// <summary>缩放百分比</summary>
     public float Zoom { get; set; } = 100f;
+    /// <summary>是否可见</summary>
     public bool Visible { get; set; } = true;
+    /// <summary>是否锁定</summary>
     public bool Locked { get; set; } = true;
 }
 
 #region FactAxis
 
+/// <summary>事实轴功能标记</summary>
 public sealed class FactAxisFlags
 {
-    public bool Observe = true;          // 时间线观测
-    public bool QtControl;               // QT 调控
-    public bool TeamMitigation;          // 团队减伤分配
-    public bool PersonalMitigation;      // 单人减伤分配
-    public bool TeamHealing;             // 团队治疗分配
-    public bool ForceExecute;            // 技能强制释放
-    public bool MoveTo;                  // NavMesh 移动
-    public bool TP;                      // 传送
-    public bool Hold;                    // 站位保持
+    /// <summary>时间线观测</summary>
+    public bool Observe = true;
+    /// <summary>QT 调控</summary>
+    public bool QtControl;
+    /// <summary>团队减伤分配</summary>
+    public bool TeamMitigation;
+    /// <summary>单人减伤分配</summary>
+    public bool PersonalMitigation;
+    /// <summary>团队治疗分配</summary>
+    public bool TeamHealing;
+    /// <summary>技能强制释放</summary>
+    public bool ForceExecute;
+    /// <summary>NavMesh 移动</summary>
+    public bool MoveTo;
+    /// <summary>传送</summary>
+    public bool TP;
+    /// <summary>站位保持</summary>
+    public bool Hold;
+    /// <summary>移动模式</summary>
     public MovementMode MovementMode = MovementMode.NavMesh_TP兜底;
 }
 
-public enum MovementMode { NavMesh, TP, NavMesh_TP兜底 }
+/// <summary>移动模式</summary>
+public enum MovementMode
+{
+    /// <summary>NavMesh 寻路</summary>
+    NavMesh,
+    /// <summary>直接传送</summary>
+    TP,
+    /// <summary>NavMesh 寻路 + TP 兜底</summary>
+    NavMesh_TP兜底
+}
 
-public enum AutoSwitchMode { None, Execution优先, Fact优先 }
+/// <summary>自动切换模式</summary>
+public enum AutoSwitchMode
+{
+    /// <summary>不自动切换</summary>
+    None,
+    /// <summary>执行轴优先</summary>
+    Execution优先,
+    /// <summary>事实轴优先</summary>
+    Fact优先
+}
 
 #endregion

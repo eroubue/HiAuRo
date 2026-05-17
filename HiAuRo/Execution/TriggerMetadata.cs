@@ -10,9 +10,12 @@ namespace HiAuRo.Execution;
 [AttributeUsage(AttributeTargets.Class, Inherited = false)]
 public sealed class TriggerDisplayAttribute : Attribute
 {
+    /// <summary>显示名称</summary>
     public string DisplayName { get; }
+    /// <summary>描述</summary>
     public string Description { get; }
 
+    /// <summary>初始化触发器显示属性</summary>
     public TriggerDisplayAttribute(string displayName, string description = "")
     {
         DisplayName = displayName;
@@ -20,10 +23,11 @@ public sealed class TriggerDisplayAttribute : Attribute
     }
 }
 
-/// 触发器类型鉴别符 - JSON $type 字段值
+/// <summary>触发器类型鉴别符 - JSON $type 字段值</summary>
 [AttributeUsage(AttributeTargets.Class, Inherited = false)]
 public sealed class TriggerTypeNameAttribute(string typeDiscriminator) : Attribute
 {
+    /// <summary>类型鉴别符</summary>
     public string TypeDiscriminator { get; } = typeDiscriminator;
 }
 
@@ -33,8 +37,10 @@ public sealed class TriggerTypeNameAttribute(string typeDiscriminator) : Attribu
 [AttributeUsage(AttributeTargets.Class, Inherited = false)]
 public sealed class CloudSyncAttribute : Attribute
 {
+    /// <summary>是否启用云同步</summary>
     public bool CloudSync { get; }
 
+    /// <summary>初始化云同步属性</summary>
     public CloudSyncAttribute(bool cloudSync = true)
     {
         CloudSync = cloudSync;
@@ -46,18 +52,23 @@ public sealed class CloudSyncAttribute : Attribute
 /// </summary>
 public sealed class ParameterInfo
 {
+    /// <summary>参数名</summary>
     [JsonPropertyName("name")]
     public string Name { get; init; } = string.Empty;
 
+    /// <summary>参数类型 ("number"|"text"|"checkbox"|"select")</summary>
     [JsonPropertyName("type")]
-    public string Type { get; init; } = string.Empty;  // "number"|"text"|"checkbox"|"select"
+    public string Type { get; init; } = string.Empty;
 
+    /// <summary>参数描述</summary>
     [JsonPropertyName("description")]
     public string? Description { get; init; }
 
+    /// <summary>默认值</summary>
     [JsonPropertyName("defaultValue")]
     public object? DefaultValue { get; init; }
 
+    /// <summary>枚举值列表</summary>
     [JsonPropertyName("enumValues")]
     public List<string>? EnumValues { get; init; }
 }
@@ -67,24 +78,31 @@ public sealed class ParameterInfo
 /// </summary>
 public sealed class TriggerInfo
 {
+    /// <summary>C# 全名</summary>
     [JsonPropertyName("typeName")]
-    public string TypeName { get; init; } = string.Empty;  // C# FullName
+    public string TypeName { get; init; } = string.Empty;
 
+    /// <summary>JSON $type 字段值</summary>
     [JsonPropertyName("typeDiscriminator")]
-    public string TypeDiscriminator { get; init; } = string.Empty;  // JSON $type 字段值
+    public string TypeDiscriminator { get; init; } = string.Empty;
 
+    /// <summary>中文显示名称</summary>
     [JsonPropertyName("displayName")]
-    public string DisplayName { get; init; } = string.Empty;  // Chinese name
+    public string DisplayName { get; init; } = string.Empty;
 
+    /// <summary>描述</summary>
     [JsonPropertyName("description")]
     public string? Description { get; init; }
 
+    /// <summary>类别 ("builtin"|"acr"|"local")</summary>
     [JsonPropertyName("category")]
-    public string Category { get; init; } = string.Empty;  // "builtin"|"acr"|"local"
+    public string Category { get; init; } = string.Empty;
 
+    /// <summary>是否启用云同步</summary>
     [JsonPropertyName("cloudSync")]
     public bool CloudSync { get; init; }
 
+    /// <summary>参数列表</summary>
     [JsonPropertyName("parameters")]
     public List<ParameterInfo> Parameters { get; init; } = [];
 }
@@ -94,17 +112,23 @@ public sealed class TriggerInfo
 /// </summary>
 public sealed class TriggerCatalog
 {
+    /// <summary>条件触发器列表</summary>
     [JsonPropertyName("conditions")]
     public List<TriggerInfo> Conditions { get; init; } = [];
 
+    /// <summary>动作触发器列表</summary>
     [JsonPropertyName("actions")]
     public List<TriggerInfo> Actions { get; init; } = [];
 
+    /// <summary>脚本触发器列表</summary>
     [JsonPropertyName("scripts")]
     public List<TriggerInfo> Scripts { get; init; } = [];
 
+    /// <summary>添加条件触发器</summary>
     public void AddCondition(TriggerInfo info) => Conditions.Add(info);
+    /// <summary>添加动作触发器</summary>
     public void AddAction(TriggerInfo info) => Actions.Add(info);
+    /// <summary>添加脚本触发器</summary>
     public void AddScript(TriggerInfo info) => Scripts.Add(info);
 }
 

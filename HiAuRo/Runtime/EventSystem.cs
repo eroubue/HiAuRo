@@ -43,6 +43,7 @@ public static class EventSystem
         DService.Instance().Log.Debug($"[EventSystem] 自行记录: id={actionId} LastCompleted={LastCompletedActionId}");
     }
 
+    /// <summary>初始化事件系统</summary>
     public static void Init()
     {
         if (_initialized) return;
@@ -53,6 +54,7 @@ public static class EventSystem
         _initialized = true;
     }
 
+    /// <summary>关闭事件系统</summary>
     public static void Shutdown()
     {
         UseActionManager.Instance().Unreg(OnPreUseAction);
@@ -65,6 +67,7 @@ public static class EventSystem
         _initialized = false;
     }
 
+    /// <summary>检查目标变更</summary>
     public static void CheckTargetChanged()
     {
         var currentTarget = TargetManager.Target;
@@ -78,21 +81,27 @@ public static class EventSystem
 
     #region 注册 / 注销
 
+    /// <summary>注册技能使用回调</summary>
     public static void RegisterOnActionUsed(Action<uint, ulong> handler) =>
         _onActionUsedHandlers.Add(handler);
 
+    /// <summary>注销技能使用回调</summary>
     public static void UnregisterOnActionUsed(Action<uint, ulong> handler) =>
         _onActionUsedHandlers.Remove(handler);
 
+    /// <summary>注册技能完成回调</summary>
     public static void RegisterOnActionCompleted(Action<uint> handler) =>
         _onActionCompletedHandlers.Add(handler);
 
+    /// <summary>注销技能完成回调</summary>
     public static void UnregisterOnActionCompleted(Action<uint> handler) =>
         _onActionCompletedHandlers.Remove(handler);
 
+    /// <summary>注册目标变更回调</summary>
     public static void RegisterOnTargetChanged(Action<IGameObject?> handler) =>
         _onTargetChangedHandlers.Add(handler);
 
+    /// <summary>注销目标变更回调</summary>
     public static void UnregisterOnTargetChanged(Action<IGameObject?> handler) =>
         _onTargetChangedHandlers.Remove(handler);
 

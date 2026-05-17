@@ -8,16 +8,26 @@ namespace HiAuRo.Execution;
 /// </summary>
 public sealed class ExecutionAxis
 {
+    /// <summary>执行轴单例</summary>
     public static ExecutionAxis Instance { get; } = new();
 
+    /// <summary>根节点</summary>
     public TriggerCompositeNode? Root { get; private set; }
+    /// <summary>求值上下文</summary>
     public EvalContext Context { get; } = new();
+    /// <summary>当前执行输出</summary>
     public ExecutionOutput CurrentOutput { get; } = new();
+    /// <summary>是否正在运行</summary>
     public bool IsRunning { get; private set; }
+    /// <summary>是否已初始化</summary>
     public bool Initialized { get; private set; }
+    /// <summary>时间线名称</summary>
     public string TimelineName { get; private set; } = "";
+    /// <summary>副本 ID</summary>
     public uint TerritoryId { get; private set; }
+    /// <summary>调试信息</summary>
     public ExecutionDebug Debug { get; } = new();
+    /// <summary>战斗时间（毫秒）</summary>
     public int BattleTimeMs => Context.BattleTimeMs;
 
     /// <summary>自动攻击开关（由 TriggerActionSwitchPull 控制）</summary>
@@ -35,6 +45,7 @@ public sealed class ExecutionAxis
 
     #region 生命周期
 
+    /// <summary>初始化执行轴</summary>
     public void Init()
     {
         if (Initialized) return;
@@ -43,6 +54,7 @@ public sealed class ExecutionAxis
         AutoLoadTimeline();
     }
 
+    /// <summary>关闭执行轴</summary>
     public void Shutdown()
     {
         Events.GameEventHook.Instance.OnEventFired -= OnEventFired;
@@ -117,7 +129,7 @@ public sealed class ExecutionAxis
         return tcs.Task;
     }
 
-    /// <summary>每帧检查所有挂起条件（由 AIRunner 调用）</summary>
+    /// <summary>每帧检查所有挂起条件</summary>
     private void CheckWaitingConds()
     {
         if (_waitingConds.IsEmpty) return;
@@ -145,6 +157,7 @@ public sealed class ExecutionAxis
         }
     }
 
+    /// <summary>注入触发条件参数，唤醒匹配的条件节点</summary>
     public void UseCondParams(ITriggerCondParams condParams)
     {
         if (_waitingConds.IsEmpty) return;
@@ -176,6 +189,7 @@ public sealed class ExecutionAxis
 
     #region 加载
 
+    /// <summary>从 JSON 加载触发树</summary>
     public bool LoadFromJson(string json)
     {
         var data = ExecutionJsonLoader.FromJson(json);
@@ -192,12 +206,14 @@ public sealed class ExecutionAxis
         return true;
     }
 
+    /// <summary>从文件加载触发树</summary>
     public bool LoadFromFile(string filePath)
     {
         if (!File.Exists(filePath)) return false;
         return LoadFromJson(File.ReadAllText(filePath));
     }
 
+    /// <summary>自动加载当前副本触发树</summary>
     public void AutoLoadTimeline()
     {
         var territoryId = OmenTools.OmenService.GameState.TerritoryType;
@@ -263,18 +279,27 @@ public sealed class ExecutionAxis
         if (!paused) CurrentOutput.ResumeAcr = true;
     }
 
+    /// <summary>是否已暂停</summary>
     public bool IsPaused => _paused;
 }
 
+/// <summary>执行轴输出数据</summary>
 public sealed class ExecutionOutput
 {
+    /// <summary>是否消费本帧（跳过 ACR 正常循环）</summary>
     public bool ConsumeFrame { get; set; }
+    /// <summary>强制释放的技能</summary>
     public Spell? ForceSpell { get; set; }
+    /// <summary>强制切换的目标</summary>
     public IBattleChara? ForceTarget { get; set; }
+    /// <summary>暂停 ACR</summary>
     public bool PauseAcr { get; set; }
+    /// <summary>恢复 ACR</summary>
     public bool ResumeAcr { get; set; }
+    /// <summary>输出描述</summary>
     public string Description { get; set; } = "";
 
+    /// <summary>清空输出数据</summary>
     public void Clear()
     {
         ConsumeFrame = false;
@@ -286,18 +311,24 @@ public sealed class ExecutionOutput
     }
 }
 
+/// <summary>执行轴调试信息</summary>
 public sealed class ExecutionDebug
 {
+    /// <summary>战斗时间（毫秒）</summary>
     public int BattleTimeMs { get; set; }
+    /// <summary>ACR 暂停状态</summary>
     public bool PauseAcr { get; set; }
+    /// <summary>触发器执行历史</summary>
     public List<string> TriggerHistory { get; } = [];
 
+    /// <summary>记录触发器执行</summary>
     public void LogTrigger(string msg)
     {
         if (TriggerHistory.Count >= 20) TriggerHistory.RemoveAt(0);
         TriggerHistory.Add(msg);
     }
 
+    /// <summary>重置调试信息</summary>
     public void Reset()
     {
         BattleTimeMs = 0;

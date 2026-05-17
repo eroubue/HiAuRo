@@ -30,10 +30,32 @@ public static class HelperUpdater
     private static HiAuRoContextImpl? _contextImpl;
     private static byte[]? _cachedDllBytes;
 
+    /// <summary>Helper DLL 是否已加载</summary>
     public static bool Loaded { get; private set; }
 
     /// <summary>HelperUpdater 已加载并注入 _ctx 的 HiAuRo.Helper 程序集（供 ACRLoader 共享，避免 ALC 隔离）</summary>
     public static Assembly? HelperAssembly => _helperAsm;
+
+    /// <summary>尝试从本地缓存同步加载 Helper DLL（供 ACRLoader 时序竞争回退）</summary>
+    public static bool TryLoadLocalSync()
+    {
+        if (_helperAsm != null) return true;
+
+        var localDll = Path.Combine(StoreDir, DllName);
+        if (!File.Exists(localDll)) return false;
+
+        try
+        {
+            LoadDll(localDll);
+            DService.Instance().Log.Information($"[HelperUpdater] 从本地缓存同步加载: {localDll}");
+            return true;
+        }
+        catch (Exception ex)
+        {
+            DService.Instance().Log.Warning($"[HelperUpdater] 本地缓存加载失败: {ex.Message}");
+            return false;
+        }
+    }
 
     /// <summary>检查更新，下载并加载最新 DLL（异步，不阻塞启动）</summary>
     public static async Task CheckAndUpdateAsync()
@@ -114,7 +136,43 @@ public static class HelperUpdater
         }
     }
 
-    private static void LoadDll(string dllPath)
+        /// <summary>解析 Helper ALC 中宿主程序集依赖（Dalamud、OmenTools、HiAuRo 等）</summary>
+        private static Assembly? ResolveHelperDependency(AssemblyLoadContext ctx, AssemblyName name)
+        {
+            var hostPrefixes = new[] { "HiAuRo", "OmenTools", "Dalamud", "FFXIVClientStructs",
+                "Lumina", "ImGuiNET", "TerraFX", "System.", "Microsoft." };
+
+            if (!hostPrefixes.Any(p => name.Name?.StartsWith(p) == true))
+                return null;
+
+            // 先在 Default ALC 中查找（System.*、Microsoft.*）
+            foreach (var asm in AssemblyLoadContext.Default.Assemblies)
+            {
+                if (asm.GetName().Name == name.Name)
+                    return asm;
+            }
+
+            // 再在宿主 ALC（HiAuRo 所在）中查找
+            var hostAlc = AssemblyLoadContext.GetLoadContext(typeof(HelperUpdater).Assembly);
+            if (hostAlc != null)
+            {
+                foreach (var asm in hostAlc.Assemblies)
+                {
+                    if (asm.GetName().Name == name.Name)
+                        return asm;
+                }
+
+                try
+                {
+                    return hostAlc.LoadFromAssemblyName(name);
+                }
+                catch { }
+            }
+
+            return null;
+        }
+
+        private static void LoadDll(string dllPath)
     {
         if (!File.Exists(dllPath)) return;
 
@@ -123,6 +181,7 @@ public static class HelperUpdater
 
         _alc?.Unload();
         _alc = new AssemblyLoadContext("HiAuRo.Helper", isCollectible: true);
+        _alc.Resolving += ResolveHelperDependency;
 
         using var ms = new MemoryStream(_cachedDllBytes, writable: false);
         _helperAsm = _alc.LoadFromStream(ms);

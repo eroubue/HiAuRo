@@ -14,23 +14,25 @@ public sealed class TriggerCondParams_敌人读条 : ITriggerCondParams
     public uint? EnemyDataId;
 }
 
-[TriggerDisplay("敌人读条", "检测指定敌人是否在读指定技能")]
-[TriggerTypeName("TriggerCondEnemyCastSpell")]
-
 /// <summary>
 /// 检测敌人是否在读指定技能
 /// </summary>
+[TriggerDisplay("敌人读条", "检测指定敌人是否在读指定技能")]
+[TriggerTypeName("TriggerCondEnemyCastSpell")]
 public sealed class TriggerCond_敌人读条 : ITriggerCond
 {
     private readonly uint _spellId;
     private readonly uint? _enemyDataId;
 
+    /// <param name="spellId">读条技能 ID</param>
+    /// <param name="enemyDataId">指定敌人 DataId（null = 任意敌人）</param>
     public TriggerCond_敌人读条(uint spellId, uint? enemyDataId = null)
     {
         _spellId = spellId;
         _enemyDataId = enemyDataId;
     }
 
+    /// <summary>检测敌人是否在读指定技能</summary>
     public bool Handle(ITriggerCondParams? condParams = null)
     {
         foreach (var enemy in Objects.Enemies)
