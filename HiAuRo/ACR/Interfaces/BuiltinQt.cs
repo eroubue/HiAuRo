@@ -15,6 +15,10 @@ public enum BuiltinQt
     Mitigation,
     /// <summary>清空资源</summary>
     Dump,
+    /// <summary>群体攻击</summary>
+    AoE,
+    /// <summary>击杀时间</summary>
+    TTK,
 }
 
 /// <summary>
@@ -30,6 +34,8 @@ public static class BuiltinQtHelper
         BuiltinQt.Hold => "__builtin_hold",
         BuiltinQt.Mitigation => "__builtin_mitigation",
         BuiltinQt.Dump => "__builtin_dump",
+        BuiltinQt.AoE => "__builtin_aoe",
+        BuiltinQt.TTK => "__builtin_ttk",
         _ => throw new System.ArgumentOutOfRangeException(nameof(type), type, null)
     };
 
@@ -41,6 +47,8 @@ public static class BuiltinQtHelper
         BuiltinQt.Hold => "停手",
         BuiltinQt.Mitigation => "自动减伤",
         BuiltinQt.Dump => "清空资源",
+        BuiltinQt.AoE => "群体攻击",
+        BuiltinQt.TTK => "击杀时间",
         _ => throw new System.ArgumentOutOfRangeException(nameof(type), type, null)
     };
 
@@ -52,6 +60,8 @@ public static class BuiltinQtHelper
         BuiltinQt.Hold => false,
         BuiltinQt.Mitigation => true,
         BuiltinQt.Dump => false,
+        BuiltinQt.AoE => false,
+        BuiltinQt.TTK => false,
         _ => throw new System.ArgumentOutOfRangeException(nameof(type), type, null)
     };
 }
