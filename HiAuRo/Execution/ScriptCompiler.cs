@@ -1,4 +1,6 @@
+using System.Collections.Concurrent;
 using System.Reflection;
+using System.Runtime.Loader;
 using HiAuRo.ACR;
 using Microsoft.CodeAnalysis;
 using Microsoft.CodeAnalysis.CSharp;
@@ -11,16 +13,45 @@ namespace HiAuRo.Execution;
 /// </summary>
 public static class ScriptCompiler
 {
-    private static readonly Dictionary<string, ITriggerScript> _cache = [];
+    private static readonly ConcurrentDictionary<string, ITriggerScript> _cache = [];
     private static readonly List<MetadataReference> _refCache = [];
+    private static readonly object _refLock = new();
     private static bool _refsLoaded;
+    private static AssemblyLoadContext? _alc;
+
+    /// <summary>允许引用的程序集名称前缀（白名单）</summary>
+    private static readonly string[] AllowedAssemblyPrefixes =
+    [
+        "System.Runtime",
+        "System.Collections",
+        "System.Linq",
+        "System.Numerics",
+        "System.Memory",
+        "System.Primitives",
+        "mscorlib",
+        "netstandard",
+        "HiAuRo",
+        "OmenTools",
+        "Dalamud",
+        "FFXIVClientStructs",
+        "ImGui",
+        "Lumina",
+    ];
+
+    /// <summary>禁止引用的程序集（即使前缀匹配也排除）</summary>
+    private static readonly string[] BlockedAssemblies =
+    [
+        "System.IO.FileSystem",
+        "System.Net",
+        "System.Diagnostics.Process",
+        "System.Threading.Tasks.Parallel",
+    ];
 
     /// <summary>编译脚本并使用缓存。同一段代码只编译一次</summary>
     public static ITriggerScript? Compile(string code)
     {
         if (string.IsNullOrWhiteSpace(code)) return null;
 
-        // 去空白哈希作为缓存 key
         var key = code.Trim();
         if (_cache.TryGetValue(key, out var cached))
             return cached;
@@ -49,7 +80,9 @@ public static class ScriptCompiler
             }
 
             ms.Seek(0, SeekOrigin.Begin);
-            var assembly = Assembly.Load(ms.ToArray());
+
+            _alc ??= new AssemblyLoadContext("ScriptCompiler", isCollectible: true);
+            var assembly = _alc.LoadFromStream(ms);
             var type = assembly.GetTypes().FirstOrDefault(t =>
                 typeof(ITriggerScript).IsAssignableFrom(t) && !t.IsAbstract);
 
@@ -74,29 +107,61 @@ public static class ScriptCompiler
     public static void ClearCache()
     {
         _cache.Clear();
-        _refCache.Clear();
-        _refsLoaded = false;
-    }
-
-    /// <summary>收集编译引用（首次编译时，后续缓存）</summary>
-    private static List<MetadataReference> GetReferences()
-    {
-        if (_refsLoaded) return _refCache;
-
-        var assemblies = AppDomain.CurrentDomain.GetAssemblies();
-        foreach (var asm in assemblies)
+        lock (_refLock)
         {
-            if (asm.IsDynamic || string.IsNullOrEmpty(asm.Location)) continue;
-            try
-            {
-                _refCache.Add(MetadataReference.CreateFromFile(asm.Location));
-            }
-            catch { }
+            _refCache.Clear();
+            _refsLoaded = false;
         }
 
-        _refsLoaded = true;
-        DService.Instance().Log.Debug($"[ScriptCompiler] 加载 {_refCache.Count} 个程序集引用");
-        return _refCache;
+        // 卸载旧的 ALC，下次编译时创建新的
+        if (_alc != null)
+        {
+            try { _alc.Unload(); } catch { }
+            _alc = null;
+        }
+    }
+
+    /// <summary>收集编译引用（白名单过滤）</summary>
+    private static List<MetadataReference> GetReferences()
+    {
+        lock (_refLock)
+        {
+            if (_refsLoaded) return _refCache;
+
+            var assemblies = AppDomain.CurrentDomain.GetAssemblies();
+            foreach (var asm in assemblies)
+            {
+                if (asm.IsDynamic || string.IsNullOrEmpty(asm.Location)) continue;
+                var name = asm.GetName().Name ?? "";
+                if (!IsAllowed(name)) continue;
+                try
+                {
+                    _refCache.Add(MetadataReference.CreateFromFile(asm.Location));
+                }
+                catch { }
+            }
+
+            _refsLoaded = true;
+            DService.Instance().Log.Debug($"[ScriptCompiler] 加载 {_refCache.Count} 个程序集引用 (白名单过滤)");
+            return _refCache;
+        }
+    }
+
+    private static bool IsAllowed(string name)
+    {
+        foreach (var blocked in BlockedAssemblies)
+        {
+            if (name.StartsWith(blocked, StringComparison.OrdinalIgnoreCase))
+                return false;
+        }
+
+        foreach (var prefix in AllowedAssemblyPrefixes)
+        {
+            if (name.StartsWith(prefix, StringComparison.OrdinalIgnoreCase))
+                return true;
+        }
+
+        return false;
     }
 
     /// <summary>给用户脚本包上 using + namespace + class</summary>

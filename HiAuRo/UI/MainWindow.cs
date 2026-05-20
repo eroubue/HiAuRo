@@ -431,24 +431,24 @@ public sealed class MainWindow : Window
 
         ImGui.Text("观测");
         ImGui.Separator();
-        changed |= ImGui.Checkbox("时间线观测", ref flags.Observe);
+        { var v = flags.Observe; changed |= ImGui.Checkbox("时间线观测", ref v); flags.Observe = v; }
 
         ImGui.Text("QT 调控");
         ImGui.Separator();
-        changed |= ImGui.Checkbox("QT 调控", ref flags.QtControl);
+        { var v = flags.QtControl; changed |= ImGui.Checkbox("QT 调控", ref v); flags.QtControl = v; }
 
         ImGui.Text("决策分配");
         ImGui.Separator();
-        changed |= ImGui.Checkbox("团队减伤分配", ref flags.TeamMitigation);
-        changed |= ImGui.Checkbox("单人减伤分配", ref flags.PersonalMitigation);
-        changed |= ImGui.Checkbox("团队治疗分配", ref flags.TeamHealing);
-        changed |= ImGui.Checkbox("技能强制释放", ref flags.ForceExecute);
+        { var v = flags.TeamMitigation; changed |= ImGui.Checkbox("团队减伤分配", ref v); flags.TeamMitigation = v; }
+        { var v = flags.PersonalMitigation; changed |= ImGui.Checkbox("单人减伤分配", ref v); flags.PersonalMitigation = v; }
+        { var v = flags.TeamHealing; changed |= ImGui.Checkbox("团队治疗分配", ref v); flags.TeamHealing = v; }
+        { var v = flags.ForceExecute; changed |= ImGui.Checkbox("技能强制释放", ref v); flags.ForceExecute = v; }
 
         ImGui.Text("移动");
         ImGui.Separator();
-        changed |= ImGui.Checkbox("MoveTo", ref flags.MoveTo);
-        changed |= ImGui.Checkbox("TP", ref flags.TP);
-        changed |= ImGui.Checkbox("Hold", ref flags.Hold);
+        { var v = flags.MoveTo; changed |= ImGui.Checkbox("MoveTo", ref v); flags.MoveTo = v; }
+        { var v = flags.TP; changed |= ImGui.Checkbox("TP", ref v); flags.TP = v; }
+        { var v = flags.Hold; changed |= ImGui.Checkbox("Hold", ref v); flags.Hold = v; }
 
         ImGui.Text("移动模式");
         ImGui.Separator();

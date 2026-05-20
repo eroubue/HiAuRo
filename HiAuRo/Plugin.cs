@@ -49,7 +49,9 @@ public partial class Plugin : IDalamudPlugin
             _config = LoadConfig();
             LogManager.Instance.Init(_pluginInterface.ConfigDirectory.FullName);
             Theme.Mode = _config.ImGuiThemeMode == ImGuiThemeMode.Dark ? Theme.ThemeMode.Dark : Theme.ThemeMode.Light;
-            _ = HelperUpdater.CheckAndUpdateAsync();
+            HelperUpdater.CheckAndUpdateAsync().ContinueWith(
+                    t => { if (t.Exception != null) DService.Instance().Log.Error($"[Lifecycle] HelperUpdater 失败: {t.Exception.InnerException?.Message}"); },
+                    TaskContinuationOptions.OnlyOnFaulted);
 
             var webRoot = Path.Combine(_pluginInterface.ConfigDirectory.FullName, "web");
             var sourceWebRoot = Path.Combine(_pluginInterface.AssemblyLocation.Directory?.FullName ?? ".", "UI", "web");
@@ -154,7 +156,7 @@ public partial class Plugin : IDalamudPlugin
             try
             {
                 DService.Instance().Log.Error($"[Lifecycle] 插件构造函数异常，尝试释放已分配资源: {ex}");
-                SafeDispose();
+                Dispose();
             }
             catch (Exception disposeEx)
             {
@@ -162,44 +164,6 @@ public partial class Plugin : IDalamudPlugin
             }
             throw;
         }
-    }
-
-    private void SafeDispose()
-    {
-        CombatContext.StateChanged -= OnCombatStateChanged;
-        ACR.HotkeyHelper.OnExecuted -= OnHotkeyExecuted;
-        ACR.QTHelper.OnChanged -= OnQtChanged;
-        RuntimeCore.Shutdown();
-        CombatContext.Reset();
-        ExecutionAxis.Instance.Shutdown();
-        AssistAxis.Instance.Shutdown();
-        EncounterRecorder.Instance.Shutdown();
-        GameEventHook.Instance.Shutdown();
-        EventSystem.Shutdown();
-        CommandMgr.Shutdown();
-
-        // 先关 ACR（UnloadRotation 依赖 Plugin.Instance）
-        ACRLifecycle.Shutdown();
-
-        if (_windowSystem != null)
-        {
-            _pluginInterface.UiBuilder.Draw -= _windowSystem.Draw;
-            _uiManager?.Dispose();
-            _windowSystem.RemoveAllWindows();
-        }
-        Instance = null!;
-        PluginConfig.Instance = null!;
-
-        // 清除静态缓存（避免下次加载残留）
-        ACRLoader.UnloadAll();
-        Execution.ExecutionJsonLoader.Clear();
-        Execution.ScriptCompiler.ClearCache();
-        Decision.DecisionSkillRegistry.Clear();
-        ACR.HotkeyPoller.Clear();
-        ACR.SpellHistoryHelper.Reset();
-
-        LogManager.Instance.Dispose();
-        DService.Uninit();
     }
 
     private static void OnCombatStateChanged(CombatContext.State oldState, CombatContext.State newState)
@@ -252,9 +216,12 @@ public partial class Plugin : IDalamudPlugin
         // 先关 ACR（UnloadRotation 依赖 Plugin.Instance）
         ACRLifecycle.Shutdown();
 
-        _pluginInterface.UiBuilder.Draw -= _windowSystem.Draw;
-        _uiManager?.Dispose();
-        _windowSystem.RemoveAllWindows();
+        if (_windowSystem != null)
+        {
+            _pluginInterface.UiBuilder.Draw -= _windowSystem.Draw;
+            _uiManager?.Dispose();
+            _windowSystem.RemoveAllWindows();
+        }
         Instance = null!;
         PluginConfig.Instance = null!;
 
@@ -266,7 +233,6 @@ public partial class Plugin : IDalamudPlugin
         ACR.HotkeyPoller.Clear();
         ACR.SpellHistoryHelper.Reset();
 
-        DService.Instance().Log.Information("[Lifecycle] HiAuRo 宿主已释放。");
         LogManager.Instance.Dispose();
         DService.Uninit();
     }
@@ -460,6 +426,9 @@ public partial class Plugin : IDalamudPlugin
     {
         var config = _pluginInterface.GetPluginConfig() as PluginConfig ?? new PluginConfig();
         PluginConfig.Instance = config;
+        config.LoadCount++;
+
+        var migrated = false;
 
         // 方向 2 迁移：ActionPanel 拆分为 QtWindow + HotkeyWindow
         if (config.Overlays?.Any(o => o.Name == "ActionPanel") == true)
@@ -469,6 +438,7 @@ public partial class Plugin : IDalamudPlugin
                 .Append(new OverlayWindowSetting { Name = "QtWindow", Url = "http://localhost:5678/qt.html", Width = 320, Height = 80 })
                 .Append(new OverlayWindowSetting { Name = "HotkeyWindow", Url = "http://localhost:5678/hotkey.html", Width = 320, Height = 100 })
                 .ToArray();
+            migrated = true;
         }
 
         // 修复之前 contentResize 错误写入 MainWindow 的尺寸（高度 < 100 视为异常值）
@@ -477,9 +447,11 @@ public partial class Plugin : IDalamudPlugin
         {
             mw.Width = 310;
             mw.Height = 480;
+            migrated = true;
         }
 
-        _pluginInterface.SavePluginConfig(config);
+        if (migrated)
+            _pluginInterface.SavePluginConfig(config);
 
         DService.Instance().Log.Information(
             $"[Config] SchemaVersion={config.Version}, LoadCount={config.LoadCount}, DebugEnabled={config.DebugEnabled}");

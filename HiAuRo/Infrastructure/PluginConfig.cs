@@ -131,25 +131,25 @@ public sealed class OverlayWindowSetting
 public sealed class FactAxisFlags
 {
     /// <summary>时间线观测</summary>
-    public bool Observe = true;
+    public bool Observe { get; set; } = true;
     /// <summary>QT 调控</summary>
-    public bool QtControl;
+    public bool QtControl { get; set; }
     /// <summary>团队减伤分配</summary>
-    public bool TeamMitigation;
+    public bool TeamMitigation { get; set; }
     /// <summary>单人减伤分配</summary>
-    public bool PersonalMitigation;
+    public bool PersonalMitigation { get; set; }
     /// <summary>团队治疗分配</summary>
-    public bool TeamHealing;
+    public bool TeamHealing { get; set; }
     /// <summary>技能强制释放</summary>
-    public bool ForceExecute;
+    public bool ForceExecute { get; set; }
     /// <summary>NavMesh 移动</summary>
-    public bool MoveTo;
+    public bool MoveTo { get; set; }
     /// <summary>传送</summary>
-    public bool TP;
+    public bool TP { get; set; }
     /// <summary>站位保持</summary>
-    public bool Hold;
+    public bool Hold { get; set; }
     /// <summary>移动模式</summary>
-    public MovementMode MovementMode = MovementMode.NavMesh_TP兜底;
+    public MovementMode MovementMode { get; set; } = MovementMode.NavMesh_TP兜底;
 }
 
 /// <summary>移动模式</summary>

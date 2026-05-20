@@ -11,6 +11,7 @@ namespace HiAuRo.Runtime;
 /// </summary>
 public static class EventSystem
 {
+    private static readonly object _lock = new();
     private static readonly List<Action<uint, ulong>> _onActionUsedHandlers = [];
     private static readonly List<Action<uint>> _onActionCompletedHandlers = [];
     private static readonly List<Action<IGameObject?>> _onTargetChangedHandlers = [];
@@ -74,7 +75,9 @@ public static class EventSystem
         if (_lastTarget?.EntityID != currentTarget?.EntityID)
         {
             _lastTarget = currentTarget;
-            foreach (var handler in _onTargetChangedHandlers)
+            Action<IGameObject?>[] snapshot;
+            lock (_lock) { snapshot = _onTargetChangedHandlers.ToArray(); }
+            foreach (var handler in snapshot)
                 handler(currentTarget);
         }
     }
@@ -82,28 +85,28 @@ public static class EventSystem
     #region 注册 / 注销
 
     /// <summary>注册技能使用回调</summary>
-    public static void RegisterOnActionUsed(Action<uint, ulong> handler) =>
-        _onActionUsedHandlers.Add(handler);
+    public static void RegisterOnActionUsed(Action<uint, ulong> handler)
+    { lock (_lock) _onActionUsedHandlers.Add(handler); }
 
     /// <summary>注销技能使用回调</summary>
-    public static void UnregisterOnActionUsed(Action<uint, ulong> handler) =>
-        _onActionUsedHandlers.Remove(handler);
+    public static void UnregisterOnActionUsed(Action<uint, ulong> handler)
+    { lock (_lock) _onActionUsedHandlers.Remove(handler); }
 
     /// <summary>注册技能完成回调</summary>
-    public static void RegisterOnActionCompleted(Action<uint> handler) =>
-        _onActionCompletedHandlers.Add(handler);
+    public static void RegisterOnActionCompleted(Action<uint> handler)
+    { lock (_lock) _onActionCompletedHandlers.Add(handler); }
 
     /// <summary>注销技能完成回调</summary>
-    public static void UnregisterOnActionCompleted(Action<uint> handler) =>
-        _onActionCompletedHandlers.Remove(handler);
+    public static void UnregisterOnActionCompleted(Action<uint> handler)
+    { lock (_lock) _onActionCompletedHandlers.Remove(handler); }
 
     /// <summary>注册目标变更回调</summary>
-    public static void RegisterOnTargetChanged(Action<IGameObject?> handler) =>
-        _onTargetChangedHandlers.Add(handler);
+    public static void RegisterOnTargetChanged(Action<IGameObject?> handler)
+    { lock (_lock) _onTargetChangedHandlers.Add(handler); }
 
     /// <summary>注销目标变更回调</summary>
-    public static void UnregisterOnTargetChanged(Action<IGameObject?> handler) =>
-        _onTargetChangedHandlers.Remove(handler);
+    public static void UnregisterOnTargetChanged(Action<IGameObject?> handler)
+    { lock (_lock) _onTargetChangedHandlers.Remove(handler); }
 
     #endregion
 
@@ -136,7 +139,9 @@ public static class EventSystem
             }
 
             DService.Instance().Log.Information($"[EventSystem] 技能成功: id={actionId} type={actionType} target={targetId:X} LastCombo={LastComboSpellId} LastCompleted={LastCompletedActionId}");
-            foreach (var handler in _onActionCompletedHandlers)
+            Action<uint>[] completedSnapshot;
+            lock (_lock) { completedSnapshot = _onActionCompletedHandlers.ToArray(); }
+            foreach (var handler in completedSnapshot)
             {
                 try { handler(actionId); }
                 catch (Exception ex) { DService.Instance().Log.Error($"[EventSystem] OnActionCompleted handler 异常: {ex}"); }
@@ -154,7 +159,9 @@ public static class EventSystem
             }
         }
 
-        foreach (var handler in _onActionUsedHandlers)
+        Action<uint, ulong>[] usedSnapshot;
+        lock (_lock) { usedSnapshot = _onActionUsedHandlers.ToArray(); }
+        foreach (var handler in usedSnapshot)
         {
             try { handler(actionId, targetId); }
             catch (Exception ex) { DService.Instance().Log.Error($"[EventSystem] OnActionUsed handler 异常: {ex}"); }

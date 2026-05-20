@@ -7,7 +7,13 @@ namespace HiAuRo.ACR;
 public static class MainControlHelper
 {
     /// <summary>ACR 运行时暂停（不停止引擎，只暂停动作输出）</summary>
-    public static bool IsPaused { get; private set; }
+    public static bool IsPaused
+    {
+        get => _isPaused;
+        private set => _isPaused = value;
+    }
+
+    private static volatile bool _isPaused;
 
     /// <summary>保存回调（由 ACR 作者注册）</summary>
     public static event Action? OnSave;

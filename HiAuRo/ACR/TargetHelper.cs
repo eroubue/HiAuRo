@@ -31,7 +31,7 @@ public static class TargetHelper
         var self = Data.Me.Object;
         if (self == null) return false;
 
-        var toTarget = target.Position - self.Position;
+        var toTarget = self.Position - target.Position;
         var facing = GetForward(target);
         var dot = Vector3.Dot(Vector3.Normalize(toTarget), facing);
         return dot < -0.5f;
@@ -44,7 +44,7 @@ public static class TargetHelper
         var self = Data.Me.Object;
         if (self == null) return false;
 
-        var toTarget = target.Position - self.Position;
+        var toTarget = self.Position - target.Position;
         var right = GetRight(target);
         var dot = Vector3.Dot(Vector3.Normalize(toTarget), right);
         return Math.Abs(dot) > 0.5f;

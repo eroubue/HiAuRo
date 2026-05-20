@@ -95,22 +95,16 @@ public sealed partial class Spell
     /// <summary>按 EntityID 查找对象</summary>
     private static IGameObject? GetObjectById(uint entityId)
     {
-        if (entityId == 0) return null;
-        foreach (var obj in Data.Objects.All)
-        {
-            if (obj.EntityID == entityId)
-                return obj;
-        }
-        return null;
+        return entityId == 0 ? null : HiAuRo.Data.Objects.GetById(entityId) as IGameObject;
     }
 
     /// <summary>根据 TargetType 确定搜索池（过滤候选不通过时回退搜索）</summary>
-    private List<IGameObject> GetSearchPool()
+    private IReadOnlyList<IGameObject> GetSearchPool()
     {
         return TargetType switch
         {
             SpellTargetType.Target or SpellTargetType.SpecifyTarget or SpellTargetType.DynamicTarget
-                => Data.Objects.Enemies.Cast<IGameObject>().ToList(),
+                => Data.Objects.Enemies,
             SpellTargetType.Pm1 or SpellTargetType.Pm2 or SpellTargetType.Pm3 or SpellTargetType.Pm4
             or SpellTargetType.Pm5 or SpellTargetType.Pm6 or SpellTargetType.Pm7 or SpellTargetType.Pm8
                 => Data.Party.All.Select(p => (p.Player as IGameObject)!).Where(o => o != null).ToList(),

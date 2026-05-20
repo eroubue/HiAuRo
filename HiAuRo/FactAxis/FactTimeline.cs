@@ -43,8 +43,13 @@ public sealed class FactTimeline
 
     private FactTimeline() { }
 
-    private double FightNow =>
-        (DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - _timebase) / 1000.0;
+    private double _cachedFightNow;
+    private double FightNow => _cachedFightNow;
+
+    private void UpdateFightNow()
+    {
+        _cachedFightNow = (DateTimeOffset.UtcNow.ToUnixTimeMilliseconds() - _timebase) / 1000.0;
+    }
 
     #region 生命周期
 
@@ -65,6 +70,7 @@ public sealed class FactTimeline
         IsRunning = true;
 
         _timebase = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+        UpdateFightNow();
 
         BuildSyncWindows();
 
@@ -82,7 +88,8 @@ public sealed class FactTimeline
         if (!IsRunning) return;
         IsRunning = false;
         GameEventHook.Instance.OnEventFired -= OnGameEvent;
-        DService.Instance().Log.Information($"[FactAxis] 停止: {State.PhaseName}, 战斗 {FightNow:F1}s");
+        UpdateFightNow();
+        DService.Instance().Log.Information($"[FactAxis] 停止: {State.PhaseName}, 战斗 {_cachedFightNow:F1}s");
     }
 
     /// <summary>完全关闭事实轴</summary>
@@ -215,6 +222,7 @@ public sealed class FactTimeline
     private void OnGameEvent(ITriggerCondParams e)
     {
         if (!IsRunning) return;
+        UpdateFightNow();
         var fightNow = FightNow;
 
         switch (e)
@@ -323,6 +331,8 @@ public sealed class FactTimeline
             return State;
         }
 
+        UpdateFightNow();
+
         // 副本切换
         var territory = OmenTools.OmenService.GameState.TerritoryType;
         if (territory != 0 && territory != _previousTerritoryId)
@@ -371,14 +381,21 @@ public sealed class FactTimeline
         State.PhaseName = _currentPhase?.Name ?? "";
         State.PhaseTime = phaseTime;
         State.TotalTime = fightNow;
-        State.Variables = new Dictionary<string, bool>(_variables);
+
+        // 就地更新 Variables（复用已有 Dictionary 容量）
+        State.Variables.Clear();
+        foreach (var kv in _variables)
+            State.Variables[kv.Key] = kv.Value;
 
         if (_waitingStartSync == null && _waitingEndSync == null && !_waitingSwitch)
         {
             AdvanceTimedEvents(fightNow);
         }
 
-        State.PendingEvents = _currentEvents.Skip(_eventIndex).ToList();
+        // 就地更新 PendingEvents（复用已有 List 容量）
+        State.PendingEvents.Clear();
+        for (int i = _eventIndex; i < _currentEvents.Count; i++)
+            State.PendingEvents.Add(_currentEvents[i]);
 
         CollectActiveWindows(fightNow);
 
@@ -579,6 +596,7 @@ public sealed class FactTimeline
 
         var oldDelta = (newTimebase - _timebase) / 1000.0;
         _timebase = newTimebase;
+        UpdateFightNow();
 
         DService.Instance().Log.Debug(
             $"[FactAxis] SyncTo: eventTime={eventTime:F2}s, drift={oldDelta:F3}s");

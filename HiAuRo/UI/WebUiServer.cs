@@ -101,7 +101,13 @@ public sealed class WebUiServer
             var filePath = path == "/" ? "/main.html" : path;
             if (!Path.HasExtension(filePath))
                 filePath += ".html";
-            var fullPath = Path.Combine(_webRoot, filePath.TrimStart('/'));
+            var fullPath = Path.GetFullPath(Path.Combine(_webRoot, filePath.TrimStart('/')));
+
+            if (!fullPath.StartsWith(_webRoot, StringComparison.OrdinalIgnoreCase))
+            {
+                ctx.Response.StatusCode = 403;
+                return;
+            }
 
             if (File.Exists(fullPath))
             {

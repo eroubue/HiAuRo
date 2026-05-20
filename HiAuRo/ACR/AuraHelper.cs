@@ -11,22 +11,42 @@ public static class AuraHelper
     public static bool HasAura(IGameObject? target, uint buffId)
     {
         if (target is not IBattleChara bc) return false;
-        return bc.StatusList.Any(s => s.StatusID == buffId);
+        var list = bc.StatusList;
+        for (int i = 0; i < list.Length; i++)
+        {
+            if (list[i].StatusID == buffId) return true;
+        }
+        return false;
     }
 
     /// <summary>指定对象是否存在任意 buff</summary>
     public static bool HasAnyAura(IGameObject? target, params uint[] buffIds)
     {
         if (target is not IBattleChara bc) return false;
-        return buffIds.Any(id => bc.StatusList.Any(s => s.StatusID == id));
+        var list = bc.StatusList;
+        for (int i = 0; i < list.Length; i++)
+        {
+            var sid = list[i].StatusID;
+            for (int j = 0; j < buffIds.Length; j++)
+            {
+                if (sid == buffIds[j]) return true;
+            }
+        }
+        return false;
     }
 
     /// <summary>指定对象上 buff 剩余时间 (ms)。不存在时返回 0</summary>
     public static float GetAuraTimeLeft(IGameObject? target, uint buffId, uint sourceId = 0xE0000000)
     {
         if (target is not IBattleChara bc) return 0;
-        var status = bc.StatusList.FirstOrDefault(s => s.StatusID == buffId && (sourceId == 0xE0000000 || s.SourceID == sourceId));
-        return status?.RemainingTime ?? 0;
+        var list = bc.StatusList;
+        for (int i = 0; i < list.Length; i++)
+        {
+            var s = list[i];
+            if (s.StatusID == buffId && (sourceId == 0xE0000000 || s.SourceID == sourceId))
+                return s.RemainingTime;
+        }
+        return 0;
     }
 
     /// <summary>自身是否有 buff</summary>

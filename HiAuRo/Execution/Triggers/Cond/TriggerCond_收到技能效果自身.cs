@@ -30,7 +30,7 @@ public sealed class TriggerCond_收到技能效果自身 : ITriggerCond
         var nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         var cutoffMs = nowMs - (long)(_checkTimeSec * 1000);
 
-        return BattleData.RecentActionEffects.Any(e =>
+        return BattleData.GetRecentActionEffects().Any(e =>
             e.TimestampMs >= cutoffMs &&
             e.ActionId == _actionId &&
             e.TargetId == selfId);

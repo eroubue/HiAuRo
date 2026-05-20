@@ -8,6 +8,7 @@ namespace HiAuRo.Runtime.Intelligence;
 public static class DemandBuffer
 {
     private static readonly ConcurrentQueue<MovementDemand> _pending = new();
+    private static readonly object _rebuildLock = new();
     private static int _orderCounter;
 
     /// <summary>添加需求（自动分配 AddedOrder）</summary>
@@ -26,11 +27,14 @@ public static class DemandBuffer
     /// <summary>移除已释放的需求</summary>
     public static void Remove(IEnumerable<string> demandIds)
     {
-        var ids = new HashSet<string>(demandIds);
-        var remaining = _pending.Where(d => !ids.Contains(d.Id)).ToArray();
-        while (_pending.TryDequeue(out _)) { }
-        foreach (var d in remaining)
-            _pending.Enqueue(d);
+        lock (_rebuildLock)
+        {
+            var ids = new HashSet<string>(demandIds);
+            var remaining = _pending.Where(d => !ids.Contains(d.Id)).ToArray();
+            while (_pending.TryDequeue(out _)) { }
+            foreach (var d in remaining)
+                _pending.Enqueue(d);
+        }
     }
 
     /// <summary>清空</summary>

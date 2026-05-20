@@ -30,7 +30,7 @@ public sealed class TriggerCond_最近连线 : ITriggerCond
         var nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
         var cutoffMs = nowMs - (long)(_checkTimeSec * 1000);
 
-        return BattleData.RecentTethers.Any(e =>
+        return BattleData.GetRecentTethers().Any(e =>
             e.TimestampMs >= cutoffMs &&
             e.TetherId == _tetherId &&
             e.TargetId == selfId);

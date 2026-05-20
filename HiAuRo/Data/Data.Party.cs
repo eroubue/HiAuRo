@@ -3,7 +3,7 @@ namespace HiAuRo;
 public static partial class Data
 {
     /// <summary>队伍成员信息</summary>
-    public sealed class PartyMemberInfo
+    public readonly struct PartyMemberInfo
     {
         public IPlayerCharacter? Player { get; init; }
         public uint JobId { get; init; }
@@ -135,10 +135,14 @@ public static partial class Data
         private static bool HasTankStance(IPlayerCharacter player)
         {
             if (player is not IBattleChara bc) return false;
-            foreach (var id in TankStances)
+            var list = bc.StatusList;
+            for (int i = 0; i < list.Length; i++)
             {
-                if (bc.StatusList.Any(s => s.StatusID == id))
-                    return true;
+                var sid = list[i].StatusID;
+                for (int j = 0; j < TankStances.Length; j++)
+                {
+                    if (sid == TankStances[j]) return true;
+                }
             }
             return false;
         }

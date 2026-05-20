@@ -150,7 +150,7 @@ public sealed class GameEventHook
                     var tether = System.Runtime.InteropServices.Marshal.PtrToStructure<TetherRaw>(packet);
                     if (tether.TargetOID == 0xE0000000)
                     {
-                        BattleData.RecentTethers.RemoveAll(e => e.TetherId == tether.TetherID && e.SourceId == tether.SourceID);
+                        BattleData.RemoveTethers(e => e.TetherId == tether.TetherID && e.SourceId == tether.SourceID);
                         Fire(new TetherRemoveParams
                         {
                             SourceID = tether.SourceID,

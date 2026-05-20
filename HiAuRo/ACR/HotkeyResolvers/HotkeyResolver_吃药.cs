@@ -32,6 +32,6 @@ public sealed class HotkeyResolver_吃药 : IHotkeyResolver
     public void Execute()
     {
         OmenTools.OmenService.UseActionManager.Instance().UseAction(
-            ActionType.Item, Ishq ? _itemId + 10000 : _itemId, 0, 0, 0, 0);
+            ActionType.Item, Ishq ? _itemId + 1000000 : _itemId, 0, 0, 0, 0);
     }
 }

@@ -22,8 +22,7 @@ public sealed class TriggerAction_发送命令 : ITriggerAction
     /// <summary>发送聊天命令</summary>
     public bool Handle()
     {
-        // 使用 Dalamud Chat 发送消息
-        DService.Instance().Chat.Print(_command);
+        OmenTools.OmenService.ChatManager.Instance().SendCommand(_command);
         return true;
     }
 }

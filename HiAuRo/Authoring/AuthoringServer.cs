@@ -38,7 +38,9 @@ public sealed class AuthoringServer
             }
             catch (Exception ex) { error = ex.Message; }
 
-            _ = bridge.SendAsync(new { type = "editorCatalogResult", data = new { json, error } });
+            bridge.SendAsync(new { type = "editorCatalogResult", data = new { json, error } }).ContinueWith(
+                    t => { if (t.Exception != null) DService.Instance().Log.Warning($"[Authoring] SendAsync 失败: {t.Exception.InnerException?.Message}"); },
+                    TaskContinuationOptions.OnlyOnFaulted);
         });
     }
 

@@ -99,7 +99,9 @@ public static class HotkeyHelper
         if (executedId != null)
             OnExecuted?.Invoke(executedId, executedLabel ?? string.Empty);
 
-        foreach (var handler in _handlers)
+        IHotkeyEventHandler[] handlersSnapshot;
+        lock (_lock) { handlersSnapshot = _handlers.ToArray(); }
+        foreach (var handler in handlersSnapshot)
         {
             if (handler.Run(new HotkeyConfig { Key = key }))
                 return;

@@ -52,7 +52,7 @@ public sealed class Coroutine
     {
         if (ms <= 0) return Task.CompletedTask;
         var tcs = new TaskCompletionSource<bool>();
-        _waiting.Add(new CoroutineWait { DueTime = Environment.TickCount64 + (long)ms, Callback = () => tcs.TrySetResult(true) });
+        _waiting.Add(new CoroutineWait { DueTime = Environment.TickCount64 + (long)ms, Callback = () => tcs.TrySetResult(true), Tcs = tcs });
         return tcs.Task;
     }
 
@@ -60,7 +60,7 @@ public sealed class Coroutine
     public Task WaitUntilAsync(Func<bool> condition)
     {
         var tcs = new TaskCompletionSource<bool>();
-        _waiting.Add(new CoroutineWait { Condition = condition, Callback = () => tcs.TrySetResult(true) });
+        _waiting.Add(new CoroutineWait { Condition = condition, Callback = () => tcs.TrySetResult(true), Tcs = tcs });
         return tcs.Task;
     }
 
@@ -68,7 +68,10 @@ public sealed class Coroutine
     public void Clear()
     {
         foreach (var w in _waiting)
+        {
             w.Cancelled = true;
+            w.Tcs?.TrySetCanceled();
+        }
         _waiting.Clear();
     }
 
@@ -78,6 +81,7 @@ public sealed class Coroutine
         internal long DueTime;
         internal Func<bool>? Condition;
         internal Action? Callback;
+        internal TaskCompletionSource<bool>? Tcs;
         internal bool Cancelled;
 
         /// <summary>是否已完成</summary>

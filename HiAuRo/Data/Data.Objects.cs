@@ -20,9 +20,12 @@ public static partial class Data
         public static readonly List<IGameObj> Environment = [];
         public static readonly List<IGameObj> Others = [];
 
+        private static readonly Dictionary<uint, IGameObj> _byEntityId = [];
+
         public static void Refresh()
         {
             ClearAll();
+            _byEntityId.Clear();
 
             if (!IsReady) return;
 
@@ -32,6 +35,7 @@ public static partial class Data
             foreach (var obj in DService.Instance().ObjectTable)
             {
                 All.Add(obj);
+                _byEntityId[obj.EntityID] = obj;
 
                 switch (obj.ObjectKind)
                 {
@@ -91,6 +95,12 @@ public static partial class Data
         {
             All.Clear(); Allies.Clear(); Enemies.Clear(); Party.Clear();
             Pets.Clear(); Summons.Clear(); Environment.Clear(); Others.Clear();
+        }
+
+        /// <summary>按 EntityID 查找对象（O(1)）</summary>
+        public static IGameObj? GetById(uint entityId)
+        {
+            return _byEntityId.GetValueOrDefault(entityId);
         }
 
         /// <summary>是否为敌对目标 (可被攻击 + 可选中 + 未死亡)</summary>

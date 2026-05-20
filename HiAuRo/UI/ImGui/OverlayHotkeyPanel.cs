@@ -136,11 +136,19 @@ public sealed class OverlayHotkeyPanel : OverlayBase
         return clicked;
     }
 
-    /// <summary>加载游戏技能图标纹理（无缓存，每帧从 Dalamud 纹理提供者获取）</summary>
+    /// <summary>图标纹理缓存</summary>
+    private static readonly Dictionary<uint, ImTextureID> _iconTextureCache = new();
+
+    /// <summary>加载游戏技能图标纹理（带缓存）</summary>
     private static ImTextureID LoadIconTexture(uint iconId)
     {
+        if (_iconTextureCache.TryGetValue(iconId, out var cached))
+            return cached;
+
         var wrap = DService.Instance().Texture.GetFromGameIcon(new GameIconLookup(iconId)).GetWrapOrDefault();
-        return wrap?.Handle ?? 0;
+        var handle = wrap?.Handle ?? 0;
+        _iconTextureCache[iconId] = handle;
+        return handle;
     }
 
     /// <summary>保存窗口位置</summary>

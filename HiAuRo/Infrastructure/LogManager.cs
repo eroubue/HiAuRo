@@ -22,7 +22,6 @@ public sealed class LogManager : IDisposable
     private readonly object _writeLock = new();
     private static readonly ConcurrentDictionary<Type, FieldInfo[]> _fieldCache = new();
     private long _sequence;
-    private int _count;
     private uint _lastTerritoryId;
     private StreamWriter? _writer;
 
@@ -79,13 +78,10 @@ public sealed class LogManager : IDisposable
         var zoneCtx = GetZoneContext();
         var entry = new LogEntry(DateTime.Now, type, content);
 
-        // 内存缓冲（环形），用 Interlocked 避免 O(n) Count
-        if (Interlocked.Increment(ref _count) > MaxEntries)
-        {
-            if (_entries.TryDequeue(out _))
-                Interlocked.Decrement(ref _count);
-        }
+        // 内存缓冲（环形）
         _entries.Enqueue(entry);
+        while (_entries.Count > MaxEntries)
+            _entries.TryDequeue(out _);
 
         // 写文件，writer 为 null 时跳过锁
         var writer = _writer;

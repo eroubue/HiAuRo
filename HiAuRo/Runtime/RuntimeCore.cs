@@ -21,7 +21,6 @@ public static class RuntimeCore
     public static void Stop()
     {
         if (!IsRunning) return;
-        ACR.MainControlHelper.Unpause();
         IsRunning = false;
     }
 

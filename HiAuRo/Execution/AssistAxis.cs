@@ -1,3 +1,4 @@
+using System.Collections.Concurrent;
 using HiAuRo.ACR;
 
 namespace HiAuRo.Execution;
@@ -30,7 +31,7 @@ public sealed class AssistAxis
     }
     private uint _previousTerritoryId;
     private CancellationTokenSource? _cts;
-    private readonly Dictionary<TreeCondNode, TaskCompletionSource<bool>> _waitingConds = [];
+    private readonly ConcurrentDictionary<TreeCondNode, TaskCompletionSource<bool>> _waitingConds = new();
 
     private AssistAxis() { }
 
@@ -94,15 +95,15 @@ public sealed class AssistAxis
 
     private void CheckWaitingConds()
     {
-        if (_waitingConds.Count == 0) return;
-        var toWake = _waitingConds.Where(kv => kv.Key.EvaluateConds()).Select(kv => kv.Key).ToList();
-        foreach (var node in toWake)
+        if (_waitingConds.IsEmpty) return;
+        foreach (var (node, tcs) in _waitingConds)
         {
-            if (_waitingConds.TryGetValue(node, out var tcs))
+            try
             {
-                tcs.TrySetResult(true);
-                _waitingConds.Remove(node);
+                if (node.EvaluateConds() && _waitingConds.TryRemove(node, out var removedTcs))
+                    removedTcs.TrySetResult(true);
             }
+            catch { }
         }
     }
 

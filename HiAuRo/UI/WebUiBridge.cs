@@ -12,6 +12,7 @@ public sealed class WebUiBridge : IDisposable
 {
     private readonly List<WebSocket> _clients = [];
     private readonly object _lock = new();
+    private readonly SemaphoreSlim _writeLock = new(1, 1);
     private readonly JsonSerializerOptions _jsonOptions = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.CamelCase,
@@ -63,7 +64,15 @@ public sealed class WebUiBridge : IDisposable
         {
             try
             {
-                await client.SendAsync(segment, WebSocketMessageType.Text, true, CancellationToken.None);
+                await _writeLock.WaitAsync();
+                try
+                {
+                    await client.SendAsync(segment, WebSocketMessageType.Text, true, CancellationToken.None);
+                }
+                finally
+                {
+                    _writeLock.Release();
+                }
             }
             catch (Exception ex)
             {
@@ -80,7 +89,7 @@ public sealed class WebUiBridge : IDisposable
         DService.Instance().Log.Information($"[WS] 客户端已连接 (当前{_clients.Count}个)");
 
         // 连接时推送初始状态
-        PushInitialStatus(ws);
+        await PushInitialStatus(ws);
 
         var buffer = new byte[8192];
         try
@@ -135,9 +144,10 @@ public sealed class WebUiBridge : IDisposable
         _handlers.Clear();
         _cachedControls = null;
         _cachedUiSettings = null;
+        _writeLock.Dispose();
     }
 
-    private async void PushInitialStatus(WebSocket ws)
+    private async Task PushInitialStatus(WebSocket ws)
     {
         try
         {
@@ -180,13 +190,22 @@ public sealed class WebUiBridge : IDisposable
                 }
             }, _jsonOptions);
             var bytes = Encoding.UTF8.GetBytes(json);
-            await ws.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
 
-            // 补发缓存的 controls / uiSettings（避免 WS 连接前消息丢失）
-            if (_cachedControls != null)
-                await ws.SendAsync(new ArraySegment<byte>(_cachedControls), WebSocketMessageType.Text, true, CancellationToken.None);
-            if (_cachedUiSettings != null)
-                await ws.SendAsync(new ArraySegment<byte>(_cachedUiSettings), WebSocketMessageType.Text, true, CancellationToken.None);
+            await _writeLock.WaitAsync();
+            try
+            {
+                await ws.SendAsync(new ArraySegment<byte>(bytes), WebSocketMessageType.Text, true, CancellationToken.None);
+
+                // 补发缓存的 controls / uiSettings（避免 WS 连接前消息丢失）
+                if (_cachedControls != null)
+                    await ws.SendAsync(new ArraySegment<byte>(_cachedControls), WebSocketMessageType.Text, true, CancellationToken.None);
+                if (_cachedUiSettings != null)
+                    await ws.SendAsync(new ArraySegment<byte>(_cachedUiSettings), WebSocketMessageType.Text, true, CancellationToken.None);
+            }
+            finally
+            {
+                _writeLock.Release();
+            }
         }
         catch (Exception ex) { DService.Instance().Log.Error($"[WS] PushInitialStatus 失败: {ex.Message}"); }
     }

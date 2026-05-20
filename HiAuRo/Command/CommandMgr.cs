@@ -92,7 +92,9 @@ public static class CommandMgr
                 }
                 break;
             case "catalog upload":
-                _ = Plugin.Instance.UploadCatalogAsync();
+                Plugin.Instance.UploadCatalogAsync().ContinueWith(
+                    t => { if (t.Exception != null) DService.Instance().Log.Error($"[Command] catalog upload 失败: {t.Exception.InnerException?.Message}"); },
+                    TaskContinuationOptions.OnlyOnFaulted);
                 break;
             default:
                 DService.Instance().Chat.Print("[HiAuRo] 用法: /hi on|off|toggle|status|panel|reload|fact|assist [load|unload]|catalog [export|upload]");
