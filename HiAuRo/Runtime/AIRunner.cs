@@ -160,6 +160,7 @@ public sealed class AIRunner
                 {
                     DService.Instance().Log.Information($"[AIRunner] 切图: {_lastTerritoryId} → {territoryId}");
                     Data.Combat.AbilityCountInGcd = 0;
+                    Data.Combat.LastAbilityUseTime = 0;
                     Data.Combat.MaxAbilityTimesInGcd = PluginConfig.Instance.MaxAbilityTimesInGcd;
                     CurrentRotation?.EventHandler?.OnTerritoryChanged();
                 }
@@ -341,6 +342,7 @@ public sealed class AIRunner
         Coroutine.Instance.Clear();
         _battleTimeMs = 0;
         Data.Combat.AbilityCountInGcd = 0;
+        Data.Combat.LastAbilityUseTime = 0;
         Data.Combat.MaxAbilityTimesInGcd = PluginConfig.Instance.MaxAbilityTimesInGcd;
         CurrentRotation?.EventHandler?.OnResetBattle();
         IntelligenceEngine.Instance.Reset();

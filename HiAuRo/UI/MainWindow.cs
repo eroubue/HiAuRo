@@ -175,6 +175,7 @@ public sealed class MainWindow : Window
         var changed = false;
         var aq = _config.ActionQueueInMs;
         var maxAb = _config.MaxAbilityTimesInGcd;
+        var abInterval = _config.AbilityIntervalMs;
         var aoe = _config.AoeCount;
         var range = _config.AttackRange;
         var debug = _config.DebugEnabled;
@@ -185,6 +186,7 @@ public sealed class MainWindow : Window
         ImGui.PushItemWidth(100);
         changed |= ImGui.InputInt("技能队列窗口 (ms)", ref aq, 50);
         changed |= ImGui.InputInt("GCD 内能力技上限", ref maxAb, 1);
+        changed |= ImGui.InputInt("能力技间隔 (ms)", ref abInterval, 50);
         changed |= ImGui.InputInt("AOE 判定敌人数", ref aoe, 1);
         changed |= ImGui.SliderFloat("攻击距离", ref range, 5f, 40f, "%.1f");
         ImGui.PopItemWidth();
@@ -214,6 +216,7 @@ public sealed class MainWindow : Window
         {
             _config.ActionQueueInMs = aq;
             _config.MaxAbilityTimesInGcd = maxAb;
+            _config.AbilityIntervalMs = abInterval;
             _config.AoeCount = aoe;
             _config.AttackRange = range;
             _config.DebugEnabled = debug;

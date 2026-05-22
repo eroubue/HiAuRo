@@ -16,6 +16,14 @@ public static partial class Data
         /// <summary>当前 GCD 窗口能力技上限（ACR 可读写，框架仅在生命周期事件时重置为 PluginConfig 默认值）</summary>
         public static int MaxAbilityTimesInGcd { get; set; } = 2;
 
+        /// <summary>上一次能力技施放成功的时间戳 (Environment.TickCount64)</summary>
+        public static long LastAbilityUseTime { get; internal set; }
+
+        /// <summary>能力技间隔是否已过 (用于 oGCD slot 构建判定)</summary>
+        public static bool AbilityIntervalElapsed =>
+            LastAbilityUseTime == 0
+            || Environment.TickCount64 - LastAbilityUseTime >= PluginConfig.Instance.AbilityIntervalMs;
+
         public static bool IsLoggedIn => GameState.IsLoggedIn;
 
         public static bool IsInInstanceArea => GameState.IsInInstanceArea;

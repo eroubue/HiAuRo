@@ -45,6 +45,9 @@ public sealed class PluginConfig : IPluginConfiguration
     /// <summary>GCD 内能力技最大次数</summary>
     public int MaxAbilityTimesInGcd { get; set; } = 2;
 
+    /// <summary>连续两能力技之间的最小间隔 (ms)</summary>
+    public int AbilityIntervalMs { get; set; } = 500;
+
     /// <summary>AOE 判定的敌人数</summary>
     public int AoeCount { get; set; } = 3;
 

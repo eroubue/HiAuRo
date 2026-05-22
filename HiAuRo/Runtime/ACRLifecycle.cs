@@ -189,6 +189,7 @@ public static class ACRLifecycle
 
         // 切换 ACR 时重置 GCD 能力技计数和上限
         Data.Combat.AbilityCountInGcd = 0;
+        Data.Combat.LastAbilityUseTime = 0;
         Data.Combat.MaxAbilityTimesInGcd = PluginConfig.Instance.MaxAbilityTimesInGcd;
 
         CurrentJobId = _lastJob;

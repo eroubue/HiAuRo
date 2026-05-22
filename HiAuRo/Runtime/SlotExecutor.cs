@@ -55,6 +55,12 @@ public sealed class SlotExecutor
 
             handler?.BeforeSpell(slot, spell);
 
+            if (spell.IsAbility() && !Data.Combat.AbilityIntervalElapsed)
+            {
+                DService.Instance().Log.Debug($"[SlotExec] 能力技间隔未到, 跳过 {spell.Name} ({Environment.TickCount64 - Data.Combat.LastAbilityUseTime}ms < {PluginConfig.Instance.AbilityIntervalMs}ms)");
+                continue;
+            }
+
             var targetId = ResolveTarget(spell);
             var targetName = GetTargetNameById(targetId);
             var actionType = SpellCategoryToActionType(spell.SpellCategory);
@@ -67,6 +73,8 @@ public sealed class SlotExecutor
             {
                 EventSystem.OnUseActionSuccess(spell.Id, spell.Type);
                 handler?.OnSpellCastSuccess(slot, spell);
+                if (spell.IsAbility())
+                    Data.Combat.LastAbilityUseTime = Environment.TickCount64;
             }
 
             handler?.AfterSpell(slot, spell);

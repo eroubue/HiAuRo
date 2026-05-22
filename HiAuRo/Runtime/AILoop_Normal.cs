@@ -106,7 +106,9 @@ public sealed class AILoop_Normal : IAILoop
             bool canExecute = data.Mode switch
             {
                 SlotMode.Gcd    => isGcdReady,
-                SlotMode.OffGcd => isOffGcdWindow && Data.Combat.AbilityCountInGcd < Data.Combat.MaxAbilityTimesInGcd,
+                SlotMode.OffGcd => isOffGcdWindow
+                    && Data.Combat.AbilityCountInGcd < Data.Combat.MaxAbilityTimesInGcd
+                    && Data.Combat.AbilityIntervalElapsed,
                 SlotMode.Always => true,
                 _              => false
             };
