@@ -1,4 +1,5 @@
 using HiAuRo.ACR;
+using HiAuRo.Execution.Events;
 using static HiAuRo.Data;
 
 namespace HiAuRo.Execution.Triggers.Cond;
@@ -16,6 +17,7 @@ public sealed class TriggerCondParams_敌人读条 : ITriggerCondParams
 
 /// <summary>
 /// 检测敌人是否在读指定技能
+/// 事件驱动：匹配 ActorCastParams 快速唤醒；轮询：遍历 Objects.Enemies 检查 CastActionID
 /// </summary>
 [TriggerDisplay("敌人读条", "检测指定敌人是否在读指定技能")]
 [TriggerTypeName("TriggerCondEnemyCastSpell")]
@@ -35,6 +37,19 @@ public sealed class TriggerCond_敌人读条 : ITriggerCond
     /// <summary>检测敌人是否在读指定技能</summary>
     public bool Handle(ITriggerCondParams? condParams = null)
     {
+        if (condParams is ActorCastParams cast)
+        {
+            if (cast.ActionID != _spellId) return false;
+
+            if (_enemyDataId.HasValue && cast.SourceID != 0)
+            {
+                var obj = DService.Instance().ObjectTable?.SearchByID(cast.SourceID);
+                if (obj is not IBattleNPC npc || npc.DataID != _enemyDataId.Value)
+                    return false;
+            }
+            return true;
+        }
+
         foreach (var enemy in Objects.Enemies)
         {
             if (enemy is not IBattleNPC battleNpc) continue;

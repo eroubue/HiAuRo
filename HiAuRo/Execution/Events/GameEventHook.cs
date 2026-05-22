@@ -32,6 +32,11 @@ public sealed class GameEventHook
     private delegate long ObjectEffectDelegate(nint gameObject, ushort data1, ushort data2, long a4);
     private Hook<ObjectEffectDelegate>? _objectEffectHook;
 
+    private delegate nint ActorCastDetourDelegate(uint sourceId, nint packetPtr);
+    private Hook<ActorCastDetourDelegate>? _actorCastHook;
+
+    private readonly Dictionary<(uint SourceId, ushort ActionId), long> _actorCastDedup = [];
+
     /// <summary>初始化游戏事件钩子（注册 Hook + 回调）</summary>
     public void Init()
     {
@@ -89,6 +94,26 @@ public sealed class GameEventHook
         {
             DService.Instance().Log.Warning($"[GameEventHook] ObjectEffect Hook 挂载失败 (可能是版本更新): {ex.Message}");
         }
+
+        try
+        {
+            var sigScanner = DService.Instance().SigScanner;
+            var actorCastAddr = sigScanner.ScanText("40 53 57 48 81 EC ?? ?? ?? ?? 48 8B FA 8B D1");
+            if (actorCastAddr != nint.Zero)
+            {
+                _actorCastHook = DService.Instance().Hook.HookFromAddress<ActorCastDetourDelegate>(
+                    actorCastAddr, OnActorCastDetour);
+                _actorCastHook.Enable();
+            }
+            else
+            {
+                DService.Instance().Log.Warning("[GameEventHook] ActorCast 签名未找到，跳过 Hook 挂载");
+            }
+        }
+        catch (Exception ex)
+        {
+            DService.Instance().Log.Warning($"[GameEventHook] ActorCast Hook 挂载失败 (可能是版本更新): {ex.Message}");
+        }
     }
 
     /// <summary>关闭游戏事件钩子（清理 Hook + 回调）</summary>
@@ -106,6 +131,10 @@ public sealed class GameEventHook
         _objectEffectHook?.Disable();
         _objectEffectHook?.Dispose();
         _objectEffectHook = null;
+
+        _actorCastHook?.Disable();
+        _actorCastHook?.Dispose();
+        _actorCastHook = null;
 
         var csm = CharacterStatusManager.Instance();
         csm.Unreg(OnGainStatus);
@@ -197,6 +226,9 @@ public sealed class GameEventHook
             }
             case 0x039A:
             {
+                if (_actorCastHook != null)
+                    break; // 签名钩子已注册，跳过 packet opcode 路径（避免重复触发/错误数据）
+
                 unsafe
                 {
                     var cast = System.Runtime.InteropServices.Marshal.PtrToStructure<ActorCastRaw>(packet);
@@ -384,6 +416,58 @@ public sealed class GameEventHook
 
     #endregion
 
+    #region ActorCast 签名 Hook（Splatoon 验证，替代不可靠的 packet opcode 0x039A）
+
+    private nint OnActorCastDetour(uint sourceId, nint packetPtr)
+    {
+        var result = _actorCastHook!.Original(sourceId, packetPtr);
+
+        try
+        {
+            if (packetPtr == nint.Zero) return result;
+
+            unsafe
+            {
+                var packet = (PacketActorCast*)packetPtr;
+                var actionId = packet->ActionId;
+                var nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+
+                var key = (sourceId, (ushort)actionId);
+                lock (_actorCastDedup)
+                {
+                    if (_actorCastDedup.TryGetValue(key, out var lastMs) && (nowMs - lastMs) < 500)
+                        return result;
+                    _actorCastDedup[key] = nowMs;
+
+                    var cutoff = nowMs - 5000;
+                    var stale = _actorCastDedup.Where(kv => kv.Value < cutoff).Select(kv => kv.Key).ToList();
+                    foreach (var k in stale) _actorCastDedup.Remove(k);
+                }
+
+                Fire(new ActorCastParams
+                {
+                    ActionID = actionId,
+                    CastTime = packet->CastTime,
+                    TargetID = packet->TargetId,
+                    SourceID = sourceId,
+                    PosX = ConvertCastCoord(packet->PosX),
+                    PosY = ConvertCastCoord(packet->PosY),
+                    PosZ = ConvertCastCoord(packet->PosZ)
+                });
+            }
+        }
+        catch (Exception ex)
+        {
+            DService.Instance().Log.Warning($"[GameEventHook] ActorCast 签名处理异常: {ex.Message}");
+        }
+
+        return result;
+    }
+
+    private static float ConvertCastCoord(ushort raw) => raw * 3.0518043f * 0.0099999998f - 1000.0f;
+
+    #endregion
+
     #region ActionEffect Hook
 
     private void OnActionEffect(
@@ -402,23 +486,26 @@ public sealed class GameEventHook
             var targetCount = header->TargetCount;
             if (targetCount == 0) return;
 
-            var entries = (EffectEntry*)effectArray;
-            for (byte i = 0; i < targetCount; i++)
-            {
-                var entry = entries[i * 8];
-                if (entry.Type == 0) continue; // Nothing/NoEffect
-
-                var targetOid = i == 0 ? header->AnimationTargetId 
-                    : (effectTail != nint.Zero ? *(ulong*)(effectTail + i * 8) : 0xE0000000);
-
-                Fire(new ActionEffectParams
+        var entries = (EffectEntry*)effectArray;
+                var nowMs = DateTimeOffset.UtcNow.ToUnixTimeMilliseconds();
+                for (byte i = 0; i < targetCount; i++)
                 {
-                    ActionID = actionId,
-                    SourceID = sourceId,
-                    TargetOID = (uint)(targetOid & 0xFFFFFFFF),
-                    AnimationID = animationId,
-                    EffectType = entry.Type
-                });
+                    var entry = entries[i * 8];
+                    if (entry.Type == 0) continue; // Nothing/NoEffect
+
+                    var targetOid = i == 0 ? header->AnimationTargetId 
+                        : (effectTail != nint.Zero ? *(ulong*)(effectTail + i * 8) : 0xE0000000);
+
+                    BattleData.OnActionEffect(actionId, sourceId, (uint)(targetOid & 0xFFFFFFFF), nowMs);
+
+                    Fire(new ActionEffectParams
+                    {
+                        ActionID = actionId,
+                        SourceID = sourceId,
+                        TargetOID = (uint)(targetOid & 0xFFFFFFFF),
+                        AnimationID = animationId,
+                        EffectType = entry.Type
+                    });
 
                 if (targetOid == 0xE0000000)
                 {
@@ -572,6 +659,19 @@ public sealed class GameEventHook
     {
         public uint Index;
         public uint Flag;
+    }
+
+    [System.Runtime.InteropServices.StructLayout(System.Runtime.InteropServices.LayoutKind.Explicit, Size = 32)]
+    private struct PacketActorCast
+    {
+        [System.Runtime.InteropServices.FieldOffset(0)]  public ushort ActionId;
+        [System.Runtime.InteropServices.FieldOffset(2)]  public byte ActionType;
+        [System.Runtime.InteropServices.FieldOffset(8)]  public float CastTime;
+        [System.Runtime.InteropServices.FieldOffset(12)] public uint TargetId;
+        [System.Runtime.InteropServices.FieldOffset(16)] public ushort RawRotation;
+        [System.Runtime.InteropServices.FieldOffset(20)] public ushort PosX;
+        [System.Runtime.InteropServices.FieldOffset(22)] public ushort PosY;
+        [System.Runtime.InteropServices.FieldOffset(24)] public ushort PosZ;
     }
 
     #endregion

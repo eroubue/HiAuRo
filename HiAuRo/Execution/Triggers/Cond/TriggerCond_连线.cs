@@ -1,9 +1,11 @@
 using HiAuRo.ACR;
+using HiAuRo.Execution.Events;
+using static HiAuRo.Data;
 
 namespace HiAuRo.Execution.Triggers.Cond;
 
 /// <summary>
-/// 触发条件参数 —— 连线（暂存，等待 Tether 读取基础设施）
+/// 触发条件参数 —— 连线
 /// </summary>
 public sealed class TriggerCondParams_连线 : ITriggerCondParams
 {
@@ -12,7 +14,8 @@ public sealed class TriggerCondParams_连线 : ITriggerCondParams
 }
 
 /// <summary>
-/// 检测是否有指定连线生效（暂存，等待 Tether 内存读取基础设施）
+/// 检测是否有指定连线生效
+/// 事件驱动：匹配 TetherCreateParams；轮询：查询 BattleData 活跃连线列表
 /// </summary>
 [TriggerDisplay("连线", "检测是否存在指定连线")]
 [TriggerTypeName("HiAuRo.Execution.Triggers.Cond.TriggerCond_连线, HiAuRo")]
@@ -30,7 +33,12 @@ public sealed class TriggerCond_连线 : ITriggerCond
     /// <summary>检测是否有指定连线生效</summary>
     public bool Handle(ITriggerCondParams? condParams = null)
     {
-        // 需要 Tether 内存读取，暂未实现
-        return false;
+        if (condParams is TetherCreateParams create)
+            return create.TetherID == _tetherId;
+
+        if (condParams is TetherRemoveParams)
+            return false;
+
+        return BattleData.GetRecentTethers().Any(e => e.TetherId == _tetherId);
     }
 }

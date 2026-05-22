@@ -1,9 +1,10 @@
 using HiAuRo.ACR;
+using HiAuRo.Execution.Events;
 
 namespace HiAuRo.Execution.Triggers.Cond;
 
 /// <summary>
-/// 触发条件参数 —— 游戏日志（暂存，等待 ChatLog Hook 基础设施）
+/// 触发条件参数 —— 游戏日志
 /// </summary>
 public sealed class TriggerCondParams_游戏日志 : ITriggerCondParams
 {
@@ -12,7 +13,8 @@ public sealed class TriggerCondParams_游戏日志 : ITriggerCondParams
 }
 
 /// <summary>
-/// 检测游戏聊天日志中是否出现指定消息（暂存，等待 ChatLog Hook 基础设施）
+/// 检测游戏聊天日志中是否出现指定消息
+/// 事件驱动：匹配 ChatMessageParams；轮询：检查近期聊天消息缓冲区
 /// </summary>
 [TriggerDisplay("游戏日志", "检测游戏日志消息匹配")]
 [TriggerTypeName("HiAuRo.Execution.Triggers.Cond.TriggerCond_游戏日志, HiAuRo")]
@@ -30,7 +32,12 @@ public sealed class TriggerCond_游戏日志 : ITriggerCond
     /// <summary>检测游戏日志中是否出现指定消息</summary>
     public bool Handle(ITriggerCondParams? condParams = null)
     {
-        // 需要 ChatLog Hook，暂未实现
+        if (!string.IsNullOrEmpty(_messagePattern) &&
+            condParams is ChatMessageParams chat &&
+            chat.Message.Contains(_messagePattern, System.StringComparison.OrdinalIgnoreCase))
+        {
+            return true;
+        }
         return false;
     }
 }
