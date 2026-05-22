@@ -194,15 +194,19 @@ public sealed class LogManager : IDisposable
             catch { }
         }
 
-        // 技能名解析（ActionID 字段）
-        if (fieldName.Equals("ActionID", StringComparison.OrdinalIgnoreCase) && val is uint actionId && actionId > 0)
+        // 技能名解析（ActionID 字段，支持 uint/ushort/int）
+        if (fieldName.Equals("ActionID", StringComparison.OrdinalIgnoreCase) && val is not null)
         {
             try
             {
-                var sheet = DService.Instance().Data.GetExcelSheet<Lumina.Excel.Sheets.Action>();
-                var row = sheet?.GetRow(actionId);
-                if (row.HasValue && !string.IsNullOrEmpty(row.Value.Name.ToString()))
-                    return $"{core}{hexSuffix} \"{row.Value.Name}\"";
+                var actionId = System.Convert.ToUInt32(val);
+                if (actionId > 0)
+                {
+                    var sheet = DService.Instance().Data.GetExcelSheet<Lumina.Excel.Sheets.Action>();
+                    var row = sheet?.GetRow(actionId);
+                    if (row.HasValue && !string.IsNullOrEmpty(row.Value.Name.ToString()))
+                        return $"{core}{hexSuffix} \"{row.Value.Name}\"";
+                }
             }
             catch { }
         }

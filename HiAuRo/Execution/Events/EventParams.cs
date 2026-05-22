@@ -155,7 +155,7 @@ public sealed class ActorControlTimelineParams : ITriggerCondParams
 public sealed class ActorCastParams : ITriggerCondParams
 {
     /// <summary>技能 ID</summary>
-    public ushort ActionID;
+    public uint ActionID;
     /// <summary>读条时间</summary>
     public float CastTime;
     /// <summary>目标 ID</summary>
