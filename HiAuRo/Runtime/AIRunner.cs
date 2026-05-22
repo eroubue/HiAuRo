@@ -170,6 +170,8 @@ public sealed class AIRunner
             {
                 Data.Objects.Refresh();
                 ProcessSpellQueue(blockBuild);
+                // 非战斗也跑 Check（有目标时），blockBuild 阻止实际执行
+                AiLoop.GetNextSlot(blockBuild: true);
                 return;
             }
 
@@ -179,6 +181,8 @@ public sealed class AIRunner
                 // 倒计时阶段行为检查
                 UpdateCountDown();
                 ProcessSpellQueue(blockBuild);
+                // 非战斗也跑 Check（有目标时），blockBuild 阻止实际执行
+                AiLoop.GetNextSlot(blockBuild: true);
                 return;
             }
 

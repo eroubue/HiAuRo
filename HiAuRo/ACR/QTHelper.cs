@@ -8,6 +8,7 @@ public static class QTHelper
     private static readonly object _lock = new();
     private static readonly Dictionary<string, QtData> _data = [];
     private static readonly List<string> _order = [];
+    private static readonly Dictionary<string, string> _labelToId = [];
 
     /// <summary>QT 值变更事件。参数: (id, newValue)</summary>
     public static event Action<string, bool>? OnChanged;
@@ -31,15 +32,20 @@ public static class QTHelper
             };
             _data[id] = qt;
             _order.Add(id);
+            _labelToId[label] = id;
         }
     }
 
-    /// <summary>获取 QT 当前值</summary>
+    /// <summary>获取 QT 当前值（先按 id 匹配，失败则按 label 匹配）</summary>
     public static bool IsEnabled(string id)
     {
         lock (_lock)
         {
-            return _data.TryGetValue(id, out var qt) && qt.Value;
+            if (_data.TryGetValue(id, out var qt))
+                return qt.Value;
+            if (_labelToId.TryGetValue(id, out var realId))
+                return _data[realId].Value;
+            return false;
         }
     }
 
@@ -112,6 +118,7 @@ public static class QTHelper
         {
             _data.Clear();
             _order.Clear();
+            _labelToId.Clear();
         }
     }
 }

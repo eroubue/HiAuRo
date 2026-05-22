@@ -1,6 +1,7 @@
 using System.Reflection;
 using System.Reflection.Emit;
 using System.Runtime.Loader;
+using HiAuRo.ACR;
 using OmenTools.Dalamud.Services.ObjectTable.Abstractions.ObjectKinds;
 using OmenTools.OmenService;
 
@@ -15,20 +16,15 @@ sealed class HiAuRoContextImpl
 {
     public bool HasStatus(uint statusId)
     {
-        return LocalPlayerState.HasStatus(statusId, out _);
+        return AuraHelper.HasAura(Data.Me.Object,statusId);
     }
 
     public bool HasStatusOnTarget(uint statusId)
     {
-        var target = TargetManager.SoftTarget ?? TargetManager.Target;
-        if (target is not IBattleChara battle) return false;
-
-        foreach (var s in battle.StatusList)
-        {
-            if (s.StatusID == statusId)
-                return true;
-        }
-        return false;
+        var target = Data.Target.Current;
+        if (target == null) return false;
+        
+        return AuraHelper.HasAura(target, statusId);
     }
 
     public T? GetGauge<T>() where T : class

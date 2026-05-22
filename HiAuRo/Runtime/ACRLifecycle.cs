@@ -72,20 +72,19 @@ public static class ACRLifecycle
     public static void Update()
     {
         CheckJobSwitch();
-        PushImGuiState(); // 每帧同步 QT/Hotkey/运行状态到 ImGui overlay
 
         var state = CombatContext.CurrentState;
         if (state == CombatContext.State.Idle || state == CombatContext.State.Zoning)
         {
             _resetCalled = false;
-            Runner.ProcessSpellQueue(false); // 热键在所有状态都应消费
+            Runner.Update(); // 非战斗也跑 Check（blockBuild 阻止执行）
             return;
         }
 
         if (state == CombatContext.State.OutOfCombat)
         {
             if (!_resetCalled) { Runner.Reset(); _resetCalled = true; }
-            Runner.ProcessSpellQueue(false); // 非战斗也能消费热键队列
+            Runner.Update(); // 非战斗也跑 Check（blockBuild 阻止执行）
             return;
         }
 
@@ -94,7 +93,7 @@ public static class ACRLifecycle
     }
 
     /// <summary>每帧同步 QT/Hotkey/运行状态到 ImGuiOverlayState（ImGui 模式下）</summary>
-    private static void PushImGuiState()
+    internal static void PushImGuiState()
     {
         if (Plugin.IsWebUI || CurrentEntry == null) return;
         ImGuiOverlayState.UpdateStatus(CurrentAcrName, RuntimeCore.IsRunning,
@@ -122,9 +121,9 @@ public static class ACRLifecycle
             UnloadRotation();
         }
 
-        if (Plugin.IsWebUI)
+        if (Plugin.IsWebUI && Plugin.Instance._uiBridge != null)
         {
-            _ = Plugin.Instance._uiBridge!.SendAsync(new
+            _ = Plugin.Instance._uiBridge.SendAsync(new
             {
                 type = "status",
                 data = new
@@ -177,8 +176,7 @@ public static class ACRLifecycle
 
         // 重新扫描
         ACRLoader.UnloadAll();
-        var pluginDir = Plugin.Instance.PluginInterface.AssemblyLocation.Directory?.FullName ?? ".";
-        ACRLoader.LoadAll(pluginDir);
+        ACRLoader.LoadAll(Plugin.Instance.PluginInterface.ConfigDirectory.FullName);
 
         _lastJob = 0;
         CheckJobSwitch();
@@ -251,11 +249,7 @@ public static class ACRLifecycle
         foreach (var (id, key) in settings.HkBindings)
             ACR.HotkeyHelper.SetBinding(id, key);
 
-        // 恢复 QT 值
-        foreach (var (id, value) in settings.QtValues)
-            ACR.QTHelper.SetValue(id, value);
-
-        // QT 值变更自动保存
+        // QT 值变更自动保存（先注册回调，值恢复在 RegisterControls 之后）
         ACR.QTHelper.OnChanged += OnQtChanged;
         ACR.HotkeyHelper.OnExecuted += OnHkExecuted;
 
@@ -278,14 +272,14 @@ public static class ACRLifecycle
             }
             catch (Exception ex) { DService.Instance().Log.Error($"[ACR] controls 序列化异常: {ex.Message}"); }
 
-            if (Plugin.IsWebUI)
+            if (Plugin.IsWebUI && Plugin.Instance._uiBridge != null)
             {
-                _ = Plugin.Instance._uiBridge!.SendAsync(new
+                _ = Plugin.Instance._uiBridge.SendAsync(new
                 {
                     type = "controls",
                     data = controls
                 });
-                Plugin.Instance._uiBridge!.CacheControls(controls);
+                Plugin.Instance._uiBridge.CacheControls(controls);
             }
             ImGuiOverlayState.UpdateControls(controls);
             DService.Instance().Log.Information("[ACR] controls 消息已发送 + 已缓存");
@@ -295,10 +289,14 @@ public static class ACRLifecycle
             DService.Instance().Log.Warning("[ACR] GetRotationUI() 返回 null, 无 UI 控件");
         }
 
+        // 恢复 QT 值（必须在 RegisterControls 之后，否则 key 尚未注册）
+        foreach (var (id, value) in settings.QtValues)
+            ACR.QTHelper.SetValue(id, value);
+
         // 推送 UI 设置
-        if (Plugin.IsWebUI)
+        if (Plugin.IsWebUI && Plugin.Instance._uiBridge != null)
         {
-            _ = Plugin.Instance._uiBridge!.SendAsync(new
+            _ = Plugin.Instance._uiBridge.SendAsync(new
             {
                 type = "uiSettings",
                 data = new
@@ -312,7 +310,7 @@ public static class ACRLifecycle
                     hkBindings = settings.HkBindings
                 }
             });
-            Plugin.Instance._uiBridge!.CacheUiSettings(new
+            Plugin.Instance._uiBridge.CacheUiSettings(new
             {
                 qtCols = settings.QtCols,
                 qtBtnW = settings.QtBtnW,
@@ -332,9 +330,9 @@ public static class ACRLifecycle
         // 推送完整状态（qt + hotkey 数据）
         var hotkeyList = ACR.HotkeyHelper.GetAll();
         var qtList = ACR.QTHelper.GetAll();
-        if (Plugin.IsWebUI)
+        if (Plugin.IsWebUI && Plugin.Instance._uiBridge != null)
         {
-            _ = Plugin.Instance._uiBridge!.SendAsync(new
+            _ = Plugin.Instance._uiBridge.SendAsync(new
             {
                 type = "status",
                 data = new

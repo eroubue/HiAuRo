@@ -33,6 +33,8 @@ public static class RuntimeCore
 
     private static void OnTick(Dalamud.Plugin.Services.IFramework _)
     {
+        ACRLifecycle.PushImGuiState(); // 无论是否运行，每帧同步 ImGui 悬浮窗状态
+
         if (!IsRunning) return;
         try
         {

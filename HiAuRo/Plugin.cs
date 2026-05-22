@@ -49,9 +49,8 @@ public partial class Plugin : IDalamudPlugin
             _config = LoadConfig();
             LogManager.Instance.Init(_pluginInterface.ConfigDirectory.FullName);
             Theme.Mode = _config.ImGuiThemeMode == ImGuiThemeMode.Dark ? Theme.ThemeMode.Dark : Theme.ThemeMode.Light;
-            HelperUpdater.CheckAndUpdateAsync().ContinueWith(
-                    t => { if (t.Exception != null) DService.Instance().Log.Error($"[Lifecycle] HelperUpdater 失败: {t.Exception.InnerException?.Message}"); },
-                    TaskContinuationOptions.OnlyOnFaulted);
+            HelperUpdater.CheckAndUpdateAsync().GetAwaiter().GetResult();
+            DService.Instance().Log.Information($"[Lifecycle] HelperUpdater 完成, Loaded={HelperUpdater.Loaded}");
 
             var webRoot = Path.Combine(_pluginInterface.ConfigDirectory.FullName, "web");
             var sourceWebRoot = Path.Combine(_pluginInterface.AssemblyLocation.Directory?.FullName ?? ".", "UI", "web");
@@ -119,7 +118,7 @@ public partial class Plugin : IDalamudPlugin
             // 加载外部 ACR
             DService.Instance().Log.Information("[ACR] 开始扫描外部 ACR...");
             ACRLifecycle.Init(_pluginInterface.ConfigDirectory.FullName);
-            ACRLoader.LoadAll(_pluginInterface.AssemblyLocation.Directory?.FullName ?? ".");
+            ACRLoader.LoadAll(_pluginInterface.ConfigDirectory.FullName);
             DService.Instance().Log.Information("[ACR] 扫描完成, 等待职业切换触发加载");
             ACRLifecycle.ForceRecheck(); // RuntimeCore 可能先于 LoadAll 跑了第一帧，强制重检
 

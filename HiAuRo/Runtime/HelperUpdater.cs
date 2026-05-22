@@ -1,8 +1,6 @@
 using System.Net.Http;
-using System.Net.Http.Json;
 using System.Reflection;
 using System.Runtime.Loader;
-using System.Text.Json;
 
 namespace HiAuRo.Runtime;
 
@@ -14,7 +12,6 @@ public static class HelperUpdater
     private const string RepoOwner = "denghaoxuan991876906";
     private const string RepoName = "HiAuRo.Helper";
     private const string DllName = "HiAuRo.Helper.dll";
-    private const string VersionFileName = "version.txt";
 
     private static readonly HttpClient _http = new()
     {
@@ -57,83 +54,55 @@ public static class HelperUpdater
         }
     }
 
-    /// <summary>检查更新，下载并加载最新 DLL（异步，不阻塞启动）</summary>
+    /// <summary>检查更新，下载并加载最新 DLL（同步，避免与 ACRLoader 时序竞争）</summary>
     public static async Task CheckAndUpdateAsync()
     {
+        var localDll = Path.Combine(StoreDir, DllName);
         try
         {
-            var latestTag = await FetchLatestReleaseTag();
-            if (latestTag == null) return;
-
-            var localDll = Path.Combine(StoreDir, DllName);
-            var localTag = GetLocalTag();
-
-            if (latestTag == localTag && File.Exists(localDll))
-            {
-                LoadDll(localDll);
-                return;
-            }
-
-            var downloaded = await DownloadRelease(latestTag, localDll);
+            // 直接下载 latest release DLL，无需调用 GitHub API（避免 403 rate limit）
+            var downloaded = await DownloadLatestDll(localDll);
             if (downloaded)
             {
-                WriteLocalTag(latestTag);
-                DService.Instance().Log.Information($"[HelperUpdater] 已更新 {RepoName} → {latestTag}");
+                DService.Instance().Log.Information($"[HelperUpdater] 已更新 {RepoName}");
                 LoadDll(localDll);
+                return;
             }
         }
         catch (Exception ex)
         {
-            DService.Instance().Log.Warning($"[HelperUpdater] 更新失败: {ex.Message}");
-            TryLoadLocal();
+            DService.Instance().Log.Warning($"[HelperUpdater] 下载失败: {ex.Message}");
+        }
+
+        // 下载失败 → 尝试本地缓存
+        if (File.Exists(localDll))
+        {
+            DService.Instance().Log.Information("[HelperUpdater] 从本地缓存加载");
+            LoadDll(localDll);
+        }
+        else
+        {
+            DService.Instance().Log.Warning("[HelperUpdater] 无本地缓存，跳过 Helper 加载");
         }
     }
 
-    private static async Task<string?> FetchLatestReleaseTag()
+    /// <summary>下载 latest release DLL（直接链接，不走 API，不受 rate limit 限制）</summary>
+    private static async Task<bool> DownloadLatestDll(string destPath)
     {
-        var url = $"https://api.github.com/repos/{RepoOwner}/{RepoName}/releases/latest";
+        // GitHub 支持 /releases/latest/download/ 直接重定向到最新 release 的 asset
+        // 格式: https://github.com/{owner}/{repo}/releases/latest/download/{filename}
+        var url = $"https://github.com/{RepoOwner}/{RepoName}/releases/latest/download/{DllName}";
+        using var req = new HttpRequestMessage(HttpMethod.Head, url); // HEAD 先探测
+        using var headResp = await _http.SendAsync(req);
+        if (!headResp.IsSuccessStatusCode) return false;
+
         using var resp = await _http.GetAsync(url);
-
-        if (!resp.IsSuccessStatusCode) return null;
-
-        var json = await resp.Content.ReadFromJsonAsync<JsonElement>();
-        return json.TryGetProperty("tag_name", out var tag) ? tag.GetString() : null;
-    }
-
-    private static async Task<bool> DownloadRelease(string tag, string destPath)
-    {
-        var url = $"https://github.com/{RepoOwner}/{RepoName}/releases/download/{tag}/{DllName}";
-        using var resp = await _http.GetAsync(url);
-
         if (!resp.IsSuccessStatusCode) return false;
 
         Directory.CreateDirectory(StoreDir);
         await using var fs = File.Create(destPath);
         await resp.Content.CopyToAsync(fs);
         return true;
-    }
-
-    private static string? GetLocalTag()
-    {
-        var path = Path.Combine(StoreDir, VersionFileName);
-        try
-        {
-            return File.Exists(path) ? File.ReadAllText(path).Trim() : null;
-        }
-        catch { return null; }
-    }
-
-    private static void WriteLocalTag(string tag)
-    {
-        try
-        {
-            Directory.CreateDirectory(StoreDir);
-            File.WriteAllText(Path.Combine(StoreDir, VersionFileName), tag);
-        }
-        catch (Exception ex)
-        {
-            DService.Instance().Log.Warning($"[HelperUpdater] 写版本文件失败: {ex.Message}");
-        }
     }
 
         /// <summary>解析 Helper ALC 中宿主程序集依赖（Dalamud、OmenTools、HiAuRo 等）</summary>
@@ -214,12 +183,5 @@ public static class HelperUpdater
                 : ex.ToString();
             DService.Instance().Log.Warning($"[HelperUpdater] InitializeHelperRuntime 失败: {msg}");
         }
-    }
-
-    private static void TryLoadLocal()
-    {
-        var localDll = Path.Combine(StoreDir, DllName);
-        if (File.Exists(localDll))
-            LoadDll(localDll);
     }
 }

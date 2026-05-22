@@ -17,9 +17,9 @@ public static class ACRLoader
     public static IReadOnlyList<Assembly> LoadedAcrAssemblies => _loadedAcrAssemblies.AsReadOnly();
 
     /// <summary>扫描并加载所有外部 ACR，注册到 ACRLifecycle</summary>
-    public static void LoadAll(string pluginDir)
+    public static void LoadAll(string configDir)
     {
-        var acrDir = Path.Combine(pluginDir, "ACR");
+        var acrDir = Path.Combine(configDir, "ACR");
         if (!Directory.Exists(acrDir)) return;
 
         foreach (var authorDir in Directory.GetDirectories(acrDir))

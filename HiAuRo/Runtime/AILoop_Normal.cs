@@ -67,12 +67,13 @@ public sealed class AILoop_Normal : IAILoop
         bool isOffGcdWindow = GCDHelper.CanUseOffGcd();
         float gcdRemain = isGcdReady ? 0 : GCDHelper.GetGCDCooldown();
 
+        // ── 第一遍：遍历所有 Resolver，执行 Check()，记录结果 ──
+        int[] checkResults = new int[_resolvers.Count];
         for (int i = 0; i < _resolvers.Count; i++)
         {
             var data = _resolvers[i];
             var info = _debugInfos[i];
 
-            // Check() 不管窗口，全调
             int checkResult;
             try
             {
@@ -81,14 +82,25 @@ public sealed class AILoop_Normal : IAILoop
             }
             catch (Exception ex)
             {
+                checkResult = -99;
                 info.CheckResult = -99;
                 info.CheckThrew = true;
                 info.CheckError = ex.Message;
                 DService.Instance().Log.Error($"[AILoop] Check#{data.Resolver.GetType().Name} 异常: {ex}");
-                continue;
             }
+            checkResults[i] = checkResult;
+        }
 
-            if (checkResult < 0) continue; // 该 Resolver 不想执行
+        // 暂停/停止时只阻断 Build，Check 已全部执行完毕
+        if (blockBuild) return null;
+
+        // ── 第二遍：按顺序找到第一个 Check >= 0 且窗口匹配的 Resolver，调 Build ──
+        for (int i = 0; i < _resolvers.Count; i++)
+        {
+            if (checkResults[i] < 0) continue;
+
+            var data = _resolvers[i];
+            var info = _debugInfos[i];
 
             // 窗口判定：Mode 控制 Build/执行时机
             bool canExecute = data.Mode switch
@@ -106,9 +118,6 @@ public sealed class AILoop_Normal : IAILoop
             }
 
             info.PassedWindow = true;
-
-            // 暂停/停止时只阻断 Build，Check 已执行完毕
-            if (blockBuild) return null;
 
             // Build + 执行
             try
@@ -133,6 +142,8 @@ public sealed class AILoop_Normal : IAILoop
             {
                 DService.Instance().Log.Error($"[AILoop] Build error: {ex.Message}\n{ex.StackTrace}");
             }
+
+            // Build 成功会 return，到这里的只有 Build 抛异常，继续找下一个
         }
 
         return null;
