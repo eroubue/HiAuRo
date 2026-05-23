@@ -83,7 +83,7 @@ public static class ComponentLibrary
     }
 
     /// <summary>在指定中心绘制图标 (图标尺寸约 12~14px)</summary>
-    private static void DrawIcon(ImDrawListPtr dl, Vector2 center, IconType icon, uint color)
+    private static void DrawIcon(ImDrawListPtr dl, Vector2 center, IconType icon, uint color, float sizePx = 18f)
     {
         var iconChar = icon switch
         {
@@ -91,17 +91,15 @@ public static class ComponentLibrary
             IconType.Stop => IconHelper.Icons.Stop,
             IconType.Pause => IconHelper.Icons.Pause,
             IconType.Save => IconHelper.Icons.Save,
-            IconType.ChevronDown => IconHelper.Icons.ChevronDown,
-            IconType.ChevronUp => IconHelper.Icons.ChevronUp,
-            IconType.Close => IconHelper.Icons.Close,
+            IconType.ChevronDown => IconHelper.Icons.ArrowDown,
+            IconType.ChevronUp => IconHelper.Icons.ArrowUp,
+            IconType.Close => IconHelper.Icons.Cross,
             _ => null
         };
 
         if (iconChar == null) return;
 
-        using var font = ImRaii.PushFont(UiBuilder.IconFont);
-        var size = ImGui.CalcTextSize(iconChar);
-        dl.AddText(center - size / 2, color, iconChar);
+        IconHelper.DrawIcon(dl, center, iconChar, color, sizePx);
     }
 
     // ═══════════════════════════════════════════════════
@@ -124,7 +122,7 @@ public static class ComponentLibrary
     /// size 最小建议 52×36 (战斗易点击)
     /// </summary>
     public static bool IconButton(IconType icon, Vector4 color, Vector2 size,
-        IconButtonStyle style = IconButtonStyle.Fill)
+        IconButtonStyle style = IconButtonStyle.Fill, float iconSizePx = 18f)
     {
         ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, Theme.RadiusMD);
         ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(8, 6));
@@ -167,7 +165,7 @@ public static class ComponentLibrary
         var rectMin = ImGui.GetItemRectMin();
         var rectMax = ImGui.GetItemRectMax();
         var center = (rectMin + rectMax) / 2;
-        DrawIcon(ImGui.GetWindowDrawList(), center, icon, ColorU32(iconCol));
+        DrawIcon(ImGui.GetWindowDrawList(), center, icon, ColorU32(iconCol), iconSizePx);
 
         if (style == IconButtonStyle.Outline)
             ImGui.PopStyleColor(4);
@@ -302,7 +300,7 @@ public static class ComponentLibrary
 
     /// <summary>图标 + 文字按钮 (例如 "▶ 启动")</summary>
     public static bool IconTextButton(IconType icon, string label, Vector4 color,
-        Vector2? size = null, IconButtonStyle style = IconButtonStyle.Fill)
+        Vector2? size = null, IconButtonStyle style = IconButtonStyle.Fill, float iconSizePx = 18f)
     {
         ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, Theme.RadiusMD);
         ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(12, 6));
@@ -356,7 +354,7 @@ public static class ComponentLibrary
         var startX = center.X - totalW / 2 + 7;
 
         // 绘制图标
-        DrawIcon(ImGui.GetWindowDrawList(), new Vector2(startX, center.Y), icon, ColorU32(iconCol));
+        DrawIcon(ImGui.GetWindowDrawList(), new Vector2(startX, center.Y), icon, ColorU32(iconCol), iconSizePx);
 
         // 绘制文字
         ImGui.GetWindowDrawList().AddText(

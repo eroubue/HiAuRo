@@ -1,111 +1,141 @@
 using System.Numerics;
+using System.Reflection;
+using Dalamud.Interface.ManagedFontAtlas;
 
 namespace HiAuRo.ImGuiLib;
 
 /// <summary>
-/// 图标辅助 — 用 Dalamud 内置 Font Awesome 图标字体渲染文本图标
-/// 参考: OmenTools.ImGuiOm.ImGuiOm.DrawIconText
+/// 图标辅助 — 从 EmbeddedResource TTF 加载自定义 Game-Icon-Pack 字体，支持双字号
 /// </summary>
 public static class IconHelper
 {
-    /// <summary>Font Awesome 5 Free 图标 Unicode 字符</summary>
+    /// <summary>Game-Icon-Pack 图标 Unicode 码点 (Private Use Area U+EA00+)</summary>
     public static class Icons
     {
-        public const string Play = "\uf04b";
-        public const string Stop = "\uf04d";
-        public const string Pause = "\uf04c";
-        public const string Save = "\uf0c7";
-        public const string ChevronDown = "\uf078";
-        public const string ChevronUp = "\uf077";
-        public const string Close = "\uf00d";
-        public const string Settings = "\uf013";
-        public const string Refresh = "\uf021";
-        public const string Expand = "\uf065";
-        public const string Lock = "\uf023";
-        public const string Unlock = "\uf09c";
-        public const string Search = "\uf002";
-        public const string Check = "\uf00c";
-        public const string Times = "\uf00d";
-        public const string Plus = "\uf067";
-        public const string Minus = "\uf068";
-        public const string ArrowUp = "\uf062";
-        public const string ArrowDown = "\uf063";
-        public const string ArrowLeft = "\uf060";
-        public const string ArrowRight = "\uf061";
-        public const string Folder = "\uf07b";
-        public const string File = "\uf15b";
-        public const string Download = "\uf019";
-        public const string Upload = "\uf093";
-        public const string Star = "\uf005";
-        public const string Heart = "\uf004";
-        public const string User = "\uf007";
-        public const string Users = "\uf0c0";
-        public const string Trophy = "\uf091";
-        public const string Shield = "\uf132";
-        public const string Sword = "\uf6e3";      // fa-sword (可能需要 FA Pro)
-        public const string Crosshairs = "\uf05b";
-        public const string Info = "\uf129";
-        public const string Warning = "\uf071";
-        public const string Question = "\uf128";
-        public const string Eye = "\uf06e";
-        public const string EyeSlash = "\uf070";
-        public const string Undo = "\uf0e2";
-        public const string Redo = "\uf01e";
-        public const string Copy = "\uf0c5";
-        public const string Paste = "\uf0ea";
-        public const string Cut = "\uf0c4";
-        public const string Bold = "\uf032";
-        public const string Italic = "\uf033";
-        public const string Underline = "\uf0cd";
-        public const string Link = "\uf0c1";
-        public const string Clock = "\uf017";
-        public const string Calendar = "\uf133";
-        public const string Comment = "\uf075";
-        public const string Bell = "\uf0f3";
-        public const string Envelope = "\uf0e0";
-        public const string Home = "\uf015";
-        public const string MapMarker = "\uf041";
-        public const string Phone = "\uf095";
-        public const string Tag = "\uf02b";
-        public const string Bookmark = "\uf02e";
-        public const string Flag = "\uf024";
-        public const string ThumbsUp = "\uf164";
-        public const string ThumbsDown = "\uf165";
-        public const string Share = "\uf064";
-        public const string Trash = "\uf1f8";
-        public const string Edit = "\uf044";
-        public const string Wrench = "\uf0ad";
-        public const string Bug = "\uf188";
-        public const string Code = "\uf121";
-        public const string Terminal = "\uf120";
-        public const string Database = "\uf1c0";
-        public const string Cloud = "\uf0c2";
-        public const string Sun = "\uf185";
-        public const string Moon = "\uf186";
-        public const string Fire = "\uf06d";
-        public const string Lightning = "\uf0e7";
-        public const string Water = "\uf773";
-        public const string Wind = "\uf72e";
-        public const string Key = "\uf084";
-        public const string Cog = "\uf013";
-        public const string PowerOff = "\uf011";
-        public const string SignOut = "\uf08b";
-        public const string Filter = "\uf0b0";
-        public const string Sort = "\uf0dc";
+        public const string Play = "\uea05";
+        public const string Stop = "\uea07";
+        public const string Pause = "\uea04";
+        public const string Save = "\uea06";
+        public const string ArrowUp = "\uea02";
+        public const string ArrowDown = "\uea01";
+        public const string Cross = "\uea03";
+        // 后续扩展从 U+EA08 起
     }
 
-    /// <summary>计算图标文本尺寸</summary>
-    public static Vector2 CalcIconSize(string iconChar, float scale = 1f)
+    private static ImFontPtr? _iconFont18;
+    private static ImFontPtr? _iconFont24;
+    private static readonly object _initLock = new();
+    private static bool _initialized;
+    private static IFontHandle? _fontHandle18;
+    private static IFontHandle? _fontHandle24;
+
+    /// <summary>初始化图标字体 — 在 Plugin 构造器中调用一次</summary>
+    public static void Init()
     {
-        using var font = ImRaii.PushFont(UiBuilder.IconFont);
-        return ImGui.CalcTextSize(iconChar) * scale;
+        if (_initialized) return;
+        lock (_initLock)
+        {
+            if (_initialized) return;
+
+            try
+            {
+                // 1. 从 EmbeddedResource 提取 TTF 到配置目录
+                var configDir = DService.Instance().PI.ConfigDirectory.FullName;
+                var ttfPath = Path.Combine(configDir, "game-icons.ttf");
+
+                if (!File.Exists(ttfPath))
+                {
+                    var assembly = Assembly.GetExecutingAssembly();
+                    using var stream = assembly.GetManifestResourceStream("HiAuRo.Resources.Fonts.game-icons.ttf");
+                    if (stream == null)
+                    {
+                        DService.Instance().Log.Warning("[IconHelper] TTF resource not found");
+                        return;
+                    }
+                    using var fs = File.Create(ttfPath);
+                    stream.CopyTo(fs);
+                }
+
+                // 2. 在游戏字体图集中注册两个字号
+                var fontAtlas = DService.Instance().UIBuilder.FontAtlas;
+                var iconRange = new ushort[] { 0xEA00, 0xEA10, 0 };
+
+                _fontHandle18 = fontAtlas.NewDelegateFontHandle(e =>
+                {
+                    e.OnPreBuild(tk =>
+                    {
+                        tk.AddFontFromFile(ttfPath, new()
+                        {
+                            SizePx = 18f,
+                            PixelSnapH = true,
+                            GlyphRanges = iconRange,
+                        });
+                    });
+                });
+
+                _fontHandle24 = fontAtlas.NewDelegateFontHandle(e =>
+                {
+                    e.OnPreBuild(tk =>
+                    {
+                        tk.AddFontFromFile(ttfPath, new()
+                        {
+                            SizePx = 24f,
+                            PixelSnapH = true,
+                            GlyphRanges = iconRange,
+                        });
+                    });
+                });
+
+                DService.Instance().Log.Information("[IconHelper] Game-Icon-Pack font registered (18px + 24px)");
+                _initialized = true;
+            }
+            catch (Exception ex)
+            {
+                DService.Instance().Log.Warning($"[IconHelper] Font init failed: {ex.Message}");
+            }
+        }
     }
 
-    /// <summary>在指定中心绘制图标文本 (通过 DrawList.AddText)</summary>
-    public static void DrawIcon(ImDrawListPtr dl, Vector2 center, string iconChar, uint color, float scale = 1f)
+    /// <summary>确保字体已构建（首次渲染时调用）</summary>
+    private static void EnsureFontsBuilt()
     {
-        using var font = ImRaii.PushFont(UiBuilder.IconFont);
-        var size = ImGui.CalcTextSize(iconChar) * scale;
+        if (_iconFont18 != null) return;
+        lock (_initLock)
+        {
+            if (_iconFont18 != null) return;
+
+            try
+            {
+                using var lk18 = _fontHandle18!.Lock();
+                _iconFont18 = lk18.ImFont;
+            }
+            catch (Exception ex)
+            {
+                DService.Instance().Log.Warning($"[IconHelper] 18px font build failed: {ex.Message}");
+                return;
+            }
+
+            try
+            {
+                using var lk24 = _fontHandle24!.Lock();
+                _iconFont24 = lk24.ImFont;
+                DService.Instance().Log.Information("[IconHelper] Game-Icon-Pack fonts built");
+            }
+            catch (Exception ex)
+            {
+                DService.Instance().Log.Warning($"[IconHelper] 24px font build failed: {ex.Message}");
+            }
+        }
+    }
+
+    /// <summary>在指定中心绘制图标文本</summary>
+    public static void DrawIcon(ImDrawListPtr dl, Vector2 center, string iconChar, uint color, float sizePx = 18f)
+    {
+        EnsureFontsBuilt();
+        var fontPtr = sizePx >= 22f ? _iconFont24 : _iconFont18;
+        if (fontPtr == null) return;
+        using var font = ImRaii.PushFont(fontPtr.Value);
+        var size = ImGui.CalcTextSize(iconChar);
         dl.AddText(center - size / 2, color, iconChar);
     }
 }

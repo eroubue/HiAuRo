@@ -49,6 +49,7 @@ public partial class Plugin : IDalamudPlugin
             _config = LoadConfig();
             LogManager.Instance.Init(_pluginInterface.ConfigDirectory.FullName);
             Theme.Mode = _config.ImGuiThemeMode == ImGuiThemeMode.Dark ? Theme.ThemeMode.Dark : Theme.ThemeMode.Light;
+            IconHelper.Init();
             HelperUpdater.CheckAndUpdateAsync().GetAwaiter().GetResult();
             DService.Instance().Log.Information($"[Lifecycle] HelperUpdater 完成, Loaded={HelperUpdater.Loaded}");
 

@@ -1,0 +1,113 @@
+<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="0" height="0" style="display:none;"><symbol viewBox="0 0 10 10" id="game-icons-arrow-down">
+<g filter="url(#filter0_i_1223_1359)">
+<path d="M7.50735 5.20837C7.51097 5.49578 7.23724 5.83717 6.689 6.51892L6.18509 7.14587C5.66902 7.78762 5.41054 8.10856 5.07181 8.13904C5.02445 8.14328 4.97659 8.14326 4.92923 8.13904C4.5904 8.10868 4.33209 7.78771 3.81595 7.14587L3.31107 6.51892C2.76291 5.83728 2.48909 5.49575 2.49271 5.20837C2.4958 4.9733 2.60237 4.75156 2.78372 4.60193C2.8539 4.54407 2.94565 4.50474 3.06603 4.47798C3.44118 4.39458 3.62875 4.35287 3.71413 4.25877C3.72671 4.24491 3.73377 4.23611 3.74457 4.22082C3.8179 4.11705 3.8179 3.96709 3.8179 3.66717V2.65759C3.8179 2.21576 4.17686 1.85779 4.61868 1.85779H5.41849C5.86021 1.85791 6.21829 2.21584 6.21829 2.65759V3.66887C6.21829 3.96197 6.21829 4.10853 6.28856 4.21084C6.29914 4.22625 6.30544 4.23436 6.31778 4.2484C6.3997 4.34165 6.58896 4.38962 6.9675 4.48557C7.0721 4.51208 7.15364 4.54939 7.21732 4.60193C7.3985 4.75156 7.50426 4.97342 7.50735 5.20837Z" fill="white"></path>
+</g>
+<defs>
+<filter id="filter0_i_1223_1359" x="0" y="0" width="10" height="10" filterunits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feflood flood-opacity="0" result="BackgroundImageFix"></feflood>
+<feblend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"></feblend>
+<fecolormatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"></fecolormatrix>
+<feoffset></feoffset>
+<fegaussianblur stddeviation="1"></fegaussianblur>
+<fecomposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1"></fecomposite>
+<fecolormatrix type="matrix" values="0 0 0 0 0.942 0 0 0 0 0.94 0 0 0 0 1 0 0 0 0.1 0"></fecolormatrix>
+<feblend mode="hard-light" in2="shape" result="effect1_innerShadow_1223_1359"></feblend>
+</filter>
+</defs>
+</symbol><symbol viewBox="0 0 10 10" id="game-icons-arrow-up">
+<g filter="url(#filter0_i_1223_1355)">
+<path d="M2.49265 4.79163C2.48903 4.50422 2.76276 4.16283 3.311 3.48108L3.81491 2.85413C4.33098 2.21238 4.58946 1.89144 4.92819 1.86096C4.97555 1.85672 5.02341 1.85674 5.07077 1.86096C5.4096 1.89132 5.66791 2.21229 6.18405 2.85413L6.68893 3.48108C7.23709 4.16272 7.51091 4.50425 7.50729 4.79163C7.5042 5.0267 7.39763 5.24844 7.21628 5.39807C7.1461 5.45593 7.05435 5.49526 6.93397 5.52202C6.55882 5.60542 6.37125 5.64713 6.28587 5.74123C6.27329 5.75509 6.26623 5.76389 6.25543 5.77918C6.1821 5.88295 6.1821 6.03291 6.1821 6.33283V7.34241C6.1821 7.78424 5.82314 8.14221 5.38132 8.14221H4.58151C4.13979 8.14209 3.78171 7.78416 3.78171 7.34241V6.33113C3.78171 6.03803 3.78171 5.89147 3.71144 5.78916C3.70086 5.77375 3.69456 5.76564 3.68222 5.7516C3.6003 5.65835 3.41104 5.61038 3.0325 5.51443C2.9279 5.48792 2.84636 5.45061 2.78268 5.39807C2.6015 5.24844 2.49574 5.02658 2.49265 4.79163Z" fill="white"></path>
+</g>
+<defs>
+<filter id="filter0_i_1223_1355" x="0" y="0" width="10" height="10" filterunits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feflood flood-opacity="0" result="BackgroundImageFix"></feflood>
+<feblend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"></feblend>
+<fecolormatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"></fecolormatrix>
+<feoffset></feoffset>
+<fegaussianblur stddeviation="1"></fegaussianblur>
+<fecomposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1"></fecomposite>
+<fecolormatrix type="matrix" values="0 0 0 0 0.942 0 0 0 0 0.94 0 0 0 0 1 0 0 0 0.1 0"></fecolormatrix>
+<feblend mode="hard-light" in2="shape" result="effect1_innerShadow_1223_1355"></feblend>
+</filter>
+</defs>
+</symbol><symbol viewBox="0 0 10 10" id="game-icons-cross">
+<g filter="url(#filter0_i_1675_237)">
+<path fill-rule="evenodd" clip-rule="evenodd" d="M6.3435 2.66698C6.61678 2.39384 7.06039 2.39296 7.33373 2.666C7.6068 2.93926 7.60668 3.3829 7.33373 3.65623L6.79608 4.19388C6.43718 4.55279 6.25773 4.73224 6.24036 4.95291C6.23789 4.98424 6.23789 5.01572 6.24036 5.04706C6.25773 5.26773 6.43718 5.44718 6.79608 5.80609L7.33373 6.34373C7.60672 6.61705 7.60676 7.06068 7.33373 7.33397C7.06039 7.60701 6.61678 7.60613 6.3435 7.33299L5.80585 6.79534C5.44694 6.43644 5.26749 6.25699 5.04682 6.23962C5.01549 6.23715 4.98401 6.23715 4.95267 6.23962C4.732 6.25699 4.55255 6.43644 4.19365 6.79534L3.656 7.33299C3.38263 7.60636 2.93913 7.60636 2.66576 7.33299C2.39298 7.05958 2.39357 6.61691 2.66674 6.34373L3.20439 5.80609C3.56329 5.44718 3.74274 5.26773 3.76011 5.04706C3.76258 5.01572 3.76258 4.98424 3.76011 4.95291C3.74274 4.73224 3.56329 4.55279 3.20439 4.19388L2.66674 3.65623C2.39355 3.38304 2.39292 2.94039 2.66576 2.66698C2.93913 2.39361 3.38263 2.39361 3.656 2.66698L4.19365 3.20462C4.55255 3.56353 4.732 3.74298 4.95267 3.76035C4.98401 3.76282 5.01549 3.76282 5.04682 3.76035C5.26749 3.74298 5.44694 3.56353 5.80585 3.20463L6.3435 2.66698Z" fill="white"></path>
+</g>
+<defs>
+<filter id="filter0_i_1675_237" x="0" y="0" width="10" height="10" filterunits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feflood flood-opacity="0" result="BackgroundImageFix"></feflood>
+<feblend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"></feblend>
+<fecolormatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"></fecolormatrix>
+<feoffset></feoffset>
+<fegaussianblur stddeviation="1"></fegaussianblur>
+<fecomposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1"></fecomposite>
+<fecolormatrix type="matrix" values="0 0 0 0 0.942 0 0 0 0 0.94 0 0 0 0 1 0 0 0 0.1 0"></fecolormatrix>
+<feblend mode="hard-light" in2="shape" result="effect1_innerShadow_1675_237"></feblend>
+</filter>
+</defs>
+</symbol><symbol viewBox="0 0 10 10" id="game-icons-pause">
+<g filter="url(#filter0_i_1134_3247)">
+<path d="M3.59961 2.2998C3.98621 2.2998 4.2998 2.6134 4.2998 3V7C4.2997 7.38651 3.98614 7.7002 3.59961 7.7002C3.21326 7.69998 2.9005 7.38638 2.90039 7V3C2.90039 2.61353 3.21319 2.30002 3.59961 2.2998ZM6.40039 2.2998C6.78681 2.30002 7.09961 2.61353 7.09961 3V7C7.0995 7.38638 6.78674 7.69998 6.40039 7.7002C6.01386 7.7002 5.7003 7.38651 5.7002 7V3C5.7002 2.6134 6.01379 2.2998 6.40039 2.2998Z" fill="white"></path>
+</g>
+<defs>
+<filter id="filter0_i_1134_3247" x="0" y="0" width="10" height="10" filterunits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feflood flood-opacity="0" result="BackgroundImageFix"></feflood>
+<feblend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"></feblend>
+<fecolormatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"></fecolormatrix>
+<feoffset></feoffset>
+<fegaussianblur stddeviation="1"></fegaussianblur>
+<fecomposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1"></fecomposite>
+<fecolormatrix type="matrix" values="0 0 0 0 0.942 0 0 0 0 0.94 0 0 0 0 1 0 0 0 0.1 0"></fecolormatrix>
+<feblend mode="hard-light" in2="shape" result="effect1_innerShadow_1134_3247"></feblend>
+</filter>
+</defs>
+</symbol><symbol viewBox="0 0 10 10" id="game-icons-play">
+<g filter="url(#filter0_i_1204_239)">
+<path d="M6.25925 3.6287C7.05468 4.22127 7.4524 4.51756 7.48962 4.91637C7.49481 4.972 7.49481 5.028 7.48962 5.08363C7.4524 5.48244 7.05468 5.77873 6.25925 6.3713L5.77501 6.73205C5.01262 7.3 4.63143 7.58398 4.31216 7.57055C4.05461 7.55971 3.81407 7.43895 3.65151 7.23889C3.45001 6.99089 3.45001 6.51554 3.45001 5.56486V5V4.43514C3.45001 3.48446 3.45001 3.00911 3.65151 2.76111C3.81407 2.56105 4.05461 2.44029 4.31216 2.42945C4.63143 2.41602 5.01262 2.7 5.77501 3.26795L6.25925 3.6287Z" fill="white"></path>
+</g>
+<defs>
+<filter id="filter0_i_1204_239" x="0" y="0" width="10" height="10" filterunits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feflood flood-opacity="0" result="BackgroundImageFix"></feflood>
+<feblend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"></feblend>
+<fecolormatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"></fecolormatrix>
+<feoffset></feoffset>
+<fegaussianblur stddeviation="1"></fegaussianblur>
+<fecomposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1"></fecomposite>
+<fecolormatrix type="matrix" values="0 0 0 0 0.942 0 0 0 0 0.94 0 0 0 0 1 0 0 0 0.1 0"></fecolormatrix>
+<feblend mode="hard-light" in2="shape" result="effect1_innerShadow_1204_239"></feblend>
+</filter>
+</defs>
+</symbol><symbol viewBox="0 0 10 10" id="game-icons-save">
+<g filter="url(#filter0_i_1079_89)">
+<path d="M5.47461 2.34763C5.85809 2.34763 6.0502 2.34727 6.22363 2.41403C6.24904 2.42382 6.2743 2.43443 6.29883 2.44626C6.46613 2.52693 6.59714 2.66705 6.85938 2.94626L7.28516 3.39938C7.52568 3.65548 7.64584 3.78376 7.71484 3.9404C7.72497 3.9634 7.7348 3.98701 7.74316 4.01071C7.8001 4.17217 7.79978 4.34858 7.7998 4.70016V6.13181C7.79985 6.80929 7.80033 7.1485 7.6084 7.37302C7.58116 7.40487 7.55142 7.43468 7.51953 7.46188C7.29483 7.65355 6.95571 7.65306 6.27832 7.65231L3.71875 7.64938C3.04272 7.64864 2.7046 7.64765 2.48047 7.45602C2.44864 7.42881 2.41878 7.39902 2.3916 7.36716C2.20034 7.14281 2.2002 6.80477 2.2002 6.12888V3.86716C2.2002 3.19065 2.19998 2.85229 2.3916 2.6279C2.41882 2.59603 2.4486 2.56625 2.48047 2.53903C2.70486 2.34744 3.04323 2.34763 3.71973 2.34763H5.47461ZM5 5.15036C4.50302 5.15036 4.09974 5.55283 4.09961 6.04977C4.09961 6.54683 4.50294 6.95016 5 6.95016C5.49705 6.95016 5.90039 6.54683 5.90039 6.04977C5.90026 5.55283 5.49698 5.15036 5 5.15036ZM3.59961 3.04977C3.2132 3.04999 2.90041 3.36352 2.90039 3.74997C2.90039 4.13644 3.21319 4.44995 3.59961 4.45016H5.2002C5.58671 4.45006 5.90039 4.1365 5.90039 3.74997C5.90037 3.36345 5.58669 3.04988 5.2002 3.04977H3.59961Z" fill="white"></path>
+</g>
+<defs>
+<filter id="filter0_i_1079_89" x="0" y="0" width="10" height="10" filterunits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feflood flood-opacity="0" result="BackgroundImageFix"></feflood>
+<feblend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"></feblend>
+<fecolormatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"></fecolormatrix>
+<feoffset></feoffset>
+<fegaussianblur stddeviation="1"></fegaussianblur>
+<fecomposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1"></fecomposite>
+<fecolormatrix type="matrix" values="0 0 0 0 0.942 0 0 0 0 0.94 0 0 0 0 1 0 0 0 0.1 0"></fecolormatrix>
+<feblend mode="hard-light" in2="shape" result="effect1_innerShadow_1079_89"></feblend>
+</filter>
+</defs>
+</symbol><symbol viewBox="0 0 10 10" id="game-icons-stop">
+<g filter="url(#filter0_i_1134_3243)">
+<path d="M2.70001 4.60001C2.70001 3.75407 2.70001 3.33109 2.93961 3.05056C2.97363 3.01073 3.01073 2.97363 3.05056 2.93961C3.33109 2.70001 3.75407 2.70001 4.60001 2.70001H5.40001C6.24596 2.70001 6.66893 2.70001 6.94946 2.93961C6.9893 2.97363 7.0264 3.01073 7.06042 3.05056C7.30001 3.33109 7.30001 3.75407 7.30001 4.60001V5.40001C7.30001 6.24596 7.30001 6.66893 7.06042 6.94946C7.0264 6.9893 6.9893 7.0264 6.94946 7.06042C6.66893 7.30001 6.24596 7.30001 5.40001 7.30001H4.60001C3.75407 7.30001 3.33109 7.30001 3.05056 7.06042C3.01073 7.0264 2.97363 6.9893 2.93961 6.94946C2.70001 6.66893 2.70001 6.24596 2.70001 5.40001V4.60001Z" fill="white"></path>
+</g>
+<defs>
+<filter id="filter0_i_1134_3243" x="0" y="0" width="10" height="10" filterunits="userSpaceOnUse" color-interpolation-filters="sRGB">
+<feflood flood-opacity="0" result="BackgroundImageFix"></feflood>
+<feblend mode="normal" in="SourceGraphic" in2="BackgroundImageFix" result="shape"></feblend>
+<fecolormatrix in="SourceAlpha" type="matrix" values="0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 127 0" result="hardAlpha"></fecolormatrix>
+<feoffset></feoffset>
+<fegaussianblur stddeviation="1"></fegaussianblur>
+<fecomposite in2="hardAlpha" operator="arithmetic" k2="-1" k3="1"></fecomposite>
+<fecolormatrix type="matrix" values="0 0 0 0 0.942 0 0 0 0 0.94 0 0 0 0 1 0 0 0 0.1 0"></fecolormatrix>
+<feblend mode="hard-light" in2="shape" result="effect1_innerShadow_1134_3243"></feblend>
+</filter>
+</defs>
+</symbol></svg>

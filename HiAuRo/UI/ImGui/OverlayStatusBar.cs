@@ -199,14 +199,14 @@ public sealed class OverlayStatusBar : OverlayBase
             // 运行中 → Stop(红) + Pause(橙)
             if (ComponentLibrary.IconButton(ComponentLibrary.IconType.Stop,
                     Theme.Colors.AccentRed, btnSize,
-                    ComponentLibrary.IconButtonStyle.Fill))
+                    ComponentLibrary.IconButtonStyle.Fill, iconSizePx: 24f))
                 Runtime.RuntimeCore.Stop();
 
             ImGui.SameLine(0, 6);
 
             if (ComponentLibrary.IconButton(ComponentLibrary.IconType.Pause,
                     Theme.Colors.AccentOrange, btnSize,
-                    ComponentLibrary.IconButtonStyle.Fill))
+                    ComponentLibrary.IconButtonStyle.Fill, iconSizePx: 24f))
                 HiAuRo.ACR.MainControlHelper.TogglePause();
         }
         else if (isPaused)
@@ -214,14 +214,14 @@ public sealed class OverlayStatusBar : OverlayBase
             // 已暂停 → Stop(红) + Play(绿)
             if (ComponentLibrary.IconButton(ComponentLibrary.IconType.Stop,
                     Theme.Colors.AccentRed, btnSize,
-                    ComponentLibrary.IconButtonStyle.Fill))
+                    ComponentLibrary.IconButtonStyle.Fill, iconSizePx: 24f))
                 Runtime.RuntimeCore.Stop();
 
             ImGui.SameLine(0, 6);
 
             if (ComponentLibrary.IconButton(ComponentLibrary.IconType.Play,
                     Theme.Colors.AccentGreen, btnSize,
-                    ComponentLibrary.IconButtonStyle.Fill))
+                    ComponentLibrary.IconButtonStyle.Fill, iconSizePx: 24f))
                 HiAuRo.ACR.MainControlHelper.TogglePause();
         }
         else
@@ -229,7 +229,7 @@ public sealed class OverlayStatusBar : OverlayBase
             // 已停止 → Play(绿) + Pause(占位/禁用)
             if (ComponentLibrary.IconButton(ComponentLibrary.IconType.Play,
                     Theme.Colors.AccentGreen, btnSize,
-                    ComponentLibrary.IconButtonStyle.Fill))
+                    ComponentLibrary.IconButtonStyle.Fill, iconSizePx: 24f))
                 Runtime.RuntimeCore.Start();
 
             ImGui.SameLine(0, 6);
@@ -246,7 +246,7 @@ public sealed class OverlayStatusBar : OverlayBase
         // 保存 (边框样式)
         if (ComponentLibrary.IconButton(ComponentLibrary.IconType.Save,
                 Theme.Colors.TextSecondary, btnSize,
-                ComponentLibrary.IconButtonStyle.Outline))
+                    ComponentLibrary.IconButtonStyle.Outline, iconSizePx: 24f))
             HiAuRo.ACR.MainControlHelper.Save();
 
         ImGui.SameLine(0, 6);
@@ -257,7 +257,7 @@ public sealed class OverlayStatusBar : OverlayBase
             : ComponentLibrary.IconType.ChevronDown;
         if (ComponentLibrary.IconButton(foldIcon,
                 Theme.Colors.AccentOrange, new Vector2(56, 38),
-                ComponentLibrary.IconButtonStyle.Outline))
+                    ComponentLibrary.IconButtonStyle.Outline, iconSizePx: 24f))
         {
             _config.OverlayStatusBarExpanded = !_config.OverlayStatusBarExpanded;
             _saveConfig();
