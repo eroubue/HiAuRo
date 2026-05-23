@@ -76,13 +76,23 @@ public sealed class MainWindow : Window
     /// <summary>绘制窗口</summary>
     public override void Draw()
     {
+        // ── 窗口最小尺寸（确保布局不挤压）──
+        SizeConstraints = new WindowSizeConstraints { MinimumSize = new Vector2(620, 400), MaximumSize = new Vector2(float.MaxValue, float.MaxValue) };
+
+        // ── 主题背景 ──
+        ComponentLibrary.GlassBackground(Theme.RadiusMD);
+
+        // ── 窗口背景色（跟随主题）──
+        ImGui.PushStyleColor(ImGuiCol.WindowBg, Theme.Colors.BgLayout);
+        ImGui.PushStyleColor(ImGuiCol.ChildBg, Theme.Colors.BgContainer);
+
         // ── 窗口内边距 ──
         ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(12, 10));
         ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(8, 6));
 
         // ── 计算布局区域 ──
         var avail = ImGui.GetContentRegionAvail();
-        var topBarHeight = 62f;
+        var topBarHeight = 96f;
         var statusBarHeight = 24f;
         var sidebarWidth = 168f;
 
@@ -120,6 +130,7 @@ public sealed class MainWindow : Window
         DrawStatusBar(avail.X);
 
         ImGui.PopStyleVar(2); // WindowPadding, ItemSpacing
+        ImGui.PopStyleColor(2); // WindowBg, ChildBg
     }
 
     /// <summary>绘制顶部信息栏：Logo + Tips + 主题切换按钮</summary>
@@ -127,7 +138,7 @@ public sealed class MainWindow : Window
     {
         // ── Layout: LOGO 左 | Tips 中 | 控件 右 ──
         var region = ImGui.GetContentRegionAvail();
-        var logoWidth = 140f;
+        var logoWidth = 200f;
         var controlWidth = 36f;
 
         // ── LOGO 区域 (左) ──
@@ -166,7 +177,6 @@ public sealed class MainWindow : Window
     private static void DrawLogo()
     {
         ImGui.PushFont(UiBuilder.MonoFont);
-        ImGui.SetCursorPosY(4);
         var logoLines = new[]
         {
             "██╗  ██╗██╗ █████╗ ██╗   ██╗██████╗ ",
@@ -176,6 +186,11 @@ public sealed class MainWindow : Window
             "██║  ██║██║██║  ██║╚██████╔╝██║  ██║",
             "╚═╝  ╚═╝╚═╝╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝",
         };
+        // 垂直居中 Logo
+        var lineHeight = ImGui.GetTextLineHeight();
+        var totalHeight = lineHeight * logoLines.Length;
+        var availHeight = ImGui.GetContentRegionAvail().Y;
+        ImGui.SetCursorPosY((availHeight - totalHeight) * 0.5f);
         foreach (var line in logoLines)
             ImGui.TextColored(Theme.Colors.AccentBlue, line);
         ImGui.PopFont();
