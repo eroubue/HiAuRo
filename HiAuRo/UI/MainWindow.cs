@@ -249,8 +249,14 @@ public sealed class MainWindow : Window
             Theme.Colors.TextSecondary.W * alpha);
 
         ImGui.SetCursorPosY((ImGui.GetContentRegionAvail().Y - ImGui.GetTextLineHeight()) * 0.5f);
-        ImGui.PushTextWrapPos(ImGui.GetCursorPosX() + maxWidth);
-        ImGui.TextColored(tipColor, $"💡 {tip}");
+        // 灯泡图标
+        var iconPos = ImGui.GetCursorScreenPos() + new Vector2(8, ImGui.GetTextLineHeight() * 0.5f);
+        IconHelper.DrawIcon(ImGui.GetWindowDrawList(), iconPos,
+            IconHelper.Icons.MediaTechnologyLight,
+            ImGui.ColorConvertFloat4ToU32(tipColor), 16f);
+        ImGui.SetCursorPosX(ImGui.GetCursorPosX() + 24);
+        ImGui.PushTextWrapPos(ImGui.GetCursorPosX() + maxWidth - 24);
+        ImGui.TextColored(tipColor, tip);
         ImGui.PopTextWrapPos();
     }
 
@@ -381,7 +387,7 @@ public sealed class MainWindow : Window
         // ── 左侧：模块名称（对齐 Sidebar 宽度）──
         ImGui.BeginChild("##TabLabel", new Vector2(sidebarWidth, 0), false,
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
-        ImGui.SetCursorPosX(5f);
+        ImGui.SetCursorPosX(8f);
         ImGui.SetCursorPosY((ImGui.GetContentRegionAvail().Y - ImGui.GetTextLineHeight()) * 0.5f);
         if (!isPluginSelected)
         {
@@ -484,7 +490,7 @@ public sealed class MainWindow : Window
         var paused = ACR.MainControlHelper.IsPaused;
         var runState = running ? (paused ? "已暂停" : "运行中") : "已停止";
         var stateColor = running ? (paused ? Theme.Colors.AccentOrange : Theme.Colors.AccentGreen) : Theme.Colors.AccentRed;
-        ImGui.SetCursorPosX(5f);
+        ImGui.SetCursorPosX(8f);
         ImGui.TextColored(Theme.Colors.TextTertiary, "HiAuRo");
         ImGui.SameLine();
         ImGui.TextColored(stateColor, $"[{runState}]");
