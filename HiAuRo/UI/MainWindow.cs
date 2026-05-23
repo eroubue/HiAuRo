@@ -132,20 +132,12 @@ public sealed class MainWindow : Window
 
         ImGui.SameLine(0, 4);
 
-        // ── 右侧内容：外层圆角视窗 + 内层真正内容区 ──
-        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, Vector2.Zero);
+        // ── 右侧内容区 ──
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(16, 8));
         ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, Theme.RadiusMD);
-        ImGui.BeginChild("##ContentFrame", new Vector2(-1, midHeight), true,
+        ImGui.BeginChild("##ContentPanel", new Vector2(-1, midHeight), false,
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
-
-        // 内层内容区：直角 + 24px 左侧安全边距
-        ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, 0f);
-        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(20, 10));
-        ImGui.BeginChild("##ContentArea", new Vector2(-1, -1), false);
         DrawContent();
-        ImGui.EndChild();
-        ImGui.PopStyleVar(2);
-
         ImGui.EndChild();
         ImGui.PopStyleVar(2);
 
