@@ -108,13 +108,20 @@ public sealed class MatrixRainEffect
                 alpha *= Math.Min(1f, lifeRatio * 3f);
 
                 Vector4 charColor;
+                var isLight = Theme.Mode == Theme.ThemeMode.Light;
                 if (j == 0)
                 {
-                    charColor = new Vector4(0.85f, 0.95f, 1f, alpha);
+                    // 领头字符：亮色用深蓝，暗色用亮白蓝
+                    charColor = isLight
+                        ? new Vector4(0.05f, 0.15f, 0.35f, alpha)
+                        : new Vector4(0.85f, 0.95f, 1f, alpha);
                 }
                 else
                 {
-                    charColor = new Vector4(0f, 1f, 0.4f, alpha);
+                    // 尾部字符：亮色用深绿，暗色用霓虹绿
+                    charColor = isLight
+                        ? new Vector4(0.02f, 0.4f, 0.15f, alpha)
+                        : new Vector4(0f, 1f, 0.4f, alpha);
                 }
 
                 var pos = new Vector2(drop.X, charY);
