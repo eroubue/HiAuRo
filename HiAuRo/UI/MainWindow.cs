@@ -93,10 +93,10 @@ public sealed class MainWindow : Window
         ImGui.PushStyleColor(ImGuiCol.Header, Theme.Colors.BgHover);
         ImGui.PushStyleColor(ImGuiCol.HeaderHovered, Theme.Colors.FillSecondary);
         ImGui.PushStyleColor(ImGuiCol.HeaderActive, Theme.Colors.FillPrimary);
-        ImGui.PushStyleColor(ImGuiCol.Tab, Theme.Colors.FillSecondary);
+        ImGui.PushStyleColor(ImGuiCol.Tab, Theme.Colors.FillTertiary);
         ImGui.PushStyleColor(ImGuiCol.TabHovered, Theme.Colors.BgHover);
-        ImGui.PushStyleColor(ImGuiCol.TabActive, Theme.Colors.BgContainer);
-        ImGui.PushStyleColor(ImGuiCol.TabUnfocusedActive, Theme.Colors.BgContainer);
+        ImGui.PushStyleColor(ImGuiCol.TabActive, Theme.Colors.BgElevated);
+        ImGui.PushStyleColor(ImGuiCol.TabUnfocusedActive, Theme.Colors.BgElevated);
 
         // ── 窗口内边距 ──
         ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(12, 10));
