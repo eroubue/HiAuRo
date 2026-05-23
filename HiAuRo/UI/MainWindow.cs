@@ -133,10 +133,12 @@ public sealed class MainWindow : Window
         ImGui.SameLine(0, 4);
 
         // 右侧内容
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(10, 6));
         ImGui.BeginChild("##ContentPanel", new Vector2(-1, midHeight), false,
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
         DrawContent();
         ImGui.EndChild();
+        ImGui.PopStyleVar();
 
         // ── 底部状态栏 ──
         ImGui.Separator();
