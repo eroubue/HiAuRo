@@ -37,7 +37,7 @@ public sealed class MainWindow : Window
         _glitch = new GlitchEffect();
         _radarScanner = new RadarScannerEffect();
         _neonCircuit = new NeonCircuitEffect();
-        _hologram = new HologramEffect();
+        _leyLines = new LeyLinesEffect();
         _dataPipeline = new DataPipelineEffect();
     }
 
@@ -53,7 +53,7 @@ public sealed class MainWindow : Window
     private readonly GlitchEffect _glitch;
     private readonly RadarScannerEffect _radarScanner;
     private readonly NeonCircuitEffect _neonCircuit;
-    private readonly HologramEffect _hologram;
+    private readonly LeyLinesEffect _leyLines;
     private readonly DataPipelineEffect _dataPipeline;
 
     // ── 新布局状态字段 ──
@@ -163,8 +163,8 @@ public sealed class MainWindow : Window
                 _neonCircuit.Update(dt, winMin, winMax);
                 break;
 
-            case BgEffectMode.Hologram:
-                _hologram.Update(dt, winMin, winMax);
+            case BgEffectMode.LeyLines:
+                _leyLines.Update(dt, winMin, winMax);
                 break;
 
             case BgEffectMode.DataPipeline:
@@ -270,8 +270,8 @@ public sealed class MainWindow : Window
             case BgEffectMode.NeonCircuit:
                 _neonCircuit.Draw(fg, winMin, winMax);
                 break;
-            case BgEffectMode.Hologram:
-                _hologram.Draw(fg, winMin, winMax);
+            case BgEffectMode.LeyLines:
+                _leyLines.Draw(fg, winMin, winMax);
                 break;
             case BgEffectMode.DataPipeline:
                 _dataPipeline.Draw(fg, winMin, winMax);
@@ -689,7 +689,7 @@ public sealed class MainWindow : Window
             ImGui.Spacing();
             ImGui.TextColored(Theme.Colors.AccentBlue, "背景特效:");
             ImGui.SameLine();
-            var bgModes = new[] { "无", "星云", "代码雨", "几何光效", "萤火虫", "星座", "故障艺术", "雷达", "电路板", "全息", "管道" };
+            var bgModes = new[] { "无", "星云", "代码雨", "几何光效", "萤火虫", "星座", "故障艺术", "雷达", "电路板", "黑魔纹", "管道" };
             var bgIdx = (int)_config.BgEffect;
             ImGui.SetNextItemWidth(120);
             if (ImGui.Combo("##BgEffect", ref bgIdx, bgModes, bgModes.Length))

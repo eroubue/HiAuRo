@@ -43,8 +43,8 @@ public enum BgEffectMode
     RadarScanner = 7,
     /// <summary>霓虹电路板</summary>
     NeonCircuit = 8,
-    /// <summary>全息投影</summary>
-    Hologram = 9,
+    /// <summary>黑魔纹</summary>
+    LeyLines = 9,
     /// <summary>数据流管道</summary>
     DataPipeline = 10,
 }
