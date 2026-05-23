@@ -4,21 +4,56 @@ namespace HiAuRo.ImGuiLib.Effects;
 
 public sealed class LeyLinesEffect
 {
-    private static readonly Vector2 CyanOff = new(-2f, 0);
-    private static readonly Vector2 MagOff = new(2f, 0);
+    private static readonly Vector2[] FCenters =
+    [
+        new(4f, 0f),
+        new(2f, 3.464102f),
+        new(-2f, 3.464102f),
+        new(-4f, 0f),
+        new(-2f, -3.464102f),
+        new(2f, -3.464102f),
+    ];
 
-    private ImTextureID _textureId;
-    private bool _textureLoaded;
-    private bool _textureLoadFailed;
+    private static readonly Vector2[] TriTips =
+    [
+        new(6f, 3.464102f),
+        new(0f, 6.928203f),
+        new(-6f, 3.464102f),
+        new(-6f, -3.464102f),
+        new(0f, -6.928203f),
+        new(6f, -3.464102f),
+    ];
 
+    private static readonly Vector2[] TriCentroids =
+    [
+        new(4f, 2.309401f),
+        new(0f, 4.618802f),
+        new(-4f, 2.309401f),
+        new(-4f, -2.309401f),
+        new(0f, -4.618802f),
+        new(4f, -2.309401f),
+    ];
+
+    private static readonly Vector2[] DiamondC =
+    [
+        new(4f, 0f), new(0f, 4f), new(-4f, 0f), new(0f, -4f),
+    ];
+
+    private static readonly Vector2[] SquareD =
+    [
+        new(2f, 2f), new(-2f, 2f), new(-2f, -2f), new(2f, -2f),
+    ];
+
+    private float _rotAngle;
     private float _time;
+    private float _flickerAlpha = 0.2f;
     private float _flickerTimer = 2f;
     private bool _inFlicker;
-    private float _flickerAlpha = 0.2f;
 
     public void Update(float dt, Vector2 min, Vector2 max)
     {
         _time += dt;
+        _rotAngle += 3f * dt;
 
         _flickerTimer -= dt;
         if (_flickerTimer <= 0f)
@@ -48,94 +83,78 @@ public sealed class LeyLinesEffect
 
     public void Draw(ImDrawListPtr dl, Vector2 winMin, Vector2 winMax)
     {
-        LoadTexture();
-        if (_textureId == 0) return;
-
         dl.PushClipRect(winMin, winMax, true);
 
         var center = (winMin + winMax) * 0.5f;
-        var alpha = _flickerAlpha;
+        var shortSide = MathF.Min(winMax.X - winMin.X, winMax.Y - winMin.Y);
+        var scale = shortSide * 0.12f;
+        var a = _flickerAlpha;
+        var accent = Theme.Colors.AccentBlue;
 
-        DrawBaseGradient(dl, winMin, winMax);
+        DrawCircle(dl, center, scale, Vector2.Zero, 6f, accent, a, 2.5f);
+        DrawCircle(dl, center, scale, Vector2.Zero, 4f, accent, a, 2f);
+        DrawPoly(dl, center, scale, DiamondC, accent, a * 0.8f, 1.5f);
+        DrawPoly(dl, center, scale, SquareD, accent, a * 0.7f, 1.5f);
 
-        var shortSide = Math.Min(winMax.X - winMin.X, winMax.Y - winMin.Y);
-        var displaySize = shortSide * 0.6f;
-        var half = displaySize * 0.5f;
-        var topLeft = center - new Vector2(half);
-        var bottomRight = center + new Vector2(half);
+        for (var i = 0; i < 6; i++)
+            DrawCircle(dl, center, scale, FCenters[i], 2f, accent, a * 0.8f, 1.5f);
 
-        dl.AddImage(_textureId, topLeft + CyanOff, bottomRight + CyanOff,
-            Vector2.Zero, Vector2.One,
-            ImGui.ColorConvertFloat4ToU32(new Vector4(0, 1, 1, alpha * 0.5f)));
+        Span<Vector2> tri = stackalloc Vector2[3];
+        for (var i = 0; i < 6; i++)
+        {
+            var next = (i + 1) % 6;
+            tri[0] = FCenters[i];
+            tri[1] = FCenters[next];
+            tri[2] = TriTips[i];
+            DrawPoly(dl, center, scale, tri, accent, a * 0.6f, 1f);
+        }
 
-        dl.AddImage(_textureId, topLeft + MagOff, bottomRight + MagOff,
-            Vector2.Zero, Vector2.One,
-            ImGui.ColorConvertFloat4ToU32(new Vector4(1, 0, 1, alpha * 0.5f)));
-
-        dl.AddImage(_textureId, topLeft, bottomRight,
-            Vector2.Zero, Vector2.One,
-            ImGui.ColorConvertFloat4ToU32(new Vector4(1, 1, 1, alpha)));
-
-        DrawScanNoise(dl, winMin, winMax);
+        for (var i = 0; i < 6; i++)
+            DrawCircle(dl, center, scale, TriCentroids[i], 1f, accent, a * 0.5f, 1f);
 
         dl.PopClipRect();
     }
 
-    private void LoadTexture()
+    private Vector2 ToScreen(Vector2 screenCenter, float scale, Vector2 local)
     {
-        if (_textureLoaded || _textureLoadFailed) return;
-        try
-        {
-            var assembly = typeof(LeyLinesEffect).Assembly;
-            using var stream = assembly.GetManifestResourceStream("HiAuRo.Resources.blm_alpha.png");
-            if (stream == null) { _textureLoadFailed = true; return; }
+        var cos = MathF.Cos(_rotAngle);
+        var sin = MathF.Sin(_rotAngle);
+        return screenCenter + new Vector2(
+            local.X * cos - local.Y * sin,
+            local.X * sin + local.Y * cos) * scale;
+    }
 
-            var tempPath = Path.Combine(Path.GetTempPath(), "hiauro_blm_white.png");
-            using (var fs = File.Create(tempPath))
-                stream.CopyTo(fs);
+    private void DrawCircle(ImDrawListPtr dl, Vector2 screenCenter, float scale,
+        Vector2 localCenter, float radius, Vector4 color, float alpha, float thickness)
+    {
+        var c = ToScreen(screenCenter, scale, localCenter);
+        var r = MathF.Max(radius * scale, 0.1f);
+        var glowCol = ColorU32(color, alpha * 0.25f);
+        var mainCol = ColorU32(color, alpha);
 
-            var wrap = DService.Instance().Texture.GetFromFile(tempPath)?.GetWrapOrEmpty();
-            if (wrap == null || wrap.Handle == 0)
-            {
-                _textureLoadFailed = true;
-                return;
-            }
-            _textureId = wrap.Handle;            _textureLoaded = true;
-        }
-        catch
+        dl.PathArcTo(c, r, 0f, MathF.Tau, 48);
+        dl.PathStroke(glowCol, ImDrawFlags.None, thickness * 3f);
+        dl.PathArcTo(c, r, 0f, MathF.Tau, 48);
+        dl.PathStroke(mainCol, ImDrawFlags.None, thickness);
+    }
+
+    private void DrawPoly(ImDrawListPtr dl, Vector2 screenCenter, float scale,
+        ReadOnlySpan<Vector2> verts, Vector4 color, float alpha, float thickness)
+    {
+        var glowCol = ColorU32(color, alpha * 0.25f);
+        var mainCol = ColorU32(color, alpha);
+
+        for (var pass = 0; pass < 2; pass++)
         {
-            _textureLoadFailed = true;
+            dl.PathLineTo(ToScreen(screenCenter, scale, verts[0]));
+            for (var i = 1; i < verts.Length; i++)
+                dl.PathLineTo(ToScreen(screenCenter, scale, verts[i]));
+            dl.PathLineTo(ToScreen(screenCenter, scale, verts[0]));
+            dl.PathStroke(pass == 0 ? glowCol : mainCol, ImDrawFlags.None,
+                pass == 0 ? thickness * 3f : thickness);
         }
     }
 
-    private static void DrawBaseGradient(ImDrawListPtr dl, Vector2 min, Vector2 max)
-    {
-        var h = max.Y - min.Y;
-        var steps = 6;
-        var stepH = h / steps;
-        for (var i = 0; i < steps; i++)
-        {
-            var t = i / (float)steps;
-            var alpha = 0.02f + t * 0.03f;
-            var y1 = min.Y + i * stepH;
-            var y2 = y1 + stepH;
-            dl.AddRectFilled(new Vector2(min.X, y1), new Vector2(max.X, y2),
-                ImGui.ColorConvertFloat4ToU32(new Vector4(0.1f, 0.2f, 0.4f, alpha)));
-        }
-    }
-
-    private static void DrawScanNoise(ImDrawListPtr dl, Vector2 min, Vector2 max)
-    {
-        var w = max.X - min.X;
-        var count = 8 + (Random.Shared.NextSingle() < 0.3f ? 12 : 0);
-        for (var i = 0; i < count; i++)
-        {
-            var x = min.X + Random.Shared.NextSingle() * w;
-            var y = min.Y + Random.Shared.NextSingle() * (max.Y - min.Y);
-            var len = 5f + Random.Shared.NextSingle() * 20f;
-            var a = 0.05f + Random.Shared.NextSingle() * 0.15f;
-            dl.AddLine(new Vector2(x, y), new Vector2(x + len, y),
-                ImGui.ColorConvertFloat4ToU32(new Vector4(0.7f, 0.8f, 1f, a)), 1f);
-        }
-    }
+    private static uint ColorU32(Vector4 c, float a)
+        => ImGui.ColorConvertFloat4ToU32(new Vector4(c.X, c.Y, c.Z, a));
 }
