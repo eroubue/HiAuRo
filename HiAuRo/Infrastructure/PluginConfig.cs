@@ -41,6 +41,8 @@ public enum BgEffectMode
     Constellation = 6,
     /// <summary>能量环</summary>
     EnergyRing = 7,
+    /// <summary>鼠标跟随星座</summary>
+    ConstellationCursor = 8,
 }
 
 /// <summary>

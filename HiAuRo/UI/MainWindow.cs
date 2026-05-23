@@ -36,6 +36,7 @@ _firefly = new FireflyEffect();
         _rain = new RainEffect();
         _constellation = new ConstellationEffect();
         _energyRing = new EnergyRingEffect();
+        _constellationCursor = new ConstellationCursorEffect();
     }
 
     // ── 背景特效 ──
@@ -49,6 +50,7 @@ _firefly = new FireflyEffect();
     private readonly RainEffect _rain;
     private readonly ConstellationEffect _constellation;
     private readonly EnergyRingEffect _energyRing;
+    private readonly ConstellationCursorEffect _constellationCursor;
 
     // ── 新布局状态字段 ──
 
@@ -152,6 +154,10 @@ _firefly = new FireflyEffect();
             case BgEffectMode.EnergyRing:
                 _energyRing.Update(dt, winMin, winMax);
                 break;
+
+            case BgEffectMode.ConstellationCursor:
+                _constellationCursor.Update(dt, winMin, winMax);
+                break;
         }
 
         // ── 全局 ImGui 样式色（跟随主题）──
@@ -248,6 +254,9 @@ _firefly = new FireflyEffect();
                 break;
             case BgEffectMode.EnergyRing:
                 _energyRing.Draw(fg, winMin, winMax);
+                break;
+            case BgEffectMode.ConstellationCursor:
+                _constellationCursor.Draw(fg, winMin, winMax);
                 break;
         }
     }
@@ -662,7 +671,7 @@ _firefly = new FireflyEffect();
             ImGui.Spacing();
             ImGui.TextColored(Theme.Colors.AccentBlue, "背景特效:");
             ImGui.SameLine();
-            var bgModes = new[] { "无", "星云", "代码雨", "几何光效", "萤火虫", "雨", "星座", "能量环" };
+            var bgModes = new[] { "无", "星云", "代码雨", "几何光效", "萤火虫", "雨", "星座", "能量环", "鼠标星座" };
             var bgIdx = (int)_config.BgEffect;
             ImGui.SetNextItemWidth(120);
             if (ImGui.Combo("##BgEffect", ref bgIdx, bgModes, bgModes.Length))
