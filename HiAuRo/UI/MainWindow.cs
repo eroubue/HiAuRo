@@ -329,14 +329,19 @@ public sealed class MainWindow : Window
 
         var clicked = ImGui.Button($"##card_{title}", new Vector2(cardWidth, cardHeight));
 
-        // ── 文字叠加 ──
-        var textPos = ImGui.GetItemRectMin() + new Vector2(16, 4);
-        IconHelper.DrawIcon(dl, textPos + new Vector2(8, cardHeight * 0.5f), icon, ImGui.ColorConvertFloat4ToU32(textColor), 16f);
-        dl.AddText(textPos + new Vector2(24, 0), ImGui.ColorConvertFloat4ToU32(textColor), title);
+        // ── 图标+文字叠加（垂直居中）──
+        var rectMin = ImGui.GetItemRectMin();
+        var centerY = rectMin.Y + cardHeight * 0.5f;
+        var lineHeight = ImGui.GetTextLineHeight();
+        var textTop = centerY - lineHeight * 0.5f;
+        var iconX = rectMin.X + 16;
+
+        IconHelper.DrawIcon(dl, new Vector2(iconX + 8, centerY), icon, ImGui.ColorConvertFloat4ToU32(textColor), 16f);
+        dl.AddText(new Vector2(iconX + 24, textTop), ImGui.ColorConvertFloat4ToU32(textColor), title);
 
         if (subtitle != null)
         {
-            dl.AddText(textPos + new Vector2(24, 18),
+            dl.AddText(new Vector2(iconX + 24, textTop + lineHeight),
                 ImGui.ColorConvertFloat4ToU32(Theme.Colors.TextTertiary), subtitle);
         }
 
