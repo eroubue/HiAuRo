@@ -97,7 +97,7 @@ public sealed class LeyLinesEffect
     {
         _time += dt;
         _rotY += 0.3f * dt;
-        _flatRot += 1f * dt;
+        _flatRot += 0.4f * dt;
 
         var mouse = ImGui.GetIO().MousePos;
         var center = (min + max) * 0.5f;
