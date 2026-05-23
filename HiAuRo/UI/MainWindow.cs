@@ -138,9 +138,9 @@ public sealed class MainWindow : Window
         ImGui.BeginChild("##ContentFrame", new Vector2(-1, midHeight), true,
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
 
-        // 内层内容区（直角，边距可控）
+        // 内层内容区：直角 + 24px 左侧安全边距
         ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, 0f);
-        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(12, 8));
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(20, 10));
         ImGui.BeginChild("##ContentArea", new Vector2(-1, -1), false);
         DrawContent();
         ImGui.EndChild();
@@ -386,6 +386,7 @@ public sealed class MainWindow : Window
         // ── 左侧：模块名称（对齐 Sidebar 宽度）──
         ImGui.BeginChild("##TabLabel", new Vector2(sidebarWidth, 0), false,
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
+        ImGui.SetCursorPosX(5f);
         ImGui.SetCursorPosY((ImGui.GetContentRegionAvail().Y - ImGui.GetTextLineHeight()) * 0.5f);
         if (!isPluginSelected)
         {
@@ -482,7 +483,7 @@ public sealed class MainWindow : Window
         var paused = ACR.MainControlHelper.IsPaused;
         var runState = running ? (paused ? "已暂停" : "运行中") : "已停止";
         var stateColor = running ? (paused ? Theme.Colors.AccentOrange : Theme.Colors.AccentGreen) : Theme.Colors.AccentRed;
-
+        ImGui.SetCursorPosX(5f);
         ImGui.TextColored(Theme.Colors.TextTertiary, "HiAuRo");
         ImGui.SameLine();
         ImGui.TextColored(stateColor, $"[{runState}]");
