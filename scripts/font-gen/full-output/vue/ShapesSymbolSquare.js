@@ -1,0 +1,25 @@
+import { defineComponent, h } from 'vue';
+
+export const ShapesSymbolSquare = defineComponent({
+  name: 'ShapesSymbolSquare',
+  props: {
+    class: {
+      type: String,
+      default: ''
+    }
+  },
+  setup(props, { attrs }) {
+    return () => h(
+      'svg',
+      {
+        viewBox: '0 0 20 20',
+        
+        class: `game-icons ${props.class}`,
+        ...attrs
+      },
+      [
+        h('path', {"d": "M2 4.28C2 3.26486 2 2.7573 2.28751 2.42066C2.32834 2.37286 2.37286 2.32834 2.42066 2.28751C2.7573 2 3.26486 2 4.28 2H5.72C6.73514 2 7.2427 2 7.57934 2.28751C7.62714 2.32834 7.67166 2.37286 7.71249 2.42066C8 2.7573 8 3.26486 8 4.28V5.72C8 6.73514 8 7.2427 7.71249 7.57934C7.67166 7.62714 7.62714 7.67166 7.57934 7.71249C7.2427 8 6.73514 8 5.72 8H4.28C3.26486 8 2.7573 8 2.42066 7.71249C2.37286 7.67166 2.32834 7.62714 2.28751 7.57934C2 7.2427 2 6.73514 2 5.72V4.28Z", "fillRule": "evenodd"})
+      ]
+    );
+  }
+});

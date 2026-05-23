@@ -12,14 +12,14 @@ public static class IconHelper
     /// <summary>Game-Icon-Pack 图标 Unicode 码点 (Private Use Area U+EA00+)</summary>
     public static class Icons
     {
-        public const string Play = "\uea05";
-        public const string Stop = "\uea07";
-        public const string Pause = "\uea04";
-        public const string Save = "\uea06";
-        public const string ArrowUp = "\uea02";
-        public const string ArrowDown = "\uea01";
-        public const string Cross = "\uea03";
-        // 后续扩展从 U+EA08 起
+        public const string Play = "\ueb15";
+        public const string Stop = "\ueb20";
+        public const string Pause = "\ueb13";
+        public const string Save = "\uebe1";
+        public const string ArrowUp = "\ueb39";
+        public const string ArrowDown = "\ueb30";
+        public const string Cross = "\uebb2";
+        // 共 504 个图标可用，命名格式: Category_iconname，如 UI_settings, Game_trophy 等
     }
 
     private static ImFontPtr? _iconFont18;
@@ -43,22 +43,20 @@ public static class IconHelper
                 var configDir = DService.Instance().PI.ConfigDirectory.FullName;
                 var ttfPath = Path.Combine(configDir, "game-icons.ttf");
 
-                if (!File.Exists(ttfPath))
+                // 始终覆盖，确保 TTF 版本与嵌入资源一致
+                var assembly = Assembly.GetExecutingAssembly();
+                using var stream = assembly.GetManifestResourceStream("HiAuRo.Resources.Fonts.game-icons.ttf");
+                if (stream == null)
                 {
-                    var assembly = Assembly.GetExecutingAssembly();
-                    using var stream = assembly.GetManifestResourceStream("HiAuRo.Resources.Fonts.game-icons.ttf");
-                    if (stream == null)
-                    {
-                        DService.Instance().Log.Warning("[IconHelper] TTF resource not found");
-                        return;
-                    }
-                    using var fs = File.Create(ttfPath);
-                    stream.CopyTo(fs);
+                    DService.Instance().Log.Warning("[IconHelper] TTF resource not found");
+                    return;
                 }
+                using var fs = File.Create(ttfPath);
+                stream.CopyTo(fs);
 
                 // 2. 在游戏字体图集中注册两个字号
                 var fontAtlas = DService.Instance().UIBuilder.FontAtlas;
-                var iconRange = new ushort[] { 0xEA00, 0xEA10, 0 };
+                var iconRange = new ushort[] { 0xEA00, 0xEBF9, 0 };
 
                 _fontHandle18 = fontAtlas.NewDelegateFontHandle(e =>
                 {
