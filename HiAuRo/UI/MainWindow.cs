@@ -76,60 +76,50 @@ public sealed class MainWindow : Window
     /// <summary>绘制窗口</summary>
     public override void Draw()
     {
-        if (ImGui.BeginTabBar("##HiAuRoTabs"))
+        // ── 窗口内边距 ──
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(12, 10));
+        ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(8, 6));
+
+        // ── 计算布局区域 ──
+        var avail = ImGui.GetContentRegionAvail();
+        var topBarHeight = 62f;
+        var statusBarHeight = 24f;
+        var sidebarWidth = 168f;
+
+        // ── 顶部信息栏 ──
+        ImGui.BeginChild("##TopBar", new Vector2(avail.X, topBarHeight), false,
+            ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
+        DrawTopBar();
+        ImGui.EndChild();
+
+        ImGui.Separator();
+
+        // 中间区域高度
+        var midHeight = avail.Y - topBarHeight - statusBarHeight - 18f;
+
+        // ── 左侧栏 + 右侧内容 ──
+        if (ImGui.BeginTable("##MainLayout", 2,
+            ImGuiTableFlags.Resizable | ImGuiTableFlags.NoSavedSettings,
+            new Vector2(avail.X, midHeight)))
         {
-            if (ImGui.BeginTabItem("状态"))
-            {
-                DrawStatus();
-                ImGui.EndTabItem();
-            }
-            if (ImGui.BeginTabItem("设置"))
-            {
-                DrawSettings();
-                ImGui.EndTabItem();
-            }
-            if (ImGui.BeginTabItem("窗口设置"))
-            {
-                DrawOverlaySettings();
-                ImGui.EndTabItem();
-            }
-            if (ImGui.BeginTabItem("Debug"))
-            {
-                DrawDebug();
-                ImGui.EndTabItem();
-            }
-            if (ImGui.BeginTabItem("ACR Debug"))
-            {
-                DrawAcrDebug();
-                ImGui.EndTabItem();
-            }
-            if (ImGui.BeginTabItem("录制"))
-            {
-                DrawRecording();
-                ImGui.EndTabItem();
-            }
-            if (ImGui.BeginTabItem("事实轴"))
-            {
-                DrawFactAxisTab();
-                ImGui.EndTabItem();
-            }
-            if (ImGui.BeginTabItem("执行轴"))
-            {
-                DrawExecutionAxisTab();
-                ImGui.EndTabItem();
-            }
-            if (ImGui.BeginTabItem("辅助轴"))
-            {
-                DrawAssistAxisTab();
-                ImGui.EndTabItem();
-            }
-            if (ImGui.BeginTabItem("日志"))
-            {
-                DrawLog();
-                ImGui.EndTabItem();
-            }
-            ImGui.EndTabBar();
+            ImGui.TableSetupColumn("##SidebarCol", ImGuiTableColumnFlags.WidthFixed, sidebarWidth);
+            ImGui.TableSetupColumn("##ContentCol", ImGuiTableColumnFlags.WidthStretch);
+
+            ImGui.TableNextRow();
+            ImGui.TableSetColumnIndex(0);
+            DrawSidebar(sidebarWidth, midHeight);
+
+            ImGui.TableSetColumnIndex(1);
+            DrawContent();
+
+            ImGui.EndTable();
         }
+
+        // ── 底部状态栏 ──
+        ImGui.Separator();
+        DrawStatusBar(avail.X);
+
+        ImGui.PopStyleVar(2); // WindowPadding, ItemSpacing
     }
 
     private void DrawStatus()
