@@ -37,10 +37,10 @@ public sealed class GeometricGlowEffect
         }
     }
 
-    public void Draw(ImDrawListPtr dl)
+    public void Draw(ImDrawListPtr dl, Vector2 winMin, Vector2 winMax)
     {
-        var winMin = ImGui.GetWindowPos();
-        var winMax = winMin + ImGui.GetWindowSize();
+        dl.PushClipRect(winMin, winMax, true);
+
         var accent = Theme.Colors.AccentBlue;
         var tertiary = Theme.Colors.TextTertiary;
 
@@ -48,6 +48,8 @@ public sealed class GeometricGlowEffect
         DrawCenterPolygon(dl, winMin, winMax, accent);
         DrawScanLine(dl, winMin, winMax, accent);
         DrawGrid(dl, winMin, winMax, tertiary);
+
+        dl.PopClipRect();
     }
 
     /// <summary>四角 L 形装饰线</summary>

@@ -77,8 +77,10 @@ public sealed class MatrixRainEffect
         }
     }
 
-    public void Draw(ImDrawListPtr dl)
+    public void Draw(ImDrawListPtr dl, Vector2 winMin, Vector2 winMax)
     {
+        dl.PushClipRect(winMin, winMax, true);
+
         var accent = Theme.Colors.AccentBlue;
 
         for (var i = 0; i < _drops.Length; i++)
@@ -91,34 +93,27 @@ public sealed class MatrixRainEffect
 
             for (var j = 0; j < tailLen; j++)
             {
-                // 尾部字符从下往上渐隐
                 var charY = drop.Y - j * 14f;
-                if (charY < 0f) continue;
 
                 float alpha;
                 if (j == 0)
                 {
-                    // 领头字符最亮
                     alpha = 0.95f;
                 }
                 else
                 {
-                    // 尾部渐隐：从 0.6 递减到 0.1
                     alpha = Math.Max(0.08f, 0.6f * (1f - (float)j / tailLen));
                 }
 
-                // 生命周期淡出
                 alpha *= Math.Min(1f, lifeRatio * 3f);
 
                 Vector4 charColor;
                 if (j == 0)
                 {
-                    // 领头字符用主题 AccentBlue（亮白蓝）
                     charColor = new Vector4(0.85f, 0.95f, 1f, alpha);
                 }
                 else
                 {
-                    // 尾部用绿色系 (0, 1, 0.4)
                     charColor = new Vector4(0f, 1f, 0.4f, alpha);
                 }
 
@@ -126,6 +121,8 @@ public sealed class MatrixRainEffect
                 dl.AddText(pos, ImGui.ColorConvertFloat4ToU32(charColor), drop.Chars[j].ToString());
             }
         }
+
+        dl.PopClipRect();
     }
 
     private void ResetDrop(ref RainDrop drop, Vector2 min, Vector2 max, int colCount, float colSpacing)

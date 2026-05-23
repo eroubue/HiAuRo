@@ -208,10 +208,10 @@ public sealed class MainWindow : Window
                 _clickRipple.Draw(fg);
                 break;
             case BgEffectMode.MatrixRain:
-                _matrixRain.Draw(fg);
+                _matrixRain.Draw(fg, winMin, winMax);
                 break;
             case BgEffectMode.GeometricGlow:
-                _geometricGlow.Draw(fg);
+                _geometricGlow.Draw(fg, winMin, winMax);
                 break;
         }
     }
