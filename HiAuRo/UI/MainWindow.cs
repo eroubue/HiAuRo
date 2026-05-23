@@ -115,23 +115,22 @@ public sealed class MainWindow : Window
         // 中间区域高度
         var midHeight = avail.Y - topBarHeight - statusBarHeight - 18f;
 
-        // ── 左侧栏 + 右侧内容 ──
-        if (ImGui.BeginTable("##MainLayout", 2,
-            ImGuiTableFlags.Resizable | ImGuiTableFlags.NoSavedSettings,
-            new Vector2(avail.X, midHeight)))
-        {
-            ImGui.TableSetupColumn("##SidebarCol", ImGuiTableColumnFlags.WidthFixed, sidebarWidth);
-            ImGui.TableSetupColumn("##ContentCol", ImGuiTableColumnFlags.WidthStretch);
+        // ── 左侧栏 + 右侧内容（手动布局，避免 Table 自带间距导致不对齐）──
+        // 左侧栏
+        ImGui.BeginChild("##SidebarPanel", new Vector2(sidebarWidth, midHeight), false,
+            ImGuiWindowFlags.NoScrollbar);
+        ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(3, 3));
+        DrawSidebar(sidebarWidth, midHeight);
+        ImGui.PopStyleVar();
+        ImGui.EndChild();
 
-            ImGui.TableNextRow();
-            ImGui.TableSetColumnIndex(0);
-            DrawSidebar(sidebarWidth, midHeight);
+        ImGui.SameLine(0, 4);
 
-            ImGui.TableSetColumnIndex(1);
-            DrawContent();
-
-            ImGui.EndTable();
-        }
+        // 右侧内容
+        ImGui.BeginChild("##ContentPanel", new Vector2(-1, midHeight), false,
+            ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
+        DrawContent();
+        ImGui.EndChild();
 
         // ── 底部状态栏 ──
         ImGui.Separator();
@@ -348,7 +347,7 @@ public sealed class MainWindow : Window
         return clicked;
     }
 
-    /// <summary>绘制右侧内容区：Tab 栏 + 当前页面内容</summary>
+    /// <summary>绘制右侧内容区：Tab 栏(顶部全宽) + 分隔线 + 内容</summary>
     private void DrawContent()
     {
         var isPluginSelected = _selectedPluginName != null;
@@ -360,24 +359,22 @@ public sealed class MainWindow : Window
             _lastCardIndex = _selectedCardIndex;
         }
 
-        // ── Tab 栏 ──
+        // ── Tab 栏（内容区顶部，全宽）──
         if (!isPluginSelected)
         {
             var (_, _, tabs) = _modules[Math.Clamp(_selectedCardIndex, 0, _modules.Length - 1)];
             ComponentLibrary.Tabs($"module_{_selectedCardIndex}", ref _selectedTabIndex, tabs);
-            ImGui.Spacing();
         }
         else
         {
-            // Plugin 选中时显示插件名称作为标题
-            ImGui.TextColored(Theme.Colors.AccentBlue,
-                $"插件: {_selectedPluginName}");
-            ImGui.Separator();
-            ImGui.Spacing();
+            ImGui.TextColored(Theme.Colors.AccentBlue, $"插件: {_selectedPluginName}");
         }
 
-        // ── 内容区 ──
-        var contentHeight = ImGui.GetContentRegionAvail().Y - 4f;
+        ImGui.Separator();
+
+        // ── 内容区（Tab 下方剩余空间）──
+        var contentHeight = ImGui.GetContentRegionAvail().Y - 2f;
+        if (contentHeight < 50) contentHeight = 50;
         ImGui.BeginChild("##ContentArea", new Vector2(-1, contentHeight), false);
 
         if (isPluginSelected)
