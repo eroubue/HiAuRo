@@ -76,7 +76,7 @@ public sealed class ClickRippleEffect
             var easedProgress = Easing.EaseOutCubic(r.Progress);
             var radius = r.MaxRadius * easedProgress;
             var fade = 1f - r.Progress;
-            var numSegments = Math.Clamp((int)(radius * 0.3f), 12, 32);
+            var numSegments = Math.Max(32, (int)(MathF.Tau * radius / 3f));
 
             var fillU32 = ImGui.ColorConvertFloat4ToU32(
                 new Vector4(accent.X, accent.Y, accent.Z, fade * 0.15f));

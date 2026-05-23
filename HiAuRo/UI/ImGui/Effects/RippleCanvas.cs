@@ -32,6 +32,7 @@ public sealed class RippleCanvas
         _maxRipples = maxRipples;
         _ripples = new Ripple[maxRipples];
         _spawnInterval = spawnInterval;
+        _spawnTimer = Math.Max(0, _spawnInterval - 0.3f);
     }
 
     /// <summary>每帧更新波纹状态</summary>
@@ -73,7 +74,7 @@ public sealed class RippleCanvas
             if (r.Life <= 0f || r.Radius <= 0f) continue;
 
             var lifeRatio = Math.Max(0f, r.Life / r.MaxLife);
-            var numSegments = Math.Clamp((int)(r.Radius * 0.3f), 16, 64);
+            var numSegments = Math.Max(32, (int)(MathF.Tau * r.Radius / 3f));
             var thickness = r.LineWidth * (0.3f + 0.7f * lifeRatio);
 
             var glowU32 = ImGui.ColorConvertFloat4ToU32(
@@ -120,7 +121,7 @@ public sealed class RippleCanvas
 
         ref var r = ref _ripples[oldestIdx];
         r.Center = center;
-        r.Radius = 0f;
+        r.Radius = 3f;
         r.MaxRadius = maxRadius;
         r.MaxLife = maxLife;
         r.Life = maxLife;
