@@ -7,7 +7,7 @@ HiAuRo is a FFXIV Dalamud **combat assist framework** (.NET 10, Dalamud.NET.Sdk 
 ## Build & Verify
 
 ```bash
-dotnet build HiAuRo.slnx -c Release -nologo
+dotnet build HiAuRo.slnx -c Debug -nologo
 ```
 
 
