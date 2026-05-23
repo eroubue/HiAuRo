@@ -404,6 +404,41 @@ public sealed class MainWindow : Window
         }
     }
 
+    /// <summary>绘制底部状态栏</summary>
+    private static void DrawStatusBar(float width)
+    {
+        ImGui.BeginChild("##StatusBar", new Vector2(width, 20f), false,
+            ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
+
+        var running = RuntimeCore.IsRunning;
+        var paused = ACR.MainControlHelper.IsPaused;
+        var runState = running ? (paused ? "已暂停" : "运行中") : "已停止";
+        var stateColor = running ? (paused ? Theme.Colors.AccentOrange : Theme.Colors.AccentGreen) : Theme.Colors.AccentRed;
+
+        ImGui.TextColored(Theme.Colors.TextTertiary, "HiAuRo");
+        ImGui.SameLine();
+        ImGui.TextColored(stateColor, $"[{runState}]");
+
+        ImGui.SameLine();
+        ImGui.TextColored(Theme.Colors.TextTertiary, $"v{_version}");
+
+        ImGui.SameLine();
+        ComponentLibrary.VSplit();
+
+        ImGui.SameLine();
+        var acrName = ACRLifecycle.CurrentAcrName ?? "未加载";
+        ImGui.TextColored(Theme.Colors.TextSecondary, $"ACR: {acrName}");
+
+        ImGui.SameLine();
+        ComponentLibrary.VSplit();
+
+        ImGui.SameLine();
+        var pluginCount = PluginLoader.Plugins.Count;
+        ImGui.TextColored(Theme.Colors.TextSecondary, $"Plugins: {pluginCount}");
+
+        ImGui.EndChild();
+    }
+
     private void DrawStatus()
     {
         // UI 渲染模式切换
