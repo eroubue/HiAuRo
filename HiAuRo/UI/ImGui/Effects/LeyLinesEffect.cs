@@ -16,22 +16,22 @@ public sealed class LeyLinesEffect
 
     private static readonly Vector2[] TriBase1 =
     [
-        new(4.196152f, 3.000000f),
-        new(-0.500000f, 5.133975f),
-        new(-4.696152f, 2.133975f),
-        new(-4.196152f, -3.000000f),
-        new(0.500000f, -5.133975f),
-        new(4.696152f, -2.133975f),
+        new(4.046152f, 3.000000f),
+        new(-0.575000f, 5.004071f),
+        new(-4.621152f, 2.004072f),
+        new(-4.046152f, -3.000000f),
+        new(0.575000f, -5.004071f),
+        new(4.621152f, -2.004072f),
     ];
 
     private static readonly Vector2[] TriBase2 =
     [
-        new(4.696152f, 2.133975f),
-        new(0.500000f, 5.133975f),
-        new(-4.196152f, 3.000000f),
-        new(-4.696152f, -2.133975f),
-        new(-0.500000f, -5.133975f),
-        new(4.196152f, -3.000000f),
+        new(4.621152f, 2.004072f),
+        new(0.575000f, 5.004071f),
+        new(-4.046152f, 3.000000f),
+        new(-4.621152f, -2.004072f),
+        new(-0.575000f, -5.004071f),
+        new(4.046152f, -3.000000f),
     ];
 
     private static readonly Vector2[] TriTips =
@@ -46,12 +46,12 @@ public sealed class LeyLinesEffect
 
     private static readonly Vector2[] TriCentroids =
     [
-        new(4.696152f, 2.711325f),
-        new(0.000000f, 5.422649f),
-        new(-4.696152f, 2.711325f),
-        new(-4.696152f, -2.711325f),
-        new(0.000000f, -5.422649f),
-        new(4.696152f, -2.711325f),
+        new(4.621152f, 2.668024f),
+        new(0.000000f, 5.336047f),
+        new(-4.621152f, 2.668024f),
+        new(-4.621152f, -2.668024f),
+        new(0.000000f, -5.336047f),
+        new(4.621152f, -2.668024f),
     ];
 
     private static readonly Vector2[] DiamondC =
@@ -129,7 +129,7 @@ public sealed class LeyLinesEffect
         }
 
         for (var i = 0; i < 6; i++)
-            DrawCircle(dl, center, scale, TriCentroids[i], 0.25f, accent, a * 0.5f, 1f);
+            DrawCircle(dl, center, scale, TriCentroids[i], 0.3f, accent, a * 0.5f, 1f);
 
         dl.PopClipRect();
     }
