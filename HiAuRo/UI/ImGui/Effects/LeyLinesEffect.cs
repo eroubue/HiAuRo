@@ -4,40 +4,64 @@ namespace HiAuRo.ImGuiLib.Effects;
 
 public sealed class LeyLinesEffect
 {
-    private float _rotationAngle;
-    private float _time;
-    private float _glitchTimer;
-    private bool _inGlitch;
-    private float _glitchDuration;
-    private readonly Random _rng = new();
+    private const int RingSegments = 64;
+    private const float Perspective = 400f;
 
-    private const int Segments = 64;
+    private const float OuterR = 1.0f;
+    private const float MiddleR = 0.7f;
+    private const float InnerR = 0.4f;
+    private const float PentOuterR = 0.75f;
+    private const float PentInnerR = PentOuterR * 0.382f;
+
     private static readonly int[] PentagramOrder = [0, 2, 4, 1, 3];
 
-    private static readonly Vector3 Purple = new(0.4f, 0.1f, 0.6f);
-    private static readonly Vector3 Cyan = new(0f, 1f, 1f);
-    private static readonly Vector3 Magenta = new(1f, 0f, 1f);
-    private static readonly Vector3 Orange = new(1f, 0.6f, 0.1f);
+    private float _rotX;
+    private float _rotY;
+    private float _time;
+    private float _flickerTimer = 2f;
+    private bool _inFlicker;
+    private float _flickerAlpha = 0.2f;
 
     public void Update(float dt, Vector2 min, Vector2 max)
     {
         _time += dt;
-        _rotationAngle += 1f * dt;
+        _rotY += dt * 0.8f;
+        _rotX += dt * 0.3f;
 
-        if (_inGlitch)
+        var mouse = ImGui.GetIO().MousePos;
+        var center = (min + max) * 0.5f;
+        var inWindow = mouse.X >= min.X && mouse.X <= max.X && mouse.Y >= min.Y && mouse.Y <= max.Y;
+        if (inWindow)
         {
-            _glitchDuration -= dt;
-            if (_glitchDuration <= 0f) _inGlitch = false;
+            var dx = (mouse.X - center.X) / Math.Max(1f, (max.X - min.X) * 0.5f);
+            var dy = (mouse.Y - center.Y) / Math.Max(1f, (max.Y - min.Y) * 0.5f);
+            _rotY += dx * dt * 1.5f;
+            _rotX += dy * dt * 1.5f;
+        }
+
+        _flickerTimer -= dt;
+        if (_flickerTimer <= 0f)
+        {
+            _flickerTimer = 2f + Random.Shared.NextSingle() * 1f;
+            _inFlicker = true;
+        }
+
+        if (_inFlicker)
+        {
+            _flickerAlpha = Random.Shared.NextSingle() < 0.3f
+                ? 0.05f
+                : 0.15f + Random.Shared.NextSingle() * 0.15f;
+            _flickerTimer -= dt;
+            if (_flickerTimer <= 0f || Random.Shared.NextSingle() < 0.1f)
+            {
+                _inFlicker = false;
+                _flickerAlpha = 0.2f;
+                _flickerTimer = 2f + Random.Shared.NextSingle() * 1f;
+            }
         }
         else
         {
-            _glitchTimer += dt;
-            if (_glitchTimer > 2f + (float)_rng.NextDouble())
-            {
-                _inGlitch = true;
-                _glitchDuration = 0.05f + (float)_rng.NextDouble() * 0.1f;
-                _glitchTimer = 0f;
-            }
+            _flickerAlpha = 0.2f + MathF.Sin(_time * 0.5f) * 0.05f;
         }
     }
 
@@ -46,205 +70,158 @@ public sealed class LeyLinesEffect
         dl.PushClipRect(winMin, winMax, true);
 
         var center = (winMin + winMax) * 0.5f;
-        var w = winMax.X - winMin.X;
-        var h = winMax.Y - winMin.Y;
-        var R = Math.Min(w, h) * 0.35f;
+        var scale = Math.Min(winMax.X - winMin.X, winMax.Y - winMin.Y) * 0.20f;
 
-        var mouse = ImGui.GetIO().MousePos;
-        var relX = Math.Clamp((mouse.X - center.X) / (w * 0.5f), -1f, 1f);
-        var relY = Math.Clamp((mouse.Y - center.Y) / (h * 0.5f), -1f, 1f);
-        var angleY = relX * 0.5f;
-        var angleX = relY * 0.3f;
-        var cosY = MathF.Cos(angleY);
-        var sinY = MathF.Sin(angleY);
-        var cosX = MathF.Cos(angleX);
-        var sinX = MathF.Sin(angleX);
+        DrawBaseGradient(dl, winMin, winMax);
 
-        Vector2 Project(float x, float y) => new(
-            center.X + x * cosY,
-            center.Y + y * cosX - x * sinY * sinX);
+        var alpha = _flickerAlpha;
+        var cyanOff = new Vector2(-2f, 0);
+        var magOff = new Vector2(2f, 0);
 
-        var mouseDist = Vector2.Distance(mouse, center);
-        var mouseProximity = mouseDist < R * 1.2f ? 1.3f : 1f;
-        var breathe = 0.85f + 0.15f * MathF.Sin(_time * 2f);
-        var alphaMod = breathe * mouseProximity;
-        if (_inGlitch) alphaMod *= 0.1f;
+        DrawRing(dl, center, scale, OuterR, cyanOff, magOff, alpha);
+        DrawRing(dl, center, scale, MiddleR, cyanOff, magOff, alpha);
+        DrawRing(dl, center, scale, InnerR, cyanOff, magOff, alpha);
 
-        float A(float a) => Math.Min(1f, a * alphaMod);
-
-        // 底层蓝色渐变（上半部）
-        for (var i = 0; i < 6; i++)
-        {
-            var t0 = (float)i / 6 * 0.5f;
-            var t1 = (float)(i + 1) / 6 * 0.5f;
-            var alpha = 0.06f * (1f - (float)i / 6);
-            dl.AddRectFilled(
-                new Vector2(winMin.X, winMin.Y + h * t0),
-                new Vector2(winMax.X, winMin.Y + h * t1),
-                U32(new Vector3(0.1f, 0.2f, 0.6f), A(alpha)));
-        }
-
-        // 扫描线干扰
-        for (var i = 0; i < 8; i++)
-        {
-            var y = winMin.Y + (float)_rng.NextDouble() * h;
-            var x = winMin.X + (float)_rng.NextDouble() * w;
-            var len = 10f + (float)_rng.NextDouble() * 30f;
-            dl.AddLine(new Vector2(x, y), new Vector2(x + len, y), U32(Cyan, A((float)_rng.NextDouble() * 0.25f)));
-        }
-
-        // 故障撕裂条纹
-        if (_inGlitch)
-        {
-            for (var i = 0; i < 3; i++)
-            {
-                var y = winMin.Y + (float)_rng.NextDouble() * h;
-                dl.AddRectFilled(
-                    new Vector2(winMin.X, y),
-                    new Vector2(winMax.X, y + 2f),
-                    U32(Magenta, A(0.08f)));
-            }
-        }
-
-        // 底层光晕
-        dl.AddCircleFilled(center, R * 1.3f, U32(Purple, A(0.04f)), 64);
-        dl.AddCircleFilled(center, R * 1.1f, U32(Purple, A(0.03f)), 64);
-
-        // 三层同心环（采样 → 3D投影 → 连线 + 色差）
-        DrawRing(dl, Project, R, A(0.2f), 3f);
-        DrawRing(dl, Project, R * 0.7f, A(0.15f), 2f);
-        DrawRing(dl, Project, R * 0.4f, A(0.15f), 2f);
-
-        // 五芒星顶点
-        var outerPts = new Vector2[5];
+        var pentOuter = new Vector2[5];
+        var pentInner = new Vector2[5];
         for (var i = 0; i < 5; i++)
         {
-            var angle = _rotationAngle + i * 72f * MathF.PI / 180f - MathF.PI / 2f;
-            outerPts[i] = Project(MathF.Cos(angle) * R * 0.4f, MathF.Sin(angle) * R * 0.4f);
+            var outerAngle = i * MathF.Tau / 5f - MathF.PI / 2f;
+            pentOuter[i] = Project(
+                new Vector3(MathF.Cos(outerAngle) * PentOuterR * scale,
+                    MathF.Sin(outerAngle) * PentOuterR * scale, 0),
+                center, _rotX, _rotY);
+
+            var innerAngle = (i + 0.5f) * MathF.Tau / 5f - MathF.PI / 2f;
+            pentInner[i] = Project(
+                new Vector3(MathF.Cos(innerAngle) * PentInnerR * scale,
+                    MathF.Sin(innerAngle) * PentInnerR * scale, 0),
+                center, _rotX, _rotY);
         }
 
-        // 五芒星
-        var pentPts = new Vector2[6];
-        for (var i = 0; i < 5; i++) pentPts[i] = outerPts[PentagramOrder[i]];
-        pentPts[5] = pentPts[0];
-        DrawPolylineChroma(dl, pentPts, Purple, A(0.2f), 2f);
-
-        // 五片花瓣
         for (var i = 0; i < 5; i++)
         {
-            var a = outerPts[i];
-            var b = outerPts[(i + 2) % 5];
-            var mid = (a + b) * 0.5f;
-            var dirA = Vector2.Normalize(a - mid);
-            var dirB = Vector2.Normalize(b - mid);
-            var petalR = Vector2.Distance(a, mid) * 0.55f;
-
-            dl.PathLineTo(mid);
-            dl.PathArcTo(mid + dirA * petalR * 0.5f, petalR * 0.3f,
-                MathF.Atan2(dirA.Y, dirA.X), MathF.Atan2(dirA.Y, dirA.X) + MathF.PI * 0.5f, 8);
-            dl.PathArcTo(mid + dirB * petalR * 0.5f, petalR * 0.3f,
-                MathF.Atan2(dirB.Y, dirB.X), MathF.Atan2(dirB.Y, dirB.X) + MathF.PI * 0.5f, 8);
-            dl.PathFillConvex(U32(Magenta, A(0.08f)));
+            var a = pentOuter[PentagramOrder[i]];
+            var b = pentOuter[PentagramOrder[(i + 1) % 5]];
+            DrawEdge(dl, a, b, cyanOff, magOff, alpha);
         }
 
-        // 5条辐射连接线
         for (var i = 0; i < 5; i++)
         {
-            var angle = _rotationAngle + i * 72f * MathF.PI / 180f - MathF.PI / 2f;
-            DrawLineChroma(dl, outerPts[i],
-                Project(MathF.Cos(angle) * R, MathF.Sin(angle) * R), Purple, A(0.15f), 1.5f);
+            var angle = i * MathF.Tau / 5f - MathF.PI / 2f;
+            var innerPt = Project(
+                new Vector3(MathF.Cos(angle) * InnerR * scale,
+                    MathF.Sin(angle) * InnerR * scale, 0),
+                center, _rotX, _rotY);
+            var outerPt = Project(
+                new Vector3(MathF.Cos(angle) * OuterR * scale,
+                    MathF.Sin(angle) * OuterR * scale, 0),
+                center, _rotX, _rotY);
+            DrawEdge(dl, innerPt, outerPt, cyanOff, magOff, alpha);
         }
 
-        // 三角形扇区
         for (var i = 0; i < 5; i++)
-        {
-            var a1 = _rotationAngle + i * 72f * MathF.PI / 180f - MathF.PI / 2f;
-            var a2 = a1 + 72f * MathF.PI / 180f;
-            var midR = R * 0.7f;
-
-            dl.PathLineTo(Project(MathF.Cos(a1) * midR, MathF.Sin(a1) * midR));
-            for (var j = 0; j <= 8; j++)
-            {
-                var a = a1 + (a2 - a1) * j / 8f;
-                dl.PathLineTo(Project(MathF.Cos(a) * R, MathF.Sin(a) * R));
-            }
-            dl.PathLineTo(Project(MathF.Cos(a2) * midR, MathF.Sin(a2) * midR));
-            for (var j = 0; j <= 8; j++)
-            {
-                var a = a2 + (a1 - a2) * j / 8f;
-                dl.PathLineTo(Project(MathF.Cos(a) * midR, MathF.Sin(a) * midR));
-            }
-            dl.PathFillConvex(U32(Purple, A(0.03f)));
-        }
-
-        // 10个顶点光点
+            DrawVertex(dl, pentOuter[i], cyanOff, magOff, alpha);
         for (var i = 0; i < 5; i++)
-            DrawDot(dl, outerPts[i], A);
-        for (var i = 0; i < 5; i++)
-        {
-            var angle = _rotationAngle + i * 72f * MathF.PI / 180f - MathF.PI / 2f;
-            DrawDot(dl, Project(MathF.Cos(angle) * R, MathF.Sin(angle) * R), A);
-        }
+            DrawVertex(dl, pentInner[i], cyanOff, magOff, alpha);
+        DrawVertex(dl, Project(Vector3.Zero, center, _rotX, _rotY), cyanOff, magOff, alpha);
+        DrawVertex(dl,
+            Project(new Vector3(OuterR * scale, 0, 0), center, _rotX, _rotY),
+            cyanOff, magOff, alpha);
 
-        // 外圈光刺
-        for (var i = 0; i < 5; i++)
-        {
-            var angle = _rotationAngle + i * 72f * MathF.PI / 180f - MathF.PI / 2f;
-            var dx = MathF.Cos(angle);
-            var dy = MathF.Sin(angle);
-            DrawLineChroma(dl,
-                Project(dx * R, dy * R),
-                Project(dx * (R + 5f), dy * (R + 5f)),
-                Orange, A(0.5f), 2f);
-        }
-
-        // 中心光点
-        dl.AddCircleFilled(center, 3f, U32(new Vector3(1, 1, 1), A(0.5f)));
-        dl.AddCircleFilled(center, 8f, U32(new Vector3(1, 1, 1), A(0.1f)));
+        DrawScanNoise(dl, winMin, winMax);
 
         dl.PopClipRect();
     }
 
-    private void DrawDot(ImDrawListPtr dl, Vector2 pt, Func<float, float> A)
+    private static Vector2 Project(Vector3 v, Vector2 center, float rotX, float rotY)
     {
-        dl.AddCircleFilled(pt, 4f, U32(Orange, A(0.5f)));
-        dl.AddCircleFilled(pt, 7f, U32(Orange, A(0.15f)));
-        dl.AddCircleFilled(pt + new Vector2(-2, 0), 3f, U32(Cyan, A(0.2f)));
-        dl.AddCircleFilled(pt + new Vector2(2, 0), 3f, U32(Magenta, A(0.2f)));
+        var cosY = MathF.Cos(rotY);
+        var sinY = MathF.Sin(rotY);
+        var x1 = v.X * cosY - v.Z * sinY;
+        var z1 = v.X * sinY + v.Z * cosY;
+
+        var cosX = MathF.Cos(rotX);
+        var sinX = MathF.Sin(rotX);
+        var y1 = v.Y * cosX - z1 * sinX;
+        var z2 = v.Y * sinX + z1 * cosX;
+
+        var s = Perspective / (Perspective + z2);
+        return center + new Vector2(x1, y1) * s;
     }
 
-    private void DrawRing(ImDrawListPtr dl, Func<float, float, Vector2> project, float radius, float alpha, float thickness)
+    private void DrawRing(ImDrawListPtr dl, Vector2 center, float scale, float radius,
+        Vector2 cyanOff, Vector2 magOff, float alpha)
     {
-        var pts = new Vector2[Segments + 1];
-        for (var i = 0; i <= Segments; i++)
+        var pts = new Vector2[RingSegments + 1];
+        for (var i = 0; i <= RingSegments; i++)
         {
-            var a = i * MathF.Tau / Segments;
-            pts[i] = project(MathF.Cos(a) * radius, MathF.Sin(a) * radius);
+            var a = i * MathF.Tau / RingSegments;
+            var v = new Vector3(MathF.Cos(a) * radius * scale, MathF.Sin(a) * radius * scale, 0);
+            pts[i] = Project(v, center, _rotX, _rotY);
         }
 
         for (var i = 0; i < pts.Length - 1; i++)
-            dl.AddLine(pts[i], pts[i + 1], U32(Purple, alpha * 0.15f), thickness * 2.5f);
-
-        DrawPolylineChroma(dl, pts, Purple, alpha, thickness);
+            dl.AddLine(pts[i] + cyanOff, pts[i + 1] + cyanOff,
+                ImGui.ColorConvertFloat4ToU32(new Vector4(0, 1, 1, alpha * 0.5f)), 1f);
+        for (var i = 0; i < pts.Length - 1; i++)
+            dl.AddLine(pts[i] + magOff, pts[i + 1] + magOff,
+                ImGui.ColorConvertFloat4ToU32(new Vector4(1, 0, 1, alpha * 0.5f)), 1f);
+        for (var i = 0; i < pts.Length - 1; i++)
+            dl.AddLine(pts[i], pts[i + 1],
+                ImGui.ColorConvertFloat4ToU32(new Vector4(0.7f, 0.8f, 1f, alpha)), 1f);
     }
 
-    private static void DrawPolylineChroma(ImDrawListPtr dl, Vector2[] pts, Vector3 color, float alpha, float thickness)
+    private static void DrawEdge(ImDrawListPtr dl, Vector2 a, Vector2 b,
+        Vector2 cyanOff, Vector2 magOff, float alpha)
     {
-        for (var i = 0; i < pts.Length - 1; i++)
-            dl.AddLine(pts[i] + new Vector2(-2, 0), pts[i + 1] + new Vector2(-2, 0), U32(Cyan, alpha * 0.5f), thickness);
-        for (var i = 0; i < pts.Length - 1; i++)
-            dl.AddLine(pts[i] + new Vector2(2, 0), pts[i + 1] + new Vector2(2, 0), U32(Magenta, alpha * 0.5f), thickness);
-        for (var i = 0; i < pts.Length - 1; i++)
-            dl.AddLine(pts[i], pts[i + 1], U32(color, alpha), thickness);
+        dl.AddLine(a + cyanOff, b + cyanOff,
+            ImGui.ColorConvertFloat4ToU32(new Vector4(0, 1, 1, alpha * 0.5f)), 1f);
+        dl.AddLine(a + magOff, b + magOff,
+            ImGui.ColorConvertFloat4ToU32(new Vector4(1, 0, 1, alpha * 0.5f)), 1f);
+        dl.AddLine(a, b,
+            ImGui.ColorConvertFloat4ToU32(new Vector4(0.7f, 0.8f, 1f, alpha)), 1f);
     }
 
-    private static void DrawLineChroma(ImDrawListPtr dl, Vector2 a, Vector2 b, Vector3 color, float alpha, float thickness)
+    private static void DrawVertex(ImDrawListPtr dl, Vector2 p,
+        Vector2 cyanOff, Vector2 magOff, float alpha)
     {
-        dl.AddLine(a + new Vector2(-2, 0), b + new Vector2(-2, 0), U32(Cyan, alpha * 0.5f), thickness);
-        dl.AddLine(a + new Vector2(2, 0), b + new Vector2(2, 0), U32(Magenta, alpha * 0.5f), thickness);
-        dl.AddLine(a, b, U32(color, alpha), thickness);
+        dl.AddCircleFilled(p + cyanOff, 2f,
+            ImGui.ColorConvertFloat4ToU32(new Vector4(0, 1, 1, alpha * 0.5f)));
+        dl.AddCircleFilled(p + magOff, 2f,
+            ImGui.ColorConvertFloat4ToU32(new Vector4(1, 0, 1, alpha * 0.5f)));
+        dl.AddCircleFilled(p, 3f,
+            ImGui.ColorConvertFloat4ToU32(new Vector4(0.7f, 0.8f, 1f, alpha)));
     }
 
-    private static uint U32(Vector3 rgb, float a)
-        => ImGui.ColorConvertFloat4ToU32(new Vector4(rgb.X, rgb.Y, rgb.Z, Math.Clamp(a, 0f, 1f)));
+    private static void DrawBaseGradient(ImDrawListPtr dl, Vector2 min, Vector2 max)
+    {
+        var h = max.Y - min.Y;
+        var steps = 6;
+        var stepH = h / steps;
+        for (var i = 0; i < steps; i++)
+        {
+            var t = i / (float)steps;
+            var alpha = 0.02f + t * 0.03f;
+            var y1 = min.Y + i * stepH;
+            var y2 = y1 + stepH;
+            dl.AddRectFilled(new Vector2(min.X, y1), new Vector2(max.X, y2),
+                ImGui.ColorConvertFloat4ToU32(new Vector4(0.1f, 0.2f, 0.4f, alpha)));
+        }
+    }
+
+    private static void DrawScanNoise(ImDrawListPtr dl, Vector2 min, Vector2 max)
+    {
+        var w = max.X - min.X;
+        var count = 8 + (Random.Shared.NextSingle() < 0.3f ? 12 : 0);
+        for (var i = 0; i < count; i++)
+        {
+            var x = min.X + Random.Shared.NextSingle() * w;
+            var y = min.Y + Random.Shared.NextSingle() * (max.Y - min.Y);
+            var len = 5f + Random.Shared.NextSingle() * 20f;
+            var a = 0.05f + Random.Shared.NextSingle() * 0.15f;
+            dl.AddLine(new Vector2(x, y), new Vector2(x + len, y),
+                ImGui.ColorConvertFloat4ToU32(new Vector4(0.7f, 0.8f, 1f, a)), 1f);
+        }
+    }
 }
