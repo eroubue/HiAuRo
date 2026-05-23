@@ -75,12 +75,23 @@ public sealed class ClickRippleEffect
 
             var easedProgress = Easing.EaseOutCubic(r.Progress);
             var radius = r.MaxRadius * easedProgress;
-            var alpha = (1f - r.Progress) * 0.4f;
-            var color = new Vector4(accent.X, accent.Y, accent.Z, alpha);
-
+            var fade = 1f - r.Progress;
             var numSegments = Math.Clamp((int)(radius * 0.3f), 12, 32);
+
+            var fillU32 = ImGui.ColorConvertFloat4ToU32(
+                new Vector4(accent.X, accent.Y, accent.Z, fade * 0.15f));
             dl.PathArcTo(r.Center, radius, 0f, MathF.PI * 2f, numSegments);
-            dl.PathStroke(ImGui.ColorConvertFloat4ToU32(color), 0, 2f * (1f - r.Progress));
+            dl.PathFillConvex(fillU32);
+
+            var glowU32 = ImGui.ColorConvertFloat4ToU32(
+                new Vector4(accent.X, accent.Y, accent.Z, fade * 0.3f));
+            dl.PathArcTo(r.Center, radius, 0f, MathF.PI * 2f, numSegments);
+            dl.PathStroke(glowU32, 0, 5f * fade);
+
+            var mainU32 = ImGui.ColorConvertFloat4ToU32(
+                new Vector4(accent.X, accent.Y, accent.Z, fade * 0.85f));
+            dl.PathArcTo(r.Center, radius, 0f, MathF.PI * 2f, numSegments);
+            dl.PathStroke(mainU32, 0, 3f * fade);
         }
     }
 }

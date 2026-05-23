@@ -65,7 +65,6 @@ public sealed class RippleCanvas
     /// <summary>绘制所有活跃波纹</summary>
     public void Draw(ImDrawListPtr dl)
     {
-        var borderColor = Theme.Colors.GlassBorder;
         var accent = Theme.Colors.AccentBlue;
 
         for (var i = 0; i < _ripples.Length; i++)
@@ -73,13 +72,19 @@ public sealed class RippleCanvas
             ref var r = ref _ripples[i];
             if (r.Life <= 0f || r.Radius <= 0f) continue;
 
-            var alpha = Math.Max(0f, r.Life / r.MaxLife) * 0.25f;
-            var color = new Vector4(accent.X, accent.Y, accent.Z, alpha);
-            var u32 = ImGui.ColorConvertFloat4ToU32(color);
-
+            var lifeRatio = Math.Max(0f, r.Life / r.MaxLife);
             var numSegments = Math.Clamp((int)(r.Radius * 0.3f), 16, 64);
+            var thickness = r.LineWidth * (0.3f + 0.7f * lifeRatio);
+
+            var glowU32 = ImGui.ColorConvertFloat4ToU32(
+                new Vector4(accent.X, accent.Y, accent.Z, lifeRatio * 0.18f));
             dl.PathArcTo(r.Center, r.Radius, 0f, MathF.PI * 2f, numSegments);
-            dl.PathStroke(u32, 0, r.LineWidth * (r.Life / r.MaxLife));
+            dl.PathStroke(glowU32, 0, thickness + 4f);
+
+            var mainU32 = ImGui.ColorConvertFloat4ToU32(
+                new Vector4(accent.X, accent.Y, accent.Z, lifeRatio * 0.7f));
+            dl.PathArcTo(r.Center, r.Radius, 0f, MathF.PI * 2f, numSegments);
+            dl.PathStroke(mainU32, 0, thickness);
         }
     }
 
@@ -89,7 +94,7 @@ public sealed class RippleCanvas
             min.X + (max.X - min.X) * (0.3f + Random.Shared.NextSingle() * 0.4f),
             min.Y + (max.Y - min.Y) * (0.3f + Random.Shared.NextSingle() * 0.4f));
         SpawnRippleAt(center, 60f + Random.Shared.NextSingle() * 80f,
-            2f + Random.Shared.NextSingle(), 1.5f);
+            2f + Random.Shared.NextSingle(), 2.5f);
     }
 
     private void SpawnRippleAt(Vector2 center, float maxRadius, float maxLife, float lineWidth)

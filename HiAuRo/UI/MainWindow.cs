@@ -110,8 +110,12 @@ public sealed class MainWindow : Window
 
         // 更新点击涟漪 + 检测鼠标点击
         _clickRipple.Update(dt);
-        if (ImGui.IsWindowHovered() && ImGui.IsMouseClicked(ImGuiMouseButton.Left))
-            _clickRipple.Trigger(ImGui.GetMousePos());
+        if (ImGui.IsMouseClicked(ImGuiMouseButton.Left))
+        {
+            var mp = ImGui.GetMousePos();
+            if (mp.X >= winMin.X && mp.X <= winMax.X && mp.Y >= winMin.Y && mp.Y <= winMax.Y)
+                _clickRipple.Trigger(mp);
+        }
 
         // ── 全局 ImGui 样式色（跟随主题）──
         ImGui.PushStyleColor(ImGuiCol.WindowBg, Theme.Colors.BgLayout);
