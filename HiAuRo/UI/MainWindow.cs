@@ -92,7 +92,7 @@ public sealed class MainWindow : Window
 
         // ── 计算布局区域 ──
         var avail = ImGui.GetContentRegionAvail();
-        var topBarHeight = 96f;
+        var topBarHeight = 132f;
         var statusBarHeight = 24f;
         var sidebarWidth = 168f;
 
@@ -133,33 +133,42 @@ public sealed class MainWindow : Window
         ImGui.PopStyleColor(2); // WindowBg, ChildBg
     }
 
-    /// <summary>绘制顶部信息栏：Logo + Tips + 主题切换按钮</summary>
+    /// <summary>绘制顶部信息栏：Logo行(居中) + Tips行(全宽)</summary>
     private void DrawTopBar()
     {
-        // ── Layout: LOGO 左 | Tips 中 | 控件 右 ──
         var region = ImGui.GetContentRegionAvail();
-        var logoWidth = 200f;
+        var logoRowHeight = region.Y - Theme.FontSizeMD * 2f - 8f;
+        var tipsRowHeight = Theme.FontSizeMD * 2f;
         var controlWidth = 36f;
 
-        // ── LOGO 区域 (左) ──
-        ImGui.BeginChild("##LogoArea", new Vector2(logoWidth, region.Y), false,
+        // ── 第一行：Logo 垂直居中 + 主题按钮 ──
+        ImGui.BeginChild("##LogoRow", new Vector2(region.X, logoRowHeight), false,
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
-        DrawLogo();
-        ImGui.EndChild();
 
-        ImGui.SameLine();
+        var logoLines = new[]
+        {
+            "██╗  ██╗██╗ █████╗ ██╗   ██╗██████╗  ██████╗",
+            "██║  ██║██║██╔══██╗██║   ██║██╔══██╗██╔═══██╗",
+            "███████║██║███████║██║   ██║██████╔╝██║   ██║",
+            "██╔══██║██║██╔══██║██║   ██║██╔══██╗██║   ██║",
+            "██║  ██║██║██║  ██║╚██████╔╝██║  ██║╚██████╔╝",
+            "╚═╝  ╚═╝╚═╝╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝ ╚═════╝",
+        };
 
-        // ── Tips 轮播 (中) ──
-        var tipsWidth = region.X - logoWidth - controlWidth - 30f;
-        ImGui.BeginChild("##TipsArea", new Vector2(tipsWidth, region.Y), false,
-            ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
-        DrawTips(tipsWidth);
-        ImGui.EndChild();
+        ImGui.PushFont(UiBuilder.MonoFont);
+        var lineHeight = ImGui.GetTextLineHeight();
+        var totalLogoH = lineHeight * logoLines.Length;
+        var logoStartY = (logoRowHeight - totalLogoH) * 0.5f;
+        if (logoStartY < 0) logoStartY = 4f;
+        ImGui.SetCursorPosY(logoStartY);
 
-        ImGui.SameLine();
+        foreach (var line in logoLines)
+            ImGui.TextColored(Theme.Colors.AccentBlue, line);
+        ImGui.PopFont();
 
-        // ── 主题切换按钮 (右) ──
-        ImGui.SetCursorPosY(ImGui.GetCursorPosY() + 8);
+        // 主题切换按钮（浮动在 Logo 行右上角）
+        ImGui.SameLine(region.X - controlWidth - 4f);
+        ImGui.SetCursorPosY(logoStartY + 4f);
         var isDark = Theme.Mode == Theme.ThemeMode.Dark;
         if (ComponentLibrary.IconButton(
             isDark ? ComponentLibrary.IconType.Stop : ComponentLibrary.IconType.Play,
@@ -171,43 +180,27 @@ public sealed class MainWindow : Window
             _config.ImGuiThemeMode = isDark ? ImGuiThemeMode.Light : ImGuiThemeMode.Dark;
             _saveConfig();
         }
-    }
 
-    /// <summary>绘制 ASCII Art Logo</summary>
-    private static void DrawLogo()
-    {
-        ImGui.PushFont(UiBuilder.MonoFont);
-        var logoLines = new[]
-        {
-            "██╗  ██╗██╗ █████╗ ██╗   ██╗██████╗ ",
-            "██║  ██║██║██╔══██╗██║   ██║██╔══██╗",
-            "███████║██║███████║██║   ██║██████╔╝",
-            "██╔══██║██║██╔══██║██║   ██║██╔══██╗",
-            "██║  ██║██║██║  ██║╚██████╔╝██║  ██║",
-            "╚═╝  ╚═╝╚═╝╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝",
-        };
-        // 垂直居中 Logo
-        var lineHeight = ImGui.GetTextLineHeight();
-        var totalHeight = lineHeight * logoLines.Length;
-        var availHeight = ImGui.GetContentRegionAvail().Y;
-        ImGui.SetCursorPosY((availHeight - totalHeight) * 0.5f);
-        foreach (var line in logoLines)
-            ImGui.TextColored(Theme.Colors.AccentBlue, line);
-        ImGui.PopFont();
+        ImGui.EndChild();
+
+        // ── 第二行：Tips 轮播（全宽）──
+        ImGui.BeginChild("##TipsRow", new Vector2(region.X, tipsRowHeight), false,
+            ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
+        DrawTips(region.X - 16f);
+        ImGui.EndChild();
     }
 
     /// <summary>绘制 Tips 轮播文字</summary>
     private void DrawTips(float maxWidth)
     {
-        // 更新轮播定时器
         _tipsTimer += ImGui.GetIO().DeltaTime;
         _tipsFade = MathF.Min(1f, _tipsFade + ImGui.GetIO().DeltaTime * 2f);
 
-        if (_tipsTimer > 4f) // 每 4 秒切换
+        if (_tipsTimer > 4f)
         {
             _tipsTimer = 0f;
             _tipsIndex = (_tipsIndex + 1) % _tips.Length;
-            _tipsFade = 0f; // 重置淡入
+            _tipsFade = 0f;
         }
 
         var tip = _tips[_tipsIndex];
@@ -218,7 +211,7 @@ public sealed class MainWindow : Window
             Theme.Colors.TextSecondary.Z,
             Theme.Colors.TextSecondary.W * alpha);
 
-        ImGui.SetCursorPosY(ImGui.GetCursorPosY() + 12);
+        ImGui.SetCursorPosY((ImGui.GetContentRegionAvail().Y - ImGui.GetTextLineHeight()) * 0.5f);
         ImGui.PushTextWrapPos(ImGui.GetCursorPosX() + maxWidth);
         ImGui.TextColored(tipColor, $"💡 {tip}");
         ImGui.PopTextWrapPos();
