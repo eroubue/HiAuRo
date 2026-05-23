@@ -409,8 +409,9 @@ public sealed class MainWindow : Window
     {
         var isPluginSelected = _selectedPluginName != null;
 
-        // 全局缩进，所有行（含 Separator 后）都偏移 12px
+        // 全局缩进，防止内容被圆角裁剪
         ImGui.Indent(12);
+        ImGui.Dummy(new Vector2(0, 6));
 
         if (isPluginSelected)
         {
