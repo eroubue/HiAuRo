@@ -145,11 +145,9 @@ public sealed class LeyLinesEffect
         DrawBaseGradient(dl, winMin, winMax);
 
         // 预投影所有几何到屏幕坐标
-        var origin = Project(new Vector3(0, 0, 0), center, _rotX, _rotY);
         var projDiamond = ProjectVerts(DiamondC, center, scale);
         var projSquare = ProjectVerts(SquareD, center, scale);
         var projFCenters = ProjectVerts(FCenters, center, scale);
-        var projCentroids = ProjectVerts(TriCentroids, center, scale);
 
         // 6 组三角形投影
         var projTriVerts = new Vector2[6][];
@@ -163,12 +161,6 @@ public sealed class LeyLinesEffect
             ];
         }
 
-        // 投影后的圆半径（z=0 平面，半径恒定）
-        var rOuter = 6f * scale;
-        var rMid = 4f * scale;
-        var rFCenter = 2f * scale;
-        var rCentroid = 0.23f * scale;
-
         // 色差偏移
         var cyanOff = new Vector2(-2f, 0);
         var magentaOff = new Vector2(2f, 0);
@@ -176,17 +168,17 @@ public sealed class LeyLinesEffect
         // --- 色差 pass 1: 青 (偏移 -2, 0) ---
         var cyanCol = ColorU32(new Vector4(0, 1, 1, 1), baseAlpha * 0.5f);
         DrawAllWireframe(dl, cyanOff, cyanCol, 1f, projDiamond, DiamondEdges, projSquare, SquareEdges, projTriVerts);
-        DrawAllCircles(dl, cyanOff, cyanCol, 1f, origin, rOuter, rMid, projFCenters, rFCenter, projCentroids, rCentroid);
+        DrawAllCircles(dl, cyanOff, cyanCol, 1f, center, _rotX, _rotY, scale);
 
         // --- 色差 pass 2: 品红 (偏移 +2, 0) ---
         var magCol = ColorU32(new Vector4(1, 0, 1, 1), baseAlpha * 0.5f);
         DrawAllWireframe(dl, magentaOff, magCol, 1f, projDiamond, DiamondEdges, projSquare, SquareEdges, projTriVerts);
-        DrawAllCircles(dl, magentaOff, magCol, 1f, origin, rOuter, rMid, projFCenters, rFCenter, projCentroids, rCentroid);
+        DrawAllCircles(dl, magentaOff, magCol, 1f, center, _rotX, _rotY, scale);
 
         // --- 色差 pass 3: 主色 (无偏移) ---
         var mainCol = ColorU32(new Vector4(0.7f, 0.8f, 1f, 1), baseAlpha);
         DrawAllWireframe(dl, Vector2.Zero, mainCol, 1.5f, projDiamond, DiamondEdges, projSquare, SquareEdges, projTriVerts);
-        DrawAllCircles(dl, Vector2.Zero, mainCol, 1.5f, origin, rOuter, rMid, projFCenters, rFCenter, projCentroids, rCentroid);
+        DrawAllCircles(dl, Vector2.Zero, mainCol, 1.5f, center, _rotX, _rotY, scale);
 
         // 顶点亮点
         foreach (var p in projDiamond)
@@ -223,16 +215,36 @@ public sealed class LeyLinesEffect
     }
 
     private static void DrawAllCircles(ImDrawListPtr dl, Vector2 offset, uint col, float thickness,
-        Vector2 origin, float rOuter, float rMid,
-        Vector2[] fCenters, float rFCenter,
-        Vector2[] centroids, float rCentroid)
+        Vector2 screenCenter, float rotX, float rotY, float scale)
     {
-        dl.AddCircle(origin + offset, MathF.Max(rOuter, 0.1f), col, 48, thickness);
-        dl.AddCircle(origin + offset, MathF.Max(rMid, 0.1f), col, 48, thickness);
-        for (var i = 0; i < fCenters.Length; i++)
-            dl.AddCircle(fCenters[i] + offset, MathF.Max(rFCenter, 0.1f), col, 32, thickness);
-        for (var i = 0; i < centroids.Length; i++)
-            dl.AddCircle(centroids[i] + offset, MathF.Max(rCentroid, 0.1f), col, 16, thickness);
+        var origin3D = new Vector3(0, 0, 0);
+        DrawProjectedCircle(dl, origin3D, 6f * scale, screenCenter, rotX, rotY, offset, col, thickness, 48);
+        DrawProjectedCircle(dl, origin3D, 4f * scale, screenCenter, rotX, rotY, offset, col, thickness, 48);
+        for (var i = 0; i < FCenters.Length; i++)
+            DrawProjectedCircle(dl, new Vector3(FCenters[i].X * scale, FCenters[i].Y * scale, 0), 2f * scale,
+                screenCenter, rotX, rotY, offset, col, thickness, 32);
+        for (var i = 0; i < TriCentroids.Length; i++)
+            DrawProjectedCircle(dl, new Vector3(TriCentroids[i].X * scale, TriCentroids[i].Y * scale, 0), 0.23f * scale,
+                screenCenter, rotX, rotY, offset, col, thickness, 16);
+    }
+
+    private static void DrawProjectedCircle(ImDrawListPtr dl,
+        Vector3 center3D, float radius3D,
+        Vector2 screenCenter, float rotX, float rotY,
+        Vector2 offset, uint color, float thickness, int segs)
+    {
+        var screenPts = new Vector2[segs];
+        for (var i = 0; i < segs; i++)
+        {
+            var angle = i * MathF.Tau / segs;
+            var localPt = new Vector3(
+                center3D.X + radius3D * MathF.Cos(angle),
+                center3D.Y + radius3D * MathF.Sin(angle),
+                center3D.Z);
+            screenPts[i] = Project(localPt, screenCenter, rotX, rotY) + offset;
+        }
+        for (var i = 0; i < segs; i++)
+            dl.AddLine(screenPts[i], screenPts[(i + 1) % segs], color, thickness);
     }
 
     private Vector2[] ProjectVerts(Vector2[] localVerts, Vector2 screenCenter, float scale)
