@@ -1,6 +1,7 @@
 using System.Numerics;
 using Dalamud.Interface.Windowing;
 using HiAuRo.Infrastructure;
+using HiAuRo.ImGuiLib.Effects;
 
 namespace HiAuRo.ImGuiLib;
 
@@ -131,6 +132,9 @@ public abstract class OverlayBase : Window
         // ② 主背景（半透明底色）
         dl.AddRectFilled(min, max,
             ImGui.ColorConvertFloat4ToU32(Theme.Colors.GlassBg), radius);
+
+        // ②.5 微妙渐变叠加（顶部高光 → 底部暗部）
+        GradientOverlay.DrawThemeGradient(dl, min, max, 16);
 
         // ③ 1px 细边框
         dl.AddRect(min, max,

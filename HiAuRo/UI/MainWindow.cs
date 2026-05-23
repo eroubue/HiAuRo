@@ -5,6 +5,7 @@ using HiAuRo.ACR;
 using HiAuRo.FactAxis;
 using HiAuRo.Infrastructure;
 using HiAuRo.ImGuiLib;
+using HiAuRo.ImGuiLib.Effects;
 using HiAuRo.Runtime;
 using HiAuRo.Recording;
 
@@ -25,7 +26,17 @@ public sealed class MainWindow : Window
         _saveConfig = saveConfig;
         SizeConstraints = new WindowSizeConstraints { MinimumSize = new Vector2(300, 200), MaximumSize = new Vector2(float.MaxValue, float.MaxValue) };
         IsOpen = false;
+
+        _particleSystem = new ParticleSystem(60, 6f);
+        _rippleCanvas = new RippleCanvas(6, 2f);
+        _clickRipple = new ClickRippleEffect(8);
     }
+
+    // ── 背景特效 ──
+
+    private readonly ParticleSystem _particleSystem;
+    private readonly RippleCanvas _rippleCanvas;
+    private readonly ClickRippleEffect _clickRipple;
 
     // ── 新布局状态字段 ──
 
@@ -81,6 +92,29 @@ public sealed class MainWindow : Window
 
         // ── 主题背景 ──
         ComponentLibrary.GlassBackground(Theme.RadiusMD);
+
+        // ── 背景特效 ──
+        var dt = ImGui.GetIO().DeltaTime;
+        var winMin = ImGui.GetWindowPos();
+        var winMax = winMin + ImGui.GetWindowSize();
+        var dl = ImGui.GetWindowDrawList();
+
+        // 渐变叠加
+        GradientOverlay.DrawThemeGradient(dl, winMin, winMax, 24);
+
+        // 更新和绘制粒子
+        _particleSystem.Update(dt, winMin, winMax);
+        _particleSystem.Draw(dl);
+
+        // 更新和绘制波纹
+        _rippleCanvas.Update(dt, winMin, winMax);
+        _rippleCanvas.Draw(dl);
+
+        // 点击涟漪：检测鼠标点击
+        _clickRipple.Update(dt);
+        _clickRipple.Draw(dl);
+        if (ImGui.IsWindowHovered() && ImGui.IsMouseClicked(ImGuiMouseButton.Left))
+            _clickRipple.Trigger(ImGui.GetMousePos());
 
         // ── 全局 ImGui 样式色（跟随主题）──
         ImGui.PushStyleColor(ImGuiCol.WindowBg, Theme.Colors.BgLayout);
@@ -489,7 +523,15 @@ public sealed class MainWindow : Window
         var running = RuntimeCore.IsRunning;
         var paused = ACR.MainControlHelper.IsPaused;
         var runState = running ? (paused ? "已暂停" : "运行中") : "已停止";
-        var stateColor = running ? (paused ? Theme.Colors.AccentOrange : Theme.Colors.AccentGreen) : Theme.Colors.AccentRed;
+        var baseColor = running ? (paused ? Theme.Colors.AccentOrange : Theme.Colors.AccentGreen) : Theme.Colors.AccentRed;
+
+        // 运行中时加呼吸脉冲
+        var pulse = running && !paused ? EffectUtils.StatePulse(1.5f) : 0f;
+        var stateColor = new Vector4(
+            baseColor.X,
+            baseColor.Y,
+            baseColor.Z,
+            baseColor.W * (0.7f + pulse * 0.3f));
         ImGui.SetCursorPosX(8f);
         ImGui.TextColored(Theme.Colors.TextTertiary, "HiAuRo");
         ImGui.SameLine();
