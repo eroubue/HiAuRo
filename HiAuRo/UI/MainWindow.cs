@@ -166,9 +166,14 @@ public sealed class MainWindow : Window
         ImGui.PushFont(UiBuilder.MonoFont);
         var lineHeight = ImGui.GetTextLineHeight();
         var totalLogoH = lineHeight * logoLines.Length;
-        var logoStartY = (logoRowHeight - totalLogoH) * 0.5f;
-        if (logoStartY < 0) logoStartY = 4f;
+        var logoStartY = Math.Max(0, (logoRowHeight - totalLogoH) * 0.5f);
         ImGui.SetCursorPosY(logoStartY);
+
+        // 水平居中：计算最宽行宽度
+        var maxLineW = 0f;
+        foreach (var line in logoLines)
+            maxLineW = Math.Max(maxLineW, ImGui.CalcTextSize(line).X);
+        ImGui.SetCursorPosX(Math.Max(0, (region.X - maxLineW) * 0.5f));
 
         foreach (var line in logoLines)
             ImGui.TextColored(Theme.Colors.AccentBlue, line);
