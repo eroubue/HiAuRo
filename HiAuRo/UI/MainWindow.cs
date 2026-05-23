@@ -132,11 +132,13 @@ public sealed class MainWindow : Window
 
         ImGui.SameLine(0, 4);
 
-        // 右侧内容
+        // 右侧内容（加大子窗口内边距，防圆角裁剪）
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(14, 8));
         ImGui.BeginChild("##ContentPanel", new Vector2(-1, midHeight), false,
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
         DrawContent();
         ImGui.EndChild();
+        ImGui.PopStyleVar();
 
         // ── 底部状态栏 ──
         ImGui.Separator();
@@ -403,10 +405,6 @@ public sealed class MainWindow : Window
     private void DrawContent()
     {
         var isPluginSelected = _selectedPluginName != null;
-
-        // 左侧安全边距，防止内容被圆角裁剪（仅调X，Y保留原值）
-        var curY = ImGui.GetCursorPosY();
-        ImGui.SetCursorPos(new Vector2(12, curY));
 
         if (isPluginSelected)
         {
