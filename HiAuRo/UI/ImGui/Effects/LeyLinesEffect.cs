@@ -218,14 +218,14 @@ public sealed class LeyLinesEffect
         Vector2 screenCenter, float rotX, float rotY, float scale)
     {
         var origin3D = new Vector3(0, 0, 0);
-        DrawProjectedCircle(dl, origin3D, 6f * scale, screenCenter, rotX, rotY, offset, col, thickness, 48);
-        DrawProjectedCircle(dl, origin3D, 4f * scale, screenCenter, rotX, rotY, offset, col, thickness, 48);
+        DrawProjectedCircle(dl, origin3D, 6f * scale, screenCenter, rotX, rotY, offset, col, thickness, 128);
+        DrawProjectedCircle(dl, origin3D, 4f * scale, screenCenter, rotX, rotY, offset, col, thickness, 128);
         for (var i = 0; i < FCenters.Length; i++)
             DrawProjectedCircle(dl, new Vector3(FCenters[i].X * scale, FCenters[i].Y * scale, 0), 2f * scale,
-                screenCenter, rotX, rotY, offset, col, thickness, 32);
+                screenCenter, rotX, rotY, offset, col, thickness, 96);
         for (var i = 0; i < TriCentroids.Length; i++)
             DrawProjectedCircle(dl, new Vector3(TriCentroids[i].X * scale, TriCentroids[i].Y * scale, 0), 0.23f * scale,
-                screenCenter, rotX, rotY, offset, col, thickness, 16);
+                screenCenter, rotX, rotY, offset, col, thickness, 48);
     }
 
     private static void DrawProjectedCircle(ImDrawListPtr dl,
