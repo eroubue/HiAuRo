@@ -35,12 +35,8 @@ public enum BgEffectMode
     GeometricGlow = 3,
     /// <summary>萤火虫</summary>
     Firefly = 4,
-    /// <summary>雨</summary>
-    Rain = 5,
     /// <summary>星座连线</summary>
-    Constellation = 6,
-    /// <summary>能量环</summary>
-    EnergyRing = 7,
+    Constellation = 5,
 }
 
 /// <summary>
