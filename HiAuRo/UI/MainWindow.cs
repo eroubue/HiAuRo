@@ -95,8 +95,8 @@ public sealed class MainWindow : Window
         ImGui.PushStyleColor(ImGuiCol.HeaderActive, Theme.Colors.FillPrimary);
         ImGui.PushStyleColor(ImGuiCol.Tab, Theme.Colors.FillTertiary);
         ImGui.PushStyleColor(ImGuiCol.TabHovered, Theme.Colors.BgHover);
-        ImGui.PushStyleColor(ImGuiCol.TabActive, Theme.Colors.BgElevated);
-        ImGui.PushStyleColor(ImGuiCol.TabUnfocusedActive, Theme.Colors.BgElevated);
+        ImGui.PushStyleColor(ImGuiCol.TabActive, Theme.Colors.SidebarActive);
+        ImGui.PushStyleColor(ImGuiCol.TabUnfocusedActive, Theme.Colors.SidebarActive);
 
         // ── 窗口内边距 ──
         ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(12, 10));
