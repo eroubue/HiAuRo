@@ -82,9 +82,17 @@ public sealed class MainWindow : Window
         // ── 主题背景 ──
         ComponentLibrary.GlassBackground(Theme.RadiusMD);
 
-        // ── 窗口背景色（跟随主题）──
+        // ── 全局 ImGui 样式色（跟随主题）──
         ImGui.PushStyleColor(ImGuiCol.WindowBg, Theme.Colors.BgLayout);
         ImGui.PushStyleColor(ImGuiCol.ChildBg, Theme.Colors.BgContainer);
+        ImGui.PushStyleColor(ImGuiCol.Text, Theme.Colors.TextPrimary);
+        ImGui.PushStyleColor(ImGuiCol.TextDisabled, Theme.Colors.TextTertiary);
+        ImGui.PushStyleColor(ImGuiCol.FrameBg, Theme.Colors.FillSecondary);
+        ImGui.PushStyleColor(ImGuiCol.Border, Theme.Colors.BorderSecondary);
+        ImGui.PushStyleColor(ImGuiCol.Separator, Theme.Colors.BorderSecondary);
+        ImGui.PushStyleColor(ImGuiCol.Header, Theme.Colors.BgHover);
+        ImGui.PushStyleColor(ImGuiCol.HeaderHovered, Theme.Colors.FillSecondary);
+        ImGui.PushStyleColor(ImGuiCol.HeaderActive, Theme.Colors.FillPrimary);
 
         // ── 窗口内边距 ──
         ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(12, 10));
@@ -129,8 +137,8 @@ public sealed class MainWindow : Window
         ImGui.Separator();
         DrawStatusBar(avail.X);
 
-        ImGui.PopStyleVar(2); // WindowPadding, ItemSpacing
-        ImGui.PopStyleColor(2); // WindowBg, ChildBg
+        ImGui.PopStyleVar(2);   // WindowPadding, ItemSpacing
+        ImGui.PopStyleColor(10); // WindowBg, ChildBg, Text, TextDisabled, FrameBg, Border, Separator, Header, HeaderHovered, HeaderActive
     }
 
     /// <summary>绘制顶部信息栏：Logo行(居中) + Tips行(全宽)</summary>
