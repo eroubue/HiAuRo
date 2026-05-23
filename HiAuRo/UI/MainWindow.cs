@@ -354,9 +354,10 @@ public sealed class MainWindow : Window
         return clicked;
     }
 
-    /// <summary>绘制 Tab 栏（全宽独立行，在侧边栏之上）</summary>
+    /// <summary>绘制 Tab 栏（左侧模块名 + 右侧 Tab 按钮，与侧边栏/内容区对齐）</summary>
     private void DrawTabBar()
     {
+        var sidebarWidth = 168f;
         var isPluginSelected = _selectedPluginName != null;
 
         // ── 检测卡片切换，重置 Tab 索引 ──
@@ -366,17 +367,33 @@ public sealed class MainWindow : Window
             _lastCardIndex = _selectedCardIndex;
         }
 
+        // ── 左侧：模块名称（对齐 Sidebar 宽度）──
+        ImGui.BeginChild("##TabLabel", new Vector2(sidebarWidth, 0), false,
+            ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
+        ImGui.SetCursorPosY((ImGui.GetContentRegionAvail().Y - ImGui.GetTextLineHeight()) * 0.5f);
+        if (!isPluginSelected)
+        {
+            var (moduleName, _, _) = _modules[Math.Clamp(_selectedCardIndex, 0, _modules.Length - 1)];
+            ImGui.TextColored(Theme.Colors.TextSecondary, moduleName);
+        }
+        else
+        {
+            ImGui.TextColored(Theme.Colors.AccentBlue, $"插件: {_selectedPluginName}");
+        }
+        ImGui.EndChild();
+
+        ImGui.SameLine(0, 4);
+
+        // ── 右侧：Tab 按钮（对齐 Content 区域）──
+        ImGui.BeginChild("##TabButtons", new Vector2(-1, 0), false,
+            ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
         if (!isPluginSelected)
         {
             var (_, _, tabs) = _modules[Math.Clamp(_selectedCardIndex, 0, _modules.Length - 1)];
             ImGui.SetCursorPosY((ImGui.GetContentRegionAvail().Y - ImGui.GetTextLineHeight()) * 0.5f);
             ComponentLibrary.Tabs($"module_{_selectedCardIndex}", ref _selectedTabIndex, tabs);
         }
-        else
-        {
-            ImGui.SetCursorPosY(4);
-            ImGui.TextColored(Theme.Colors.AccentBlue, $"插件: {_selectedPluginName}");
-        }
+        ImGui.EndChild();
     }
 
     /// <summary>绘制右侧内容区（Tab 下方的纯内容）</summary>
