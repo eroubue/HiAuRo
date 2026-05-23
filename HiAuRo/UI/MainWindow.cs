@@ -404,9 +404,9 @@ public sealed class MainWindow : Window
     {
         var isPluginSelected = _selectedPluginName != null;
 
-        // 左侧安全边距，防止内容被圆角裁剪
-        ImGui.SetCursorPosX(10);
-        ImGui.SetCursorPosY(6);
+        // 左侧安全边距，防止内容被圆角裁剪（仅调X，Y保留原值）
+        var curY = ImGui.GetCursorPosY();
+        ImGui.SetCursorPos(new Vector2(12, curY));
 
         if (isPluginSelected)
         {
