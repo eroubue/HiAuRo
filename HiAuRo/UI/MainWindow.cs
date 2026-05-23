@@ -133,13 +133,12 @@ public sealed class MainWindow : Window
         ImGui.SameLine(0, 4);
 
         // ── 右侧内容区 ──
-        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(16, 8));
         ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, Theme.RadiusMD);
         ImGui.BeginChild("##ContentPanel", new Vector2(-1, midHeight), false,
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
         DrawContent();
         ImGui.EndChild();
-        ImGui.PopStyleVar(2);
+        ImGui.PopStyleVar();
 
         // ── 底部状态栏 ──
         ImGui.Separator();
@@ -410,6 +409,9 @@ public sealed class MainWindow : Window
     {
         var isPluginSelected = _selectedPluginName != null;
 
+        // 全局缩进，所有行（含 Separator 后）都偏移 12px
+        ImGui.Indent(12);
+
         if (isPluginSelected)
         {
             DrawPluginContent();
@@ -418,6 +420,8 @@ public sealed class MainWindow : Window
         {
             DrawModuleContent();
         }
+
+        ImGui.Unindent(12);
     }
 
     /// <summary>根据当前选中的模块卡片 + Tab 索引绘制内容</summary>
