@@ -27,6 +27,52 @@ public sealed class MainWindow : Window
         IsOpen = false;
     }
 
+    // ── 新布局状态字段 ──
+
+    /// <summary>当前选中的主模块卡片索引 (0=主控, 1=调试, 2=时间轴, 3+=Plugin)</summary>
+    private int _selectedCardIndex;
+
+    /// <summary>当前模块内的子 Tab 索引</summary>
+    private int _selectedTabIndex;
+
+    /// <summary>上次选中卡片索引（用于检测切换时重置 Tab）</summary>
+    private int _lastCardIndex = -1;
+
+    /// <summary>Plugin 卡片选中时的 Plugin 记录名称</summary>
+    private string? _selectedPluginName;
+
+    /// <summary>Tips 轮播数据</summary>
+    private static readonly string[] _tips = new[]
+    {
+        "提示：右键侧边栏 Plugin 卡片可弹出独立窗口",
+        "快捷键 /hi 或点击 Dalamud 图标打开主界面",
+        "在「设置」中调整技能队列窗口和 AOE 判定数",
+        "时间轴模块支持录制副本并编辑执行/辅助/事实轴",
+        "Debug 面板提供 Aura/Combo/Spell/SpellHistory/Target 实时测试工具",
+    };
+
+    /// <summary>Tips 轮播定时器（渲染帧累计）</summary>
+    private float _tipsTimer;
+
+    /// <summary>当前显示的 Tips 索引</summary>
+    private int _tipsIndex;
+
+    /// <summary>Tips 淡入动画进度 0~1</summary>
+    private float _tipsFade;
+
+    /// <summary>版本号（构建时通过 ci 更新）</summary>
+    private const string _version = "1.0.0";
+
+    // ── 固定模块定义 ──
+
+    /// <summary>固定模块元数据</summary>
+    private static readonly (string Name, string Icon, string[] Tabs)[] _modules = new[]
+    {
+        ("主控", "⚙", new[] { "状态", "设置", "窗口设置" }),
+        ("调试", "◉", new[] { "Debug", "ACR Debug", "日志" }),
+        ("时间轴", "◎", new[] { "录制", "事实轴", "执行轴", "辅助轴" }),
+    };
+
     /// <summary>绘制窗口</summary>
     public override void Draw()
     {
