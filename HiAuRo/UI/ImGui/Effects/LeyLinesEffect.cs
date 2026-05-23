@@ -64,7 +64,6 @@ public sealed class LeyLinesEffect
         new(2f, 2f), new(-2f, 2f), new(-2f, -2f), new(2f, -2f),
     ];
 
-    private float _rotAngle;
     private float _rotX;
     private float _rotY;
     private float _time;
@@ -75,7 +74,7 @@ public sealed class LeyLinesEffect
     public void Update(float dt, Vector2 min, Vector2 max)
     {
         _time += dt;
-        _rotAngle += 1f * dt;
+        _rotY += 1f * dt;
 
         var mouse = ImGui.GetIO().MousePos;
         var center = (min + max) * 0.5f;
@@ -151,13 +150,27 @@ public sealed class LeyLinesEffect
         dl.PopClipRect();
     }
 
+    private static Vector2 Project(Vector3 v, Vector2 center, float rotX, float rotY)
+    {
+        var cosY = MathF.Cos(rotY);
+        var sinY = MathF.Sin(rotY);
+        var x1 = v.X * cosY - v.Z * sinY;
+        var z1 = v.X * sinY + v.Z * cosY;
+
+        var cosX = MathF.Cos(rotX);
+        var sinX = MathF.Sin(rotX);
+        var y1 = v.Y * cosX - z1 * sinX;
+        var z2 = v.Y * sinX + z1 * cosX;
+
+        var perspective = 400f;
+        var s = perspective / (perspective + z2);
+        return center + new Vector2(x1, y1) * s;
+    }
+
     private Vector2 ToScreen(Vector2 screenCenter, float scale, Vector2 local, Vector2 offset = default)
     {
-        var cos = MathF.Cos(_rotAngle);
-        var sin = MathF.Sin(_rotAngle);
-        return screenCenter + new Vector2(
-            local.X * cos - local.Y * sin,
-            local.X * sin + local.Y * cos) * scale + offset;
+        var v = new Vector3(local.X * scale, local.Y * scale, 0);
+        return Project(v, screenCenter, _rotX, _rotY) + offset;
     }
 
     private void DrawCircle(ImDrawListPtr dl, Vector2 screenCenter, float scale,
