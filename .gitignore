@@ -1,3 +1,10 @@
 scripts/
 .fantasticonrc.js
 scripts/font-gen/output/
+/HiAuRo/obj
+/HiAuRo/bin
+/.idea
+/.claude
+/bin
+/doc/superpowers
+/docs/superpowers
