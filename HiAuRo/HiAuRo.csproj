@@ -27,7 +27,7 @@
     <None Include="HiAuRo.json" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="UI/web/**\*.*" CopyToOutputDirectory="PreserveNewest" LinkBase="UI/web/" />
     <EmbeddedResource Include="Resources\Fonts\*.ttf" />
-    <EmbeddedResource Include="Resources\ley_lines.png" />
+    <EmbeddedResource Include="Resources\blm_white.png" />
     <Compile Remove="Jobs\**" />
     <Compile Remove="Sdk\**" />
     <None Remove="Jobs\**" />

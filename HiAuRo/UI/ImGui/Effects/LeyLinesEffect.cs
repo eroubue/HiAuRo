@@ -4,8 +4,6 @@ namespace HiAuRo.ImGuiLib.Effects;
 
 public sealed class LeyLinesEffect
 {
-    private const float Perspective = 400f;
-
     private static readonly Vector2 CyanOff = new(-2f, 0);
     private static readonly Vector2 MagOff = new(2f, 0);
 
@@ -13,8 +11,6 @@ public sealed class LeyLinesEffect
     private bool _textureLoaded;
     private bool _textureLoadFailed;
 
-    private float _rotX;
-    private float _rotY;
     private float _time;
     private float _flickerTimer = 2f;
     private bool _inFlicker;
@@ -23,19 +19,6 @@ public sealed class LeyLinesEffect
     public void Update(float dt, Vector2 min, Vector2 max)
     {
         _time += dt;
-        _rotY += dt * 0.8f;
-        _rotX += dt * 0.3f;
-
-        var mouse = ImGui.GetIO().MousePos;
-        var center = (min + max) * 0.5f;
-        var inWindow = mouse.X >= min.X && mouse.X <= max.X && mouse.Y >= min.Y && mouse.Y <= max.Y;
-        if (inWindow)
-        {
-            var dx = (mouse.X - center.X) / Math.Max(1f, (max.X - min.X) * 0.5f);
-            var dy = (mouse.Y - center.Y) / Math.Max(1f, (max.Y - min.Y) * 0.5f);
-            _rotY += dx * dt * 1.5f;
-            _rotX += dy * dt * 1.5f;
-        }
 
         _flickerTimer -= dt;
         if (_flickerTimer <= 0f)
@@ -78,32 +61,19 @@ public sealed class LeyLinesEffect
         var shortSide = Math.Min(winMax.X - winMin.X, winMax.Y - winMin.Y);
         var displaySize = shortSide * 0.6f;
         var half = displaySize * 0.5f;
+        var topLeft = center - new Vector2(half);
+        var bottomRight = center + new Vector2(half);
 
-        var corners3D = new[]
-        {
-            new Vector3(-half, -half, 0),
-            new Vector3(half, -half, 0),
-            new Vector3(half, half, 0),
-            new Vector3(-half, half, 0),
-        };
-
-        var p = new Vector2[4];
-        for (var i = 0; i < 4; i++)
-            p[i] = Project(corners3D[i], center, _rotX, _rotY);
-
-        dl.AddImageQuad(_textureId,
-            p[0] + CyanOff, p[1] + CyanOff, p[2] + CyanOff, p[3] + CyanOff,
-            Vector2.Zero, Vector2.UnitX, Vector2.One, Vector2.UnitY,
+        dl.AddImage(_textureId, topLeft + CyanOff, bottomRight + CyanOff,
+            Vector2.Zero, Vector2.One,
             ImGui.ColorConvertFloat4ToU32(new Vector4(0, 1, 1, alpha * 0.5f)));
 
-        dl.AddImageQuad(_textureId,
-            p[0] + MagOff, p[1] + MagOff, p[2] + MagOff, p[3] + MagOff,
-            Vector2.Zero, Vector2.UnitX, Vector2.One, Vector2.UnitY,
+        dl.AddImage(_textureId, topLeft + MagOff, bottomRight + MagOff,
+            Vector2.Zero, Vector2.One,
             ImGui.ColorConvertFloat4ToU32(new Vector4(1, 0, 1, alpha * 0.5f)));
 
-        dl.AddImageQuad(_textureId,
-            p[0], p[1], p[2], p[3],
-            Vector2.Zero, Vector2.UnitX, Vector2.One, Vector2.UnitY,
+        dl.AddImage(_textureId, topLeft, bottomRight,
+            Vector2.Zero, Vector2.One,
             ImGui.ColorConvertFloat4ToU32(new Vector4(1, 1, 1, alpha)));
 
         DrawScanNoise(dl, winMin, winMax);
@@ -117,10 +87,10 @@ public sealed class LeyLinesEffect
         try
         {
             var assembly = typeof(LeyLinesEffect).Assembly;
-            using var stream = assembly.GetManifestResourceStream("HiAuRo.Resources.ley_lines.png");
+            using var stream = assembly.GetManifestResourceStream("HiAuRo.Resources.blm_white.png");
             if (stream == null) { _textureLoadFailed = true; return; }
 
-            var tempPath = Path.Combine(Path.GetTempPath(), "hiauro_ley_lines.png");
+            var tempPath = Path.Combine(Path.GetTempPath(), "hiauro_blm_white.png");
             using (var fs = File.Create(tempPath))
                 stream.CopyTo(fs);
 
@@ -136,22 +106,6 @@ public sealed class LeyLinesEffect
         {
             _textureLoadFailed = true;
         }
-    }
-
-    private static Vector2 Project(Vector3 v, Vector2 center, float rotX, float rotY)
-    {
-        var cosY = MathF.Cos(rotY);
-        var sinY = MathF.Sin(rotY);
-        var x1 = v.X * cosY - v.Z * sinY;
-        var z1 = v.X * sinY + v.Z * cosY;
-
-        var cosX = MathF.Cos(rotX);
-        var sinX = MathF.Sin(rotX);
-        var y1 = v.Y * cosX - z1 * sinX;
-        var z2 = v.Y * sinX + z1 * cosX;
-
-        var s = Perspective / (Perspective + z2);
-        return center + new Vector2(x1, y1) * s;
     }
 
     private static void DrawBaseGradient(ImDrawListPtr dl, Vector2 min, Vector2 max)
