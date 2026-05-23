@@ -100,7 +100,7 @@ public sealed class MainWindow : Window
 
         // ── 计算布局区域 ──
         var avail = ImGui.GetContentRegionAvail();
-        var topBarHeight = 132f;
+        var topBarHeight = 144f;
         var tabBarHeight = 28f;
         var statusBarHeight = 24f;
         var sidebarWidth = 168f;
@@ -134,7 +134,7 @@ public sealed class MainWindow : Window
 
         // 右侧内容（保留圆角，加大内边距防裁剪）
         ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, Theme.RadiusMD);
-        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(14, 8));
+        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(18, 10));
         ImGui.BeginChild("##ContentPanel", new Vector2(-1, midHeight), true,
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
         DrawContent();
@@ -194,6 +194,8 @@ public sealed class MainWindow : Window
         // ── 第二行：Tips 轮播 + 主题按钮 ──
         ImGui.BeginChild("##TipsRow", new Vector2(region.X, tipsRowHeight), false,
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
+        ImGui.SetCursorPosY(logoStartY);
+        ImGui.SetCursorPosX(offsetX);
         DrawTips(region.X - controlWidth - 12f);
         ImGui.SameLine(region.X - controlWidth - 4f);
         ImGui.SetCursorPosY(ImGui.GetCursorPosY() + 2);
