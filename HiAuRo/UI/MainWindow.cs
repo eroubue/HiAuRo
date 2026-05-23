@@ -93,26 +93,23 @@ public sealed class MainWindow : Window
         // ── 主题背景 ──
         ComponentLibrary.GlassBackground(Theme.RadiusMD);
 
-        // ── 背景特效 ──
+        // ── 背景特效（渐变叠加 — 保持在内容层之下）──
         var dt = ImGui.GetIO().DeltaTime;
         var winMin = ImGui.GetWindowPos();
         var winMax = winMin + ImGui.GetWindowSize();
         var dl = ImGui.GetWindowDrawList();
 
-        // 渐变叠加
+        // 渐变叠加（背景层）
         GradientOverlay.DrawThemeGradient(dl, winMin, winMax, 24);
 
-        // 更新和绘制粒子
+        // 更新粒子状态（每帧调用，绘制延后到内容层之上）
         _particleSystem.Update(dt, winMin, winMax);
-        _particleSystem.Draw(dl);
 
-        // 更新和绘制波纹
+        // 更新波纹状态（每帧调用，绘制延后到内容层之上）
         _rippleCanvas.Update(dt, winMin, winMax);
-        _rippleCanvas.Draw(dl);
 
-        // 点击涟漪：检测鼠标点击
+        // 更新点击涟漪 + 检测鼠标点击
         _clickRipple.Update(dt);
-        _clickRipple.Draw(dl);
         if (ImGui.IsWindowHovered() && ImGui.IsMouseClicked(ImGuiMouseButton.Left))
             _clickRipple.Trigger(ImGui.GetMousePos());
 
@@ -183,6 +180,11 @@ public sealed class MainWindow : Window
         DrawStatusBar();
         ImGui.PopStyleVar(2);   // WindowPadding, ItemSpacing
         ImGui.PopStyleColor(14); // 所有 ImGuiCol
+
+        // ── 前景特效（粒子+波纹+涟漪 — 浮动在内容层之上）──
+        _particleSystem.Draw(dl);
+        _rippleCanvas.Draw(dl);
+        _clickRipple.Draw(dl);
     }
 
     /// <summary>绘制顶部信息栏：Logo行(居中) + Tips行(全宽)</summary>
