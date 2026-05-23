@@ -122,6 +122,93 @@ public sealed class MainWindow : Window
         ImGui.PopStyleVar(2); // WindowPadding, ItemSpacing
     }
 
+    /// <summary>绘制顶部信息栏：Logo + Tips + 主题切换按钮</summary>
+    private void DrawTopBar()
+    {
+        // ── Layout: LOGO 左 | Tips 中 | 控件 右 ──
+        var region = ImGui.GetContentRegionAvail();
+        var logoWidth = 140f;
+        var controlWidth = 36f;
+
+        // ── LOGO 区域 (左) ──
+        ImGui.BeginChild("##LogoArea", new Vector2(logoWidth, region.Y), false,
+            ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
+        DrawLogo();
+        ImGui.EndChild();
+
+        ImGui.SameLine();
+
+        // ── Tips 轮播 (中) ──
+        var tipsWidth = region.X - logoWidth - controlWidth - 30f;
+        ImGui.BeginChild("##TipsArea", new Vector2(tipsWidth, region.Y), false,
+            ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
+        DrawTips(tipsWidth);
+        ImGui.EndChild();
+
+        ImGui.SameLine();
+
+        // ── 主题切换按钮 (右) ──
+        ImGui.SetCursorPosY(ImGui.GetCursorPosY() + 8);
+        var isDark = Theme.Mode == Theme.ThemeMode.Dark;
+        if (ComponentLibrary.IconButton(
+            isDark ? ComponentLibrary.IconType.Stop : ComponentLibrary.IconType.Play,
+            Theme.Colors.AccentBlue,
+            new Vector2(28, 28),
+            ComponentLibrary.IconButtonStyle.Text))
+        {
+            Theme.Mode = isDark ? Theme.ThemeMode.Light : Theme.ThemeMode.Dark;
+            _config.ImGuiThemeMode = isDark ? ImGuiThemeMode.Light : ImGuiThemeMode.Dark;
+            _saveConfig();
+        }
+    }
+
+    /// <summary>绘制 ASCII Art Logo</summary>
+    private static void DrawLogo()
+    {
+        ImGui.PushFont(UiBuilder.MonoFont);
+        ImGui.SetCursorPosY(4);
+        var logoLines = new[]
+        {
+            "██╗  ██╗██╗ █████╗ ██╗   ██╗██████╗ ",
+            "██║  ██║██║██╔══██╗██║   ██║██╔══██╗",
+            "███████║██║███████║██║   ██║██████╔╝",
+            "██╔══██║██║██╔══██║██║   ██║██╔══██╗",
+            "██║  ██║██║██║  ██║╚██████╔╝██║  ██║",
+            "╚═╝  ╚═╝╚═╝╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝",
+        };
+        foreach (var line in logoLines)
+            ImGui.TextColored(Theme.Colors.AccentBlue, line);
+        ImGui.PopFont();
+    }
+
+    /// <summary>绘制 Tips 轮播文字</summary>
+    private void DrawTips(float maxWidth)
+    {
+        // 更新轮播定时器
+        _tipsTimer += ImGui.GetIO().DeltaTime;
+        _tipsFade = MathF.Min(1f, _tipsFade + ImGui.GetIO().DeltaTime * 2f);
+
+        if (_tipsTimer > 4f) // 每 4 秒切换
+        {
+            _tipsTimer = 0f;
+            _tipsIndex = (_tipsIndex + 1) % _tips.Length;
+            _tipsFade = 0f; // 重置淡入
+        }
+
+        var tip = _tips[_tipsIndex];
+        var alpha = _tipsFade;
+        var tipColor = new Vector4(
+            Theme.Colors.TextSecondary.X,
+            Theme.Colors.TextSecondary.Y,
+            Theme.Colors.TextSecondary.Z,
+            Theme.Colors.TextSecondary.W * alpha);
+
+        ImGui.SetCursorPosY(ImGui.GetCursorPosY() + 12);
+        ImGui.PushTextWrapPos(ImGui.GetCursorPosX() + maxWidth);
+        ImGui.TextColored(tipColor, $"💡 {tip}");
+        ImGui.PopTextWrapPos();
+    }
+
     private void DrawStatus()
     {
         // UI 渲染模式切换
