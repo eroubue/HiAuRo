@@ -129,7 +129,7 @@ public sealed class LeyLinesEffect
         }
 
         for (var i = 0; i < 6; i++)
-            DrawCircle(dl, center, scale, TriCentroids[i], 0.3f, accent, a * 0.5f, 1f);
+            DrawCircle(dl, center, scale, TriCentroids[i], 0.23f, accent, a * 0.5f, 1f);
 
         dl.PopClipRect();
     }
