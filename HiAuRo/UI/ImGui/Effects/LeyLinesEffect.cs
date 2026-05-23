@@ -87,6 +87,7 @@ public sealed class LeyLinesEffect
 
     private float _rotX;
     private float _rotY;
+    private float _flatRot;
     private float _time;
     private float _flickerAlpha = 0.2f;
     private float _flickerTimer = 2f;
@@ -96,6 +97,7 @@ public sealed class LeyLinesEffect
     {
         _time += dt;
         _rotY += 0.3f * dt;
+        _flatRot += 0.1f * dt;
 
         var mouse = ImGui.GetIO().MousePos;
         var center = (min + max) * 0.5f;
@@ -155,9 +157,9 @@ public sealed class LeyLinesEffect
         {
             projTriVerts[i] =
             [
-                Project(new Vector3(TriBase1[i].X * scale, TriBase1[i].Y * scale, 0), center, _rotX, _rotY),
-                Project(new Vector3(TriBase2[i].X * scale, TriBase2[i].Y * scale, 0), center, _rotX, _rotY),
-                Project(new Vector3(TriTips[i].X * scale, TriTips[i].Y * scale, 0), center, _rotX, _rotY),
+                Project(new Vector3(TriBase1[i].X * scale, TriBase1[i].Y * scale, 0), center, _rotX, _rotY, _flatRot),
+                Project(new Vector3(TriBase2[i].X * scale, TriBase2[i].Y * scale, 0), center, _rotX, _rotY, _flatRot),
+                Project(new Vector3(TriTips[i].X * scale, TriTips[i].Y * scale, 0), center, _rotX, _rotY, _flatRot),
             ];
         }
 
@@ -168,17 +170,17 @@ public sealed class LeyLinesEffect
         // --- 色差 pass 1: 青 (偏移 -2, 0) ---
         var cyanCol = ColorU32(new Vector4(0, 1, 1, 1), baseAlpha * 0.5f);
         DrawAllWireframe(dl, cyanOff, cyanCol, 3f, projDiamond, DiamondEdges, projSquare, SquareEdges, projTriVerts);
-        DrawAllCircles(dl, cyanOff, cyanCol, 3f, center, _rotX, _rotY, scale);
+        DrawAllCircles(dl, cyanOff, cyanCol, 3f, center, _rotX, _rotY, _flatRot, scale);
 
         // --- 色差 pass 2: 品红 (偏移 +2, 0) ---
         var magCol = ColorU32(new Vector4(1, 0, 1, 1), baseAlpha * 0.5f);
         DrawAllWireframe(dl, magentaOff, magCol, 3f, projDiamond, DiamondEdges, projSquare, SquareEdges, projTriVerts);
-        DrawAllCircles(dl, magentaOff, magCol, 3f, center, _rotX, _rotY, scale);
+        DrawAllCircles(dl, magentaOff, magCol, 3f, center, _rotX, _rotY, _flatRot, scale);
 
         // --- 色差 pass 3: 主色 (无偏移) ---
         var mainCol = ColorU32(new Vector4(0.7f, 0.8f, 1f, 1), baseAlpha);
         DrawAllWireframe(dl, Vector2.Zero, mainCol, 4.5f, projDiamond, DiamondEdges, projSquare, SquareEdges, projTriVerts);
-        DrawAllCircles(dl, Vector2.Zero, mainCol, 4.5f, center, _rotX, _rotY, scale);
+        DrawAllCircles(dl, Vector2.Zero, mainCol, 4.5f, center, _rotX, _rotY, _flatRot, scale);
 
         // 顶点亮点
         foreach (var p in projDiamond)
@@ -215,22 +217,22 @@ public sealed class LeyLinesEffect
     }
 
     private static void DrawAllCircles(ImDrawListPtr dl, Vector2 offset, uint col, float thickness,
-        Vector2 screenCenter, float rotX, float rotY, float scale)
+        Vector2 screenCenter, float rotX, float rotY, float flatRot, float scale)
     {
         var origin3D = new Vector3(0, 0, 0);
-        DrawProjectedCircle(dl, origin3D, 6f * scale, screenCenter, rotX, rotY, offset, col, thickness, 128);
-        DrawProjectedCircle(dl, origin3D, 4f * scale, screenCenter, rotX, rotY, offset, col, thickness, 128);
+        DrawProjectedCircle(dl, origin3D, 6f * scale, screenCenter, rotX, rotY, flatRot, offset, col, thickness, 128);
+        DrawProjectedCircle(dl, origin3D, 4f * scale, screenCenter, rotX, rotY, flatRot, offset, col, thickness, 128);
         for (var i = 0; i < FCenters.Length; i++)
             DrawProjectedCircle(dl, new Vector3(FCenters[i].X * scale, FCenters[i].Y * scale, 0), 2f * scale,
-                screenCenter, rotX, rotY, offset, col, thickness, 96);
+                screenCenter, rotX, rotY, flatRot, offset, col, thickness, 96);
         for (var i = 0; i < TriCentroids.Length; i++)
             DrawProjectedCircle(dl, new Vector3(TriCentroids[i].X * scale, TriCentroids[i].Y * scale, 0), 0.23f * scale,
-                screenCenter, rotX, rotY, offset, col, thickness, 48);
+                screenCenter, rotX, rotY, flatRot, offset, col, thickness, 48);
     }
 
     private static void DrawProjectedCircle(ImDrawListPtr dl,
         Vector3 center3D, float radius3D,
-        Vector2 screenCenter, float rotX, float rotY,
+        Vector2 screenCenter, float rotX, float rotY, float flatRot,
         Vector2 offset, uint color, float thickness, int segs)
     {
         var screenPts = new Vector2[segs];
@@ -241,7 +243,7 @@ public sealed class LeyLinesEffect
                 center3D.X + radius3D * MathF.Cos(angle),
                 center3D.Y + radius3D * MathF.Sin(angle),
                 center3D.Z);
-            screenPts[i] = Project(localPt, screenCenter, rotX, rotY) + offset;
+            screenPts[i] = Project(localPt, screenCenter, rotX, rotY, flatRot) + offset;
         }
         for (var i = 0; i < segs; i++)
             dl.AddLine(screenPts[i], screenPts[(i + 1) % segs], color, thickness);
@@ -252,21 +254,27 @@ public sealed class LeyLinesEffect
         var result = new Vector2[localVerts.Length];
         for (var i = 0; i < localVerts.Length; i++)
             result[i] = Project(new Vector3(localVerts[i].X * scale, localVerts[i].Y * scale, 0),
-                screenCenter, _rotX, _rotY);
+                screenCenter, _rotX, _rotY, _flatRot);
         return result;
     }
 
-    private static Vector2 Project(Vector3 v, Vector2 center, float rotX, float rotY)
+    private static Vector2 Project(Vector3 v, Vector2 center, float rotX, float rotY, float flatRot)
     {
+        // Z轴自转（平面内旋转，0.1°/s）
+        var zCos = MathF.Cos(flatRot);
+        var zSin = MathF.Sin(flatRot);
+        var x0 = v.X * zCos - v.Y * zSin;
+        var y0 = v.X * zSin + v.Y * zCos;
+
         var cosY = MathF.Cos(rotY);
         var sinY = MathF.Sin(rotY);
-        var x1 = v.X * cosY - v.Z * sinY;
-        var z1 = v.X * sinY + v.Z * cosY;
+        var x1 = x0 * cosY - v.Z * sinY;
+        var z1 = x0 * sinY + v.Z * cosY;
 
         var cosX = MathF.Cos(rotX);
         var sinX = MathF.Sin(rotX);
-        var y1 = v.Y * cosX - z1 * sinX;
-        var z2 = v.Y * sinX + z1 * cosX;
+        var y1 = y0 * cosX - z1 * sinX;
+        var z2 = y0 * sinX + z1 * cosX;
 
         var perspective = 400f;
         var s = perspective / (perspective + z2);
