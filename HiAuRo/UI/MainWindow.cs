@@ -315,6 +315,95 @@ public sealed class MainWindow : Window
         return clicked;
     }
 
+    /// <summary>绘制右侧内容区：Tab 栏 + 当前页面内容</summary>
+    private void DrawContent()
+    {
+        var isPluginSelected = _selectedPluginName != null;
+
+        // ── 检测卡片切换，重置 Tab 索引 ──
+        if (_lastCardIndex != _selectedCardIndex)
+        {
+            _selectedTabIndex = 0;
+            _lastCardIndex = _selectedCardIndex;
+        }
+
+        // ── Tab 栏 ──
+        if (!isPluginSelected)
+        {
+            var (_, _, tabs) = _modules[Math.Clamp(_selectedCardIndex, 0, _modules.Length - 1)];
+            ComponentLibrary.Tabs($"module_{_selectedCardIndex}", ref _selectedTabIndex, tabs);
+            ImGui.Spacing();
+        }
+        else
+        {
+            // Plugin 选中时显示插件名称作为标题
+            ImGui.TextColored(Theme.Colors.AccentBlue,
+                $"插件: {_selectedPluginName}");
+            ImGui.Separator();
+            ImGui.Spacing();
+        }
+
+        // ── 内容区 ──
+        var contentHeight = ImGui.GetContentRegionAvail().Y - 4f;
+        ImGui.BeginChild("##ContentArea", new Vector2(-1, contentHeight), false);
+
+        if (isPluginSelected)
+        {
+            DrawPluginContent();
+        }
+        else
+        {
+            DrawModuleContent();
+        }
+
+        ImGui.EndChild();
+    }
+
+    /// <summary>根据当前选中的模块卡片 + Tab 索引绘制内容</summary>
+    private void DrawModuleContent()
+    {
+        var moduleIndex = Math.Clamp(_selectedCardIndex, 0, _modules.Length - 1);
+        var (moduleName, _, tabs) = _modules[moduleIndex];
+        var tabIndex = Math.Clamp(_selectedTabIndex, 0, tabs.Length - 1);
+        var tabName = tabs[tabIndex];
+
+        // 路由到对应的 DrawXxx 方法
+        switch (tabName)
+        {
+            case "状态":       DrawStatus(); break;
+            case "设置":       DrawSettings(); break;
+            case "窗口设置":   DrawOverlaySettings(); break;
+            case "Debug":      DrawDebug(); break;
+            case "ACR Debug":  DrawAcrDebug(); break;
+            case "日志":       DrawLog(); break;
+            case "录制":       DrawRecording(); break;
+            case "事实轴":     DrawFactAxisTab(); break;
+            case "执行轴":     DrawExecutionAxisTab(); break;
+            case "辅助轴":     DrawAssistAxisTab(); break;
+        }
+    }
+
+    /// <summary>绘制当前选中 Plugin 的嵌入内容</summary>
+    private void DrawPluginContent()
+    {
+        if (_selectedPluginName == null) return;
+
+        var plugins = PluginLoader.Plugins;
+        if (!plugins.TryGetValue(_selectedPluginName, out var record)) return;
+
+        var embeddedUI = record.Plugin.GetEmbeddedUI();
+        if (embeddedUI != null)
+        {
+            embeddedUI();
+        }
+        else
+        {
+            ImGui.TextColored(Theme.Colors.TextTertiary, "此插件未提供嵌入 UI。");
+            ImGui.Spacing();
+            ImGui.TextColored(Theme.Colors.TextSecondary, "提示：右键侧边栏卡片可打开独立窗口");
+        }
+    }
+
     private void DrawStatus()
     {
         // UI 渲染模式切换
