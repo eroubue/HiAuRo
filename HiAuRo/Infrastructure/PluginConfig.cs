@@ -22,6 +22,19 @@ public enum ImGuiThemeMode
     Dark = 1
 }
 
+/// <summary>背景特效模式</summary>
+public enum BgEffectMode
+{
+    /// <summary>无特效</summary>
+    None = 0,
+    /// <summary>星云（渐变+粒子+波纹+点击涟漪）</summary>
+    Nebula = 1,
+    /// <summary>代码雨（Matrix风格绿色字符飘落）</summary>
+    MatrixRain = 2,
+    /// <summary>几何光效（动态霓虹几何线条）</summary>
+    GeometricGlow = 3,
+}
+
 /// <summary>
 /// HiAuRo 主配置对象 —— 走 Dalamud 原生 IPluginConfiguration 序列化
 /// </summary>
@@ -59,6 +72,9 @@ public sealed class PluginConfig : IPluginConfiguration
 
     /// <summary>ImGui 主题模式 (亮色/暗色)</summary>
     public ImGuiThemeMode ImGuiThemeMode { get; set; } = ImGuiThemeMode.Light;
+
+    /// <summary>背景特效模式</summary>
+    public BgEffectMode BgEffect { get; set; } = BgEffectMode.Nebula;
 
     /// <summary>ImGui 模式 — StatusBar overlay X 位置</summary>
     public float OverlayStatusBarX { get; set; } = 100f;

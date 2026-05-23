@@ -30,6 +30,8 @@ public sealed class MainWindow : Window
         _particleSystem = new ParticleSystem(60, 6f);
         _rippleCanvas = new RippleCanvas(6, 2f);
         _clickRipple = new ClickRippleEffect(8);
+        _matrixRain = new MatrixRainEffect();
+        _geometricGlow = new GeometricGlowEffect();
     }
 
     // ── 背景特效 ──
@@ -37,6 +39,8 @@ public sealed class MainWindow : Window
     private readonly ParticleSystem _particleSystem;
     private readonly RippleCanvas _rippleCanvas;
     private readonly ClickRippleEffect _clickRipple;
+    private readonly MatrixRainEffect _matrixRain;
+    private readonly GeometricGlowEffect _geometricGlow;
 
     // ── 新布局状态字段 ──
 
@@ -93,28 +97,37 @@ public sealed class MainWindow : Window
         // ── 主题背景 ──
         ComponentLibrary.GlassBackground(Theme.RadiusMD);
 
-        // ── 背景特效（渐变叠加 — 保持在内容层之下）──
+        // ── 背景特效（根据模式选择）──
         var dt = ImGui.GetIO().DeltaTime;
         var winMin = ImGui.GetWindowPos();
         var winMax = winMin + ImGui.GetWindowSize();
         var dl = ImGui.GetWindowDrawList();
 
-        // 渐变叠加（背景层）
-        GradientOverlay.DrawThemeGradient(dl, winMin, winMax, 24);
-
-        // 更新粒子状态（每帧调用，绘制延后到内容层之上）
-        _particleSystem.Update(dt, winMin, winMax);
-
-        // 更新波纹状态（每帧调用，绘制延后到内容层之上）
-        _rippleCanvas.Update(dt, winMin, winMax);
-
-        // 更新点击涟漪 + 检测鼠标点击
-        _clickRipple.Update(dt);
-        if (ImGui.IsMouseClicked(ImGuiMouseButton.Left))
+        switch (_config.BgEffect)
         {
-            var mp = ImGui.GetMousePos();
-            if (mp.X >= winMin.X && mp.X <= winMax.X && mp.Y >= winMin.Y && mp.Y <= winMax.Y)
-                _clickRipple.Trigger(mp);
+            case BgEffectMode.None:
+                break;
+
+            case BgEffectMode.Nebula:
+                GradientOverlay.DrawThemeGradient(dl, winMin, winMax, 24);
+                _particleSystem.Update(dt, winMin, winMax);
+                _rippleCanvas.Update(dt, winMin, winMax);
+                _clickRipple.Update(dt);
+                if (ImGui.IsMouseClicked(ImGuiMouseButton.Left))
+                {
+                    var mp = ImGui.GetMousePos();
+                    if (mp.X >= winMin.X && mp.X <= winMax.X && mp.Y >= winMin.Y && mp.Y <= winMax.Y)
+                        _clickRipple.Trigger(mp);
+                }
+                break;
+
+            case BgEffectMode.MatrixRain:
+                _matrixRain.Update(dt, winMin, winMax);
+                break;
+
+            case BgEffectMode.GeometricGlow:
+                _geometricGlow.Update(dt, winMin, winMax);
+                break;
         }
 
         // ── 全局 ImGui 样式色（跟随主题）──
@@ -185,10 +198,21 @@ public sealed class MainWindow : Window
         ImGui.PopStyleVar(2);   // WindowPadding, ItemSpacing
         ImGui.PopStyleColor(14); // 所有 ImGuiCol
 
-        // ── 前景特效（粒子+波纹+涟漪 — 浮动在内容层之上）──
-        _particleSystem.Draw(dl);
-        _rippleCanvas.Draw(dl);
-        _clickRipple.Draw(dl);
+        // ── 前景特效（根据模式选择）──
+        switch (_config.BgEffect)
+        {
+            case BgEffectMode.Nebula:
+                _particleSystem.Draw(dl);
+                _rippleCanvas.Draw(dl);
+                _clickRipple.Draw(dl);
+                break;
+            case BgEffectMode.MatrixRain:
+                _matrixRain.Draw(dl);
+                break;
+            case BgEffectMode.GeometricGlow:
+                _geometricGlow.Draw(dl);
+                break;
+        }
     }
 
     /// <summary>绘制顶部信息栏：Logo行(居中) + Tips行(全宽)</summary>
@@ -594,6 +618,19 @@ public sealed class MainWindow : Window
             {
                 _config.ImGuiThemeMode = ImGuiThemeMode.Dark;
                 Theme.Mode = Theme.ThemeMode.Dark;
+                _saveConfig();
+            }
+
+            // 背景特效模式
+            ImGui.Spacing();
+            ImGui.TextColored(Theme.Colors.AccentBlue, "背景特效:");
+            ImGui.SameLine();
+            var bgModes = new[] { "无", "星云", "代码雨", "几何光效" };
+            var bgIdx = (int)_config.BgEffect;
+            ImGui.SetNextItemWidth(120);
+            if (ImGui.Combo("##BgEffect", ref bgIdx, bgModes, bgModes.Length))
+            {
+                _config.BgEffect = (BgEffectMode)bgIdx;
                 _saveConfig();
             }
         }
