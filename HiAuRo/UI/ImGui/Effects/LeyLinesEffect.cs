@@ -14,7 +14,7 @@ public sealed class LeyLinesEffect
     public void Update(float dt, Vector2 min, Vector2 max)
     {
         _time += dt;
-        _rotationAngle += 5f * dt;
+        _rotationAngle += 1f * dt;
 
         var center = (min + max) * 0.5f;
         var mouse = ImGui.GetIO().MousePos;
