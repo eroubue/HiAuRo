@@ -93,6 +93,10 @@ public sealed class MainWindow : Window
         ImGui.PushStyleColor(ImGuiCol.Header, Theme.Colors.BgHover);
         ImGui.PushStyleColor(ImGuiCol.HeaderHovered, Theme.Colors.FillSecondary);
         ImGui.PushStyleColor(ImGuiCol.HeaderActive, Theme.Colors.FillPrimary);
+        ImGui.PushStyleColor(ImGuiCol.Tab, Theme.Colors.FillSecondary);
+        ImGui.PushStyleColor(ImGuiCol.TabHovered, Theme.Colors.BgHover);
+        ImGui.PushStyleColor(ImGuiCol.TabActive, Theme.Colors.BgContainer);
+        ImGui.PushStyleColor(ImGuiCol.TabUnfocusedActive, Theme.Colors.BgContainer);
 
         // ── 窗口内边距 ──
         ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(12, 10));
@@ -144,7 +148,7 @@ public sealed class MainWindow : Window
         ImGui.Separator();
         DrawStatusBar();
         ImGui.PopStyleVar(2);   // WindowPadding, ItemSpacing
-        ImGui.PopStyleColor(10); // WindowBg, ChildBg, Text, TextDisabled, FrameBg, Border, Separator, Header, HeaderHovered, HeaderActive
+        ImGui.PopStyleColor(14); // 所有 ImGuiCol
     }
 
     /// <summary>绘制顶部信息栏：Logo行(居中) + Tips行(全宽)</summary>
