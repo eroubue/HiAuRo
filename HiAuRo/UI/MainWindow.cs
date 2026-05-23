@@ -167,16 +167,19 @@ public sealed class MainWindow : Window
         var lineHeight = ImGui.GetTextLineHeight();
         var totalLogoH = lineHeight * logoLines.Length;
         var logoStartY = Math.Max(0, (logoRowHeight - totalLogoH) * 0.5f);
-        ImGui.SetCursorPosY(logoStartY);
 
         // 水平居中：计算最宽行宽度
         var maxLineW = 0f;
         foreach (var line in logoLines)
             maxLineW = Math.Max(maxLineW, ImGui.CalcTextSize(line).X);
-        ImGui.SetCursorPosX(Math.Max(0, (region.X - maxLineW) * 0.5f));
+        var offsetX = Math.Max(0, (region.X - maxLineW) * 0.5f);
 
+        ImGui.SetCursorPosY(logoStartY);
         foreach (var line in logoLines)
+        {
+            ImGui.SetCursorPosX(offsetX);
             ImGui.TextColored(Theme.Colors.AccentBlue, line);
+        }
         ImGui.PopFont();
 
         ImGui.EndChild();
