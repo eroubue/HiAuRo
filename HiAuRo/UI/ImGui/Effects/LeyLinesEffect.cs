@@ -64,6 +64,27 @@ public sealed class LeyLinesEffect
         new(2f, 2f), new(-2f, 2f), new(-2f, -2f), new(2f, -2f),
     ];
 
+    private static readonly (int A, int B)[] DiamondEdges =
+    [
+        (0, 1), (1, 2), (2, 3), (3, 0),
+    ];
+
+    private static readonly (int A, int B)[] SquareEdges =
+    [
+        (0, 1), (1, 2), (2, 3), (3, 0),
+    ];
+
+    // 6 组三角形，每组 3 条边
+    private static readonly (int Tri, int A, int B)[] TriEdges =
+    [
+        (0, 0, 1), (0, 1, 2), (0, 2, 0),
+        (1, 0, 1), (1, 1, 2), (1, 2, 0),
+        (2, 0, 1), (2, 1, 2), (2, 2, 0),
+        (3, 0, 1), (3, 1, 2), (3, 2, 0),
+        (4, 0, 1), (4, 1, 2), (4, 2, 0),
+        (5, 0, 1), (5, 1, 2), (5, 2, 0),
+    ];
+
     private float _rotX;
     private float _rotY;
     private float _time;
@@ -118,36 +139,109 @@ public sealed class LeyLinesEffect
         dl.PushClipRect(winMin, winMax, true);
 
         var center = (winMin + winMax) * 0.5f;
-        var shortSide = MathF.Min(winMax.X - winMin.X, winMax.Y - winMin.Y);
-        var scale = shortSide * 0.06f;
-        var a = _flickerAlpha;
-        var accent = Theme.Colors.AccentBlue;
+        var scale = MathF.Min(winMax.X - winMin.X, winMax.Y - winMin.Y) * 0.06f;
+        var baseAlpha = _flickerAlpha;
 
         DrawBaseGradient(dl, winMin, winMax);
 
-        DrawCircle(dl, center, scale, Vector2.Zero, 6f, accent, a, 7.5f);
-        DrawCircle(dl, center, scale, Vector2.Zero, 4f, accent, a, 6f);
-        DrawPoly(dl, center, scale, DiamondC, accent, a * 0.8f, 4.5f);
-        DrawPoly(dl, center, scale, SquareD, accent, a * 0.7f, 4.5f);
+        // 预投影所有几何到屏幕坐标
+        var origin = Project(new Vector3(0, 0, 0), center, _rotX, _rotY);
+        var projDiamond = ProjectVerts(DiamondC, center, scale);
+        var projSquare = ProjectVerts(SquareD, center, scale);
+        var projFCenters = ProjectVerts(FCenters, center, scale);
+        var projCentroids = ProjectVerts(TriCentroids, center, scale);
 
-        for (var i = 0; i < 6; i++)
-            DrawCircle(dl, center, scale, FCenters[i], 2f, accent, a * 0.8f, 4.5f);
-
-        Span<Vector2> tri = stackalloc Vector2[3];
+        // 6 组三角形投影
+        var projTriVerts = new Vector2[6][];
         for (var i = 0; i < 6; i++)
         {
-            tri[0] = TriBase1[i];
-            tri[1] = TriBase2[i];
-            tri[2] = TriTips[i];
-            DrawPoly(dl, center, scale, tri, accent, a * 0.6f, 3f);
+            projTriVerts[i] =
+            [
+                Project(new Vector3(TriBase1[i].X * scale, TriBase1[i].Y * scale, 0), center, _rotX, _rotY),
+                Project(new Vector3(TriBase2[i].X * scale, TriBase2[i].Y * scale, 0), center, _rotX, _rotY),
+                Project(new Vector3(TriTips[i].X * scale, TriTips[i].Y * scale, 0), center, _rotX, _rotY),
+            ];
         }
 
-        for (var i = 0; i < 6; i++)
-            DrawCircle(dl, center, scale, TriCentroids[i], 0.23f, accent, a * 0.5f, 3f);
+        // 投影后的圆半径（z=0 平面，半径恒定）
+        var rOuter = 6f * scale;
+        var rMid = 4f * scale;
+        var rFCenter = 2f * scale;
+        var rCentroid = 0.23f * scale;
+
+        // 色差偏移
+        var cyanOff = new Vector2(-2f, 0);
+        var magentaOff = new Vector2(2f, 0);
+
+        // --- 色差 pass 1: 青 (偏移 -2, 0) ---
+        var cyanCol = ColorU32(new Vector4(0, 1, 1, 1), baseAlpha * 0.5f);
+        DrawAllWireframe(dl, cyanOff, cyanCol, 1f, projDiamond, DiamondEdges, projSquare, SquareEdges, projTriVerts);
+        DrawAllCircles(dl, cyanOff, cyanCol, 1f, origin, rOuter, rMid, projFCenters, rFCenter, projCentroids, rCentroid);
+
+        // --- 色差 pass 2: 品红 (偏移 +2, 0) ---
+        var magCol = ColorU32(new Vector4(1, 0, 1, 1), baseAlpha * 0.5f);
+        DrawAllWireframe(dl, magentaOff, magCol, 1f, projDiamond, DiamondEdges, projSquare, SquareEdges, projTriVerts);
+        DrawAllCircles(dl, magentaOff, magCol, 1f, origin, rOuter, rMid, projFCenters, rFCenter, projCentroids, rCentroid);
+
+        // --- 色差 pass 3: 主色 (无偏移) ---
+        var mainCol = ColorU32(new Vector4(0.7f, 0.8f, 1f, 1), baseAlpha);
+        DrawAllWireframe(dl, Vector2.Zero, mainCol, 1.5f, projDiamond, DiamondEdges, projSquare, SquareEdges, projTriVerts);
+        DrawAllCircles(dl, Vector2.Zero, mainCol, 1.5f, origin, rOuter, rMid, projFCenters, rFCenter, projCentroids, rCentroid);
+
+        // 顶点亮点
+        foreach (var p in projDiamond)
+            dl.AddCircleFilled(p, 2f, ColorU32(new Vector4(0.7f, 0.8f, 1f, 1), baseAlpha));
+        foreach (var p in projSquare)
+            dl.AddCircleFilled(p, 2f, ColorU32(new Vector4(0.7f, 0.8f, 1f, 1), baseAlpha * 0.8f));
+        foreach (var p in projFCenters)
+            dl.AddCircleFilled(p, 1.5f, ColorU32(new Vector4(0.7f, 0.8f, 1f, 1), baseAlpha * 0.7f));
+        foreach (var tri in projTriVerts)
+            foreach (var p in tri)
+                dl.AddCircleFilled(p, 1.5f, ColorU32(new Vector4(0.7f, 0.8f, 1f, 1), baseAlpha * 0.5f));
 
         DrawScanNoise(dl, winMin, winMax);
 
         dl.PopClipRect();
+    }
+
+    private static void DrawAllWireframe(ImDrawListPtr dl, Vector2 offset, uint col, float thickness,
+        Vector2[] diamond, (int A, int B)[] diamondEdges,
+        Vector2[] square, (int A, int B)[] squareEdges,
+        Vector2[][] triVerts)
+    {
+        for (var i = 0; i < diamondEdges.Length; i++)
+            dl.AddLine(diamond[diamondEdges[i].A] + offset, diamond[diamondEdges[i].B] + offset, col, thickness);
+        for (var i = 0; i < squareEdges.Length; i++)
+            dl.AddLine(square[squareEdges[i].A] + offset, square[squareEdges[i].B] + offset, col, thickness);
+        for (var t = 0; t < triVerts.Length; t++)
+        {
+            var tri = triVerts[t];
+            dl.AddLine(tri[0] + offset, tri[1] + offset, col, thickness);
+            dl.AddLine(tri[1] + offset, tri[2] + offset, col, thickness);
+            dl.AddLine(tri[2] + offset, tri[0] + offset, col, thickness);
+        }
+    }
+
+    private static void DrawAllCircles(ImDrawListPtr dl, Vector2 offset, uint col, float thickness,
+        Vector2 origin, float rOuter, float rMid,
+        Vector2[] fCenters, float rFCenter,
+        Vector2[] centroids, float rCentroid)
+    {
+        dl.AddCircle(origin + offset, MathF.Max(rOuter, 0.1f), col, 48, thickness);
+        dl.AddCircle(origin + offset, MathF.Max(rMid, 0.1f), col, 48, thickness);
+        for (var i = 0; i < fCenters.Length; i++)
+            dl.AddCircle(fCenters[i] + offset, MathF.Max(rFCenter, 0.1f), col, 32, thickness);
+        for (var i = 0; i < centroids.Length; i++)
+            dl.AddCircle(centroids[i] + offset, MathF.Max(rCentroid, 0.1f), col, 16, thickness);
+    }
+
+    private Vector2[] ProjectVerts(Vector2[] localVerts, Vector2 screenCenter, float scale)
+    {
+        var result = new Vector2[localVerts.Length];
+        for (var i = 0; i < localVerts.Length; i++)
+            result[i] = Project(new Vector3(localVerts[i].X * scale, localVerts[i].Y * scale, 0),
+                screenCenter, _rotX, _rotY);
+        return result;
     }
 
     private static Vector2 Project(Vector3 v, Vector2 center, float rotX, float rotY)
@@ -165,55 +259,6 @@ public sealed class LeyLinesEffect
         var perspective = 400f;
         var s = perspective / (perspective + z2);
         return center + new Vector2(x1, y1) * s;
-    }
-
-    private Vector2 ToScreen(Vector2 screenCenter, float scale, Vector2 local, Vector2 offset = default)
-    {
-        var v = new Vector3(local.X * scale, local.Y * scale, 0);
-        return Project(v, screenCenter, _rotX, _rotY) + offset;
-    }
-
-    private void DrawCircle(ImDrawListPtr dl, Vector2 screenCenter, float scale,
-        Vector2 localCenter, float radius, Vector4 color, float alpha, float thickness)
-    {
-        var c = ToScreen(screenCenter, scale, localCenter);
-        var r = MathF.Max(radius * scale, 0.1f);
-        var cyanOff = new Vector2(-2f, 0);
-        var magentaOff = new Vector2(2f, 0);
-
-        dl.PathArcTo(c, r, 0f, MathF.Tau, 48);
-        dl.PathStroke(ColorU32(color, alpha * 0.25f), ImDrawFlags.None, thickness * 3f);
-        dl.PathArcTo(c + cyanOff, r, 0f, MathF.Tau, 48);
-        dl.PathStroke(ColorU32(new Vector4(0, 1, 1, 1), alpha * 0.5f), ImDrawFlags.None, thickness);
-        dl.PathArcTo(c + magentaOff, r, 0f, MathF.Tau, 48);
-        dl.PathStroke(ColorU32(new Vector4(1, 0, 1, 1), alpha * 0.5f), ImDrawFlags.None, thickness);
-        dl.PathArcTo(c, r, 0f, MathF.Tau, 48);
-        dl.PathStroke(ColorU32(color, alpha), ImDrawFlags.None, thickness);
-    }
-
-    private void DrawPoly(ImDrawListPtr dl, Vector2 screenCenter, float scale,
-        ReadOnlySpan<Vector2> verts, Vector4 color, float alpha, float thickness)
-    {
-        var cyanOff = new Vector2(-2f, 0);
-        var magentaOff = new Vector2(2f, 0);
-
-        FillPolyPath(dl, screenCenter, scale, verts, Vector2.Zero);
-        dl.PathStroke(ColorU32(color, alpha * 0.25f), ImDrawFlags.None, thickness * 3f);
-        FillPolyPath(dl, screenCenter, scale, verts, cyanOff);
-        dl.PathStroke(ColorU32(new Vector4(0, 1, 1, 1), alpha * 0.5f), ImDrawFlags.None, thickness);
-        FillPolyPath(dl, screenCenter, scale, verts, magentaOff);
-        dl.PathStroke(ColorU32(new Vector4(1, 0, 1, 1), alpha * 0.5f), ImDrawFlags.None, thickness);
-        FillPolyPath(dl, screenCenter, scale, verts, Vector2.Zero);
-        dl.PathStroke(ColorU32(color, alpha), ImDrawFlags.None, thickness);
-    }
-
-    private void FillPolyPath(ImDrawListPtr dl, Vector2 screenCenter, float scale,
-        ReadOnlySpan<Vector2> verts, Vector2 offset)
-    {
-        dl.PathLineTo(ToScreen(screenCenter, scale, verts[0], offset));
-        for (var i = 1; i < verts.Length; i++)
-            dl.PathLineTo(ToScreen(screenCenter, scale, verts[i], offset));
-        dl.PathLineTo(ToScreen(screenCenter, scale, verts[0], offset));
     }
 
     private void DrawScanNoise(ImDrawListPtr dl, Vector2 min, Vector2 max)
