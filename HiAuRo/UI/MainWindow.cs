@@ -198,19 +198,20 @@ public sealed class MainWindow : Window
         ImGui.PopStyleVar(2);   // WindowPadding, ItemSpacing
         ImGui.PopStyleColor(14); // 所有 ImGuiCol
 
-        // ── 前景特效（根据模式选择）──
+        // ── 前景特效（ForegroundDrawList — 渲染在最顶层，覆盖所有子窗口）──
+        var fg = ImGui.GetForegroundDrawList();
         switch (_config.BgEffect)
         {
             case BgEffectMode.Nebula:
-                _particleSystem.Draw(dl);
-                _rippleCanvas.Draw(dl);
-                _clickRipple.Draw(dl);
+                _particleSystem.Draw(fg);
+                _rippleCanvas.Draw(fg);
+                _clickRipple.Draw(fg);
                 break;
             case BgEffectMode.MatrixRain:
-                _matrixRain.Draw(dl);
+                _matrixRain.Draw(fg);
                 break;
             case BgEffectMode.GeometricGlow:
-                _geometricGlow.Draw(dl);
+                _geometricGlow.Draw(fg);
                 break;
         }
     }
