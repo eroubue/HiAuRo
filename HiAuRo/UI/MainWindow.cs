@@ -30,7 +30,7 @@ public sealed class MainWindow : Window
         _particleSystem = new ParticleSystem(60, 6f);
         _rippleCanvas = new RippleCanvas(6, 2f);
         _clickRipple = new ClickRippleEffect(8);
-        _matrixRain = new MatrixRainEffect();
+        _matrixRain = new MatrixRainEffect(40);
         _geometricGlow = new GeometricGlowEffect();
     }
 

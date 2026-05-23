@@ -131,7 +131,7 @@ public sealed class MatrixRainEffect
         drop.X = min.X + col * colSpacing + Random.Shared.NextSingle() * 4f;
         drop.Y = min.Y + Random.Shared.NextSingle() * 20f;
         drop.Speed = 60f + Random.Shared.NextSingle() * 60f;
-        drop.MaxLife = 2f + Random.Shared.NextSingle() * 3f;
+        drop.MaxLife = 3f + Random.Shared.NextSingle() * 5f;
         drop.Life = drop.MaxLife;
 
         var len = 4 + Random.Shared.Next(10);
