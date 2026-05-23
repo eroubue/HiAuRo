@@ -87,7 +87,7 @@ public sealed class LeyLinesEffect
         try
         {
             var assembly = typeof(LeyLinesEffect).Assembly;
-            using var stream = assembly.GetManifestResourceStream("HiAuRo.Resources.blm_white.png");
+            using var stream = assembly.GetManifestResourceStream("HiAuRo.Resources.blm_alpha.png");
             if (stream == null) { _textureLoadFailed = true; return; }
 
             var tempPath = Path.Combine(Path.GetTempPath(), "hiauro_blm_white.png");
