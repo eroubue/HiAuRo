@@ -33,16 +33,8 @@ public enum BgEffectMode
     MatrixRain = 2,
     /// <summary>几何光效（动态霓虹几何线条）</summary>
     GeometricGlow = 3,
-    /// <summary>樱花飘落</summary>
-    Sakura = 4,
-    /// <summary>粒子星云（旋转星系）</summary>
-    ParticleNebula = 5,
-    /// <summary>霓虹网格（Synthwave风格）</summary>
-    NeonGrid = 6,
-    /// <summary>极光</summary>
-    Aurora = 7,
     /// <summary>萤火虫</summary>
-    Firefly = 8,
+    Firefly = 4,
 }
 
 /// <summary>

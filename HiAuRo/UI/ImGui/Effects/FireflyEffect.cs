@@ -31,24 +31,28 @@ public sealed class FireflyEffect
     public void Update(float dt, Vector2 min, Vector2 max)
     {
         _time += dt;
-        var w = max.X - min.X;
-        var h = max.Y - min.Y;
+        const float pad = 30f;
+        var innerMinX = min.X + pad;
+        var innerMinY = min.Y + pad;
+        var innerMaxX = max.X - pad;
+        var innerMaxY = max.Y - pad;
+        var rangeX = innerMaxX - innerMinX;
+        var rangeY = innerMaxY - innerMinY;
 
         for (var i = 0; i < _fireflies.Length; i++)
         {
             ref var f = ref _fireflies[i];
 
-            // 首次初始化
             if (f.RetargetInterval <= 0f)
             {
                 f.Pos = new Vector2(
-                    min.X + Random.Shared.NextSingle() * w,
-                    min.Y + Random.Shared.NextSingle() * h);
+                    innerMinX + Random.Shared.NextSingle() * rangeX,
+                    innerMinY + Random.Shared.NextSingle() * rangeY);
                 f.TargetPos = f.Pos;
                 f.Size = 3f + Random.Shared.NextSingle() * 5f;
                 f.BrightnessPhase = Random.Shared.NextSingle() * MathF.Tau;
                 f.BrightnessFreq = 1f + Random.Shared.NextSingle() * 2.5f;
-                f.Speed = 20f + Random.Shared.NextSingle() * 40f;
+                f.Speed = 30f + Random.Shared.NextSingle() * 60f;
                 f.RetargetInterval = 1f + Random.Shared.NextSingle() * 1.5f;
                 f.RetargetTimer = f.RetargetInterval;
 
@@ -59,13 +63,12 @@ public sealed class FireflyEffect
                 continue;
             }
 
-            // 重选目标
             f.RetargetTimer -= dt;
             if (f.RetargetTimer <= 0f)
             {
                 f.TargetPos = new Vector2(
-                    min.X + Random.Shared.NextSingle() * w,
-                    min.Y + Random.Shared.NextSingle() * h);
+                    innerMinX + Random.Shared.NextSingle() * rangeX,
+                    innerMinY + Random.Shared.NextSingle() * rangeY);
                 f.RetargetInterval = 1f + Random.Shared.NextSingle() * 1.5f;
                 f.RetargetTimer = f.RetargetInterval;
             }
