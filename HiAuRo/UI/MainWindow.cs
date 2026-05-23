@@ -132,13 +132,14 @@ public sealed class MainWindow : Window
 
         ImGui.SameLine(0, 4);
 
-        // 右侧内容（加大子窗口内边距，防圆角裁剪）
+        // 右侧内容（取消圆角，避免内容被裁剪）
+        ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, 0f);
         ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(14, 8));
         ImGui.BeginChild("##ContentPanel", new Vector2(-1, midHeight), false,
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
         DrawContent();
         ImGui.EndChild();
-        ImGui.PopStyleVar();
+        ImGui.PopStyleVar(2);
 
         // ── 底部状态栏 ──
         ImGui.Separator();
