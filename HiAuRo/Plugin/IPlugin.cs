@@ -12,4 +12,6 @@ public interface IPlugin : IDisposable
     void Update();
     /// <summary>返回插件窗口，无需窗口时返回 null</summary>
     IPluginWindow? GetWindow() => null;
+    /// <summary>返回嵌入主窗口的内容绘制 Action，无需嵌入时返回 null</summary>
+    Action? GetEmbeddedUI() => null;
 }
