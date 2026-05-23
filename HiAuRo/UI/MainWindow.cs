@@ -119,11 +119,10 @@ public sealed class MainWindow : Window
 
         ImGui.Separator();
 
-        // 中间区域高度（侧边栏+内容）
-        var midHeight = avail.Y - topBarHeight - tabBarHeight - statusBarHeight - 24f;
+        // ── 左侧栏 + 右侧内容（填充剩余空间）──
+        var midHeight = Math.Max(100, ImGui.GetContentRegionAvail().Y - statusBarHeight - 8f);
 
-        // ── 左侧栏 + 右侧内容（手动布局，避免 Table 自带间距导致不对齐）──
-        // 左侧栏
+        // ── 左侧栏 ──
         ImGui.BeginChild("##SidebarPanel", new Vector2(sidebarWidth, midHeight), false,
             ImGuiWindowFlags.NoScrollbar);
         ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(3, 3));
