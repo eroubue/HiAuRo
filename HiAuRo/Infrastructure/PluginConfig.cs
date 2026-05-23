@@ -37,16 +37,8 @@ public enum BgEffectMode
     Firefly = 4,
     /// <summary>星座连线</summary>
     Constellation = 5,
-    /// <summary>故障艺术</summary>
-    Glitch = 6,
-    /// <summary>雷达扫描仪</summary>
-    RadarScanner = 7,
-    /// <summary>霓虹电路板</summary>
-    NeonCircuit = 8,
     /// <summary>黑魔纹</summary>
-    LeyLines = 9,
-    /// <summary>数据流管道</summary>
-    DataPipeline = 10,
+    LeyLines = 6,
 }
 
 /// <summary>

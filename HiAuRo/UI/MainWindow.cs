@@ -34,11 +34,7 @@ public sealed class MainWindow : Window
         _geometricGlow = new GeometricGlowEffect();
         _firefly = new FireflyEffect();
         _constellation = new ConstellationEffect();
-        _glitch = new GlitchEffect();
-        _radarScanner = new RadarScannerEffect();
-        _neonCircuit = new NeonCircuitEffect();
         _leyLines = new LeyLinesEffect();
-        _dataPipeline = new DataPipelineEffect();
     }
 
     // ── 背景特效 ──
@@ -50,11 +46,7 @@ public sealed class MainWindow : Window
     private readonly GeometricGlowEffect _geometricGlow;
     private readonly FireflyEffect _firefly;
     private readonly ConstellationEffect _constellation;
-    private readonly GlitchEffect _glitch;
-    private readonly RadarScannerEffect _radarScanner;
-    private readonly NeonCircuitEffect _neonCircuit;
     private readonly LeyLinesEffect _leyLines;
-    private readonly DataPipelineEffect _dataPipeline;
 
     // ── 新布局状态字段 ──
 
@@ -151,24 +143,8 @@ public sealed class MainWindow : Window
                 _constellation.Update(dt, winMin, winMax);
                 break;
 
-            case BgEffectMode.Glitch:
-                _glitch.Update(dt, winMin, winMax);
-                break;
-
-            case BgEffectMode.RadarScanner:
-                _radarScanner.Update(dt, winMin, winMax);
-                break;
-
-            case BgEffectMode.NeonCircuit:
-                _neonCircuit.Update(dt, winMin, winMax);
-                break;
-
             case BgEffectMode.LeyLines:
                 _leyLines.Update(dt, winMin, winMax);
-                break;
-
-            case BgEffectMode.DataPipeline:
-                _dataPipeline.Update(dt, winMin, winMax);
                 break;
         }
 
@@ -261,20 +237,8 @@ public sealed class MainWindow : Window
             case BgEffectMode.Constellation:
                 _constellation.Draw(fg, winMin, winMax);
                 break;
-            case BgEffectMode.Glitch:
-                _glitch.Draw(fg, winMin, winMax);
-                break;
-            case BgEffectMode.RadarScanner:
-                _radarScanner.Draw(fg, winMin, winMax);
-                break;
-            case BgEffectMode.NeonCircuit:
-                _neonCircuit.Draw(fg, winMin, winMax);
-                break;
             case BgEffectMode.LeyLines:
                 _leyLines.Draw(fg, winMin, winMax);
-                break;
-            case BgEffectMode.DataPipeline:
-                _dataPipeline.Draw(fg, winMin, winMax);
                 break;
         }
     }
@@ -689,7 +653,7 @@ public sealed class MainWindow : Window
             ImGui.Spacing();
             ImGui.TextColored(Theme.Colors.AccentBlue, "背景特效:");
             ImGui.SameLine();
-            var bgModes = new[] { "无", "星云", "代码雨", "几何光效", "萤火虫", "星座", "故障艺术", "雷达", "电路板", "黑魔纹", "管道" };
+            var bgModes = new[] { "无", "星云", "代码雨", "几何光效", "萤火虫", "星座", "黑魔纹" };
             var bgIdx = (int)_config.BgEffect;
             ImGui.SetNextItemWidth(120);
             if (ImGui.Combo("##BgEffect", ref bgIdx, bgModes, bgModes.Length))
