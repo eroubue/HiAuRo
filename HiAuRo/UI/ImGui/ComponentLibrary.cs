@@ -85,53 +85,23 @@ public static class ComponentLibrary
     /// <summary>在指定中心绘制图标 (图标尺寸约 12~14px)</summary>
     private static void DrawIcon(ImDrawListPtr dl, Vector2 center, IconType icon, uint color)
     {
-        switch (icon)
+        var iconChar = icon switch
         {
-            case IconType.Stop:
-                // 10×10 实心方块，圆角 2px
-                dl.AddRectFilled(center - new Vector2(5, 5), center + new Vector2(5, 5), color, Theme.RadiusXS);
-                break;
+            IconType.Play => IconHelper.Icons.Play,
+            IconType.Stop => IconHelper.Icons.Stop,
+            IconType.Pause => IconHelper.Icons.Pause,
+            IconType.Save => IconHelper.Icons.Save,
+            IconType.ChevronDown => IconHelper.Icons.ChevronDown,
+            IconType.ChevronUp => IconHelper.Icons.ChevronUp,
+            IconType.Close => IconHelper.Icons.Close,
+            _ => null
+        };
 
-            case IconType.Play:
-                // 12×14 三角形
-                dl.AddTriangleFilled(
-                    center + new Vector2(-5, -7),
-                    center + new Vector2(-5, 7),
-                    center + new Vector2(7, 0),
-                    color);
-                break;
+        if (iconChar == null) return;
 
-            case IconType.Pause:
-                // 两根 3×12 竖条，间距 2px
-                dl.AddRectFilled(center + new Vector2(-5, -6), center + new Vector2(-2, 6), color, 1);
-                dl.AddRectFilled(center + new Vector2(2, -6), center + new Vector2(5, 6), color, 1);
-                break;
-
-            case IconType.Save:
-                // 软盘图标: 10×10 矩形 + 顶部切口
-                dl.AddRectFilled(center + new Vector2(-5, -3), center + new Vector2(5, 7), color, Theme.RadiusXS);
-                dl.AddRectFilled(center + new Vector2(-5, -3), center + new Vector2(-1, 0), ColorU32(Vector4.Zero));
-                dl.AddRectFilled(center + new Vector2(-3, 2), center + new Vector2(3, 6), ColorU32(Theme.Colors.GlassBg), 1);
-                break;
-
-            case IconType.ChevronDown:
-                // 向下 V 形
-                dl.AddTriangleFilled(
-                    center + new Vector2(-6, -2), center + new Vector2(6, -2), center + new Vector2(0, 5), color);
-                break;
-
-            case IconType.ChevronUp:
-                // 向上 V 形
-                dl.AddTriangleFilled(
-                    center + new Vector2(-6, 2), center + new Vector2(6, 2), center + new Vector2(0, -5), color);
-                break;
-
-            case IconType.Close:
-                // X 形
-                dl.AddLine(center + new Vector2(-4, -4), center + new Vector2(4, 4), color, 2.5f);
-                dl.AddLine(center + new Vector2(4, -4), center + new Vector2(-4, 4), color, 2.5f);
-                break;
-        }
+        using var font = ImRaii.PushFont(UiBuilder.IconFont);
+        var size = ImGui.CalcTextSize(iconChar);
+        dl.AddText(center - size / 2, color, iconChar);
     }
 
     // ═══════════════════════════════════════════════════

@@ -27,13 +27,6 @@
     <None Include="HiAuRo.json" CopyToOutputDirectory="PreserveNewest" />
     <Content Include="UI/web/**\*.*" CopyToOutputDirectory="PreserveNewest" LinkBase="UI/web/" />
     <Compile Remove="Jobs\**" />
-    <None Remove="Jobs\**" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Include="HiAuRo.json" CopyToOutputDirectory="PreserveNewest" />
-    <Content Include="UI/web/**\*.*" CopyToOutputDirectory="PreserveNewest" LinkBase="UI/web/" />
-    <Compile Remove="Jobs\**" />
     <Compile Remove="Sdk\**" />
     <None Remove="Jobs\**" />
     <None Remove="Sdk\**" />
