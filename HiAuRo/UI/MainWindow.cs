@@ -166,9 +166,14 @@ public sealed class MainWindow : Window
             ImGui.TextColored(Theme.Colors.AccentBlue, line);
         ImGui.PopFont();
 
-        // 主题切换按钮（浮动在 Logo 行右上角）
+        ImGui.EndChild();
+
+        // ── 第二行：Tips 轮播 + 主题按钮 ──
+        ImGui.BeginChild("##TipsRow", new Vector2(region.X, tipsRowHeight), false,
+            ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
+        DrawTips(region.X - controlWidth - 12f);
         ImGui.SameLine(region.X - controlWidth - 4f);
-        ImGui.SetCursorPosY(logoStartY + 4f);
+        ImGui.SetCursorPosY(ImGui.GetCursorPosY() + 2);
         var isDark = Theme.Mode == Theme.ThemeMode.Dark;
         if (ComponentLibrary.IconButton(
             isDark ? ComponentLibrary.IconType.Stop : ComponentLibrary.IconType.Play,
@@ -180,13 +185,6 @@ public sealed class MainWindow : Window
             _config.ImGuiThemeMode = isDark ? ImGuiThemeMode.Light : ImGuiThemeMode.Dark;
             _saveConfig();
         }
-
-        ImGui.EndChild();
-
-        // ── 第二行：Tips 轮播（全宽）──
-        ImGui.BeginChild("##TipsRow", new Vector2(region.X, tipsRowHeight), false,
-            ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
-        DrawTips(region.X - 16f);
         ImGui.EndChild();
     }
 
