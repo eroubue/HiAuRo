@@ -53,7 +53,7 @@ public sealed class LeyLinesEffect
     public void Update(float dt, Vector2 min, Vector2 max)
     {
         _time += dt;
-        _rotAngle += 3f * dt;
+        _rotAngle += 1f * dt;
 
         _flickerTimer -= dt;
         if (_flickerTimer <= 0f)
@@ -87,7 +87,7 @@ public sealed class LeyLinesEffect
 
         var center = (winMin + winMax) * 0.5f;
         var shortSide = MathF.Min(winMax.X - winMin.X, winMax.Y - winMin.Y);
-        var scale = shortSide * 0.12f;
+        var scale = shortSide * 0.06f;
         var a = _flickerAlpha;
         var accent = Theme.Colors.AccentBlue;
 
