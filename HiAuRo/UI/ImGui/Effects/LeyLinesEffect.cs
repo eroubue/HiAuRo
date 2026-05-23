@@ -111,13 +111,13 @@ public sealed class LeyLinesEffect
         var a = _flickerAlpha;
         var accent = Theme.Colors.AccentBlue;
 
-        DrawCircle(dl, center, scale, Vector2.Zero, 6f, accent, a, 2.5f);
-        DrawCircle(dl, center, scale, Vector2.Zero, 4f, accent, a, 2f);
-        DrawPoly(dl, center, scale, DiamondC, accent, a * 0.8f, 1.5f);
-        DrawPoly(dl, center, scale, SquareD, accent, a * 0.7f, 1.5f);
+        DrawCircle(dl, center, scale, Vector2.Zero, 6f, accent, a, 7.5f);
+        DrawCircle(dl, center, scale, Vector2.Zero, 4f, accent, a, 6f);
+        DrawPoly(dl, center, scale, DiamondC, accent, a * 0.8f, 4.5f);
+        DrawPoly(dl, center, scale, SquareD, accent, a * 0.7f, 4.5f);
 
         for (var i = 0; i < 6; i++)
-            DrawCircle(dl, center, scale, FCenters[i], 2f, accent, a * 0.8f, 1.5f);
+            DrawCircle(dl, center, scale, FCenters[i], 2f, accent, a * 0.8f, 4.5f);
 
         Span<Vector2> tri = stackalloc Vector2[3];
         for (var i = 0; i < 6; i++)
@@ -125,11 +125,11 @@ public sealed class LeyLinesEffect
             tri[0] = TriBase1[i];
             tri[1] = TriBase2[i];
             tri[2] = TriTips[i];
-            DrawPoly(dl, center, scale, tri, accent, a * 0.6f, 1f);
+            DrawPoly(dl, center, scale, tri, accent, a * 0.6f, 3f);
         }
 
         for (var i = 0; i < 6; i++)
-            DrawCircle(dl, center, scale, TriCentroids[i], 0.23f, accent, a * 0.5f, 1f);
+            DrawCircle(dl, center, scale, TriCentroids[i], 0.23f, accent, a * 0.5f, 3f);
 
         dl.PopClipRect();
     }
