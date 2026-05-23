@@ -14,24 +14,44 @@ public sealed class LeyLinesEffect
         new(2f, -3.464102f),
     ];
 
+    private static readonly Vector2[] TriBase1 =
+    [
+        new(2.196152f, 3.000000f),
+        new(-1.500000f, 3.401924f),
+        new(-3.696152f, 0.401924f),
+        new(-2.196152f, -3.000000f),
+        new(1.500000f, -3.401924f),
+        new(3.696152f, -0.401924f),
+    ];
+
+    private static readonly Vector2[] TriBase2 =
+    [
+        new(3.696152f, 0.401924f),
+        new(1.500000f, 3.401924f),
+        new(-2.196152f, 3.000000f),
+        new(-3.696152f, -0.401924f),
+        new(-1.500000f, -3.401924f),
+        new(2.196152f, -3.000000f),
+    ];
+
     private static readonly Vector2[] TriTips =
     [
-        new(4.5f, 2.598076f),
-        new(0f, 5.196152f),
-        new(-4.5f, 2.598076f),
-        new(-4.5f, -2.598076f),
-        new(0f, -5.196152f),
-        new(4.5f, -2.598076f),
+        new(5.196152f, 3.000000f),
+        new(0.000000f, 6.000000f),
+        new(-5.196152f, 3.000000f),
+        new(-5.196152f, -3.000000f),
+        new(0.000000f, -6.000000f),
+        new(5.196152f, -3.000000f),
     ];
 
     private static readonly Vector2[] TriCentroids =
     [
-        new(3.5f, 2.020726f),
-        new(0f, 4.041452f),
-        new(-3.5f, 2.020726f),
-        new(-3.5f, -2.020726f),
-        new(0f, -4.041452f),
-        new(3.5f, -2.020726f),
+        new(3.696152f, 2.133975f),
+        new(0.000000f, 4.267949f),
+        new(-3.696152f, 2.133975f),
+        new(-3.696152f, -2.133975f),
+        new(0.000000f, -4.267949f),
+        new(3.696152f, -2.133975f),
     ];
 
     private static readonly Vector2[] DiamondC =
@@ -102,9 +122,8 @@ public sealed class LeyLinesEffect
         Span<Vector2> tri = stackalloc Vector2[3];
         for (var i = 0; i < 6; i++)
         {
-            var next = (i + 1) % 6;
-            tri[0] = FCenters[i];
-            tri[1] = FCenters[next];
+            tri[0] = TriBase1[i];
+            tri[1] = TriBase2[i];
             tri[2] = TriTips[i];
             DrawPoly(dl, center, scale, tri, accent, a * 0.6f, 1f);
         }
