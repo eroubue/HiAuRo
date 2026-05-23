@@ -101,6 +101,7 @@ public sealed class MainWindow : Window
         // ── 计算布局区域 ──
         var avail = ImGui.GetContentRegionAvail();
         var topBarHeight = 132f;
+        var tabBarHeight = 28f;
         var statusBarHeight = 24f;
         var sidebarWidth = 168f;
 
@@ -110,10 +111,16 @@ public sealed class MainWindow : Window
         DrawTopBar();
         ImGui.EndChild();
 
+        // ── Tab 栏（全宽，独立行）──
+        ImGui.BeginChild("##TabBar", new Vector2(avail.X, tabBarHeight), false,
+            ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
+        DrawTabBar();
+        ImGui.EndChild();
+
         ImGui.Separator();
 
-        // 中间区域高度
-        var midHeight = avail.Y - topBarHeight - statusBarHeight - 18f;
+        // 中间区域高度（侧边栏+内容）
+        var midHeight = avail.Y - topBarHeight - tabBarHeight - statusBarHeight - 24f;
 
         // ── 左侧栏 + 右侧内容（手动布局，避免 Table 自带间距导致不对齐）──
         // 左侧栏
@@ -347,8 +354,8 @@ public sealed class MainWindow : Window
         return clicked;
     }
 
-    /// <summary>绘制右侧内容区：Tab 栏(顶部全宽) + 分隔线 + 内容</summary>
-    private void DrawContent()
+    /// <summary>绘制 Tab 栏（全宽独立行，在侧边栏之上）</summary>
+    private void DrawTabBar()
     {
         var isPluginSelected = _selectedPluginName != null;
 
@@ -359,23 +366,23 @@ public sealed class MainWindow : Window
             _lastCardIndex = _selectedCardIndex;
         }
 
-        // ── Tab 栏（内容区顶部，全宽）──
         if (!isPluginSelected)
         {
             var (_, _, tabs) = _modules[Math.Clamp(_selectedCardIndex, 0, _modules.Length - 1)];
+            ImGui.SetCursorPosY((ImGui.GetContentRegionAvail().Y - ImGui.GetTextLineHeight()) * 0.5f);
             ComponentLibrary.Tabs($"module_{_selectedCardIndex}", ref _selectedTabIndex, tabs);
         }
         else
         {
+            ImGui.SetCursorPosY(4);
             ImGui.TextColored(Theme.Colors.AccentBlue, $"插件: {_selectedPluginName}");
         }
+    }
 
-        ImGui.Separator();
-
-        // ── 内容区（Tab 下方剩余空间）──
-        var contentHeight = ImGui.GetContentRegionAvail().Y - 2f;
-        if (contentHeight < 50) contentHeight = 50;
-        ImGui.BeginChild("##ContentArea", new Vector2(-1, contentHeight), false);
+    /// <summary>绘制右侧内容区（Tab 下方的纯内容）</summary>
+    private void DrawContent()
+    {
+        var isPluginSelected = _selectedPluginName != null;
 
         if (isPluginSelected)
         {
@@ -385,8 +392,6 @@ public sealed class MainWindow : Window
         {
             DrawModuleContent();
         }
-
-        ImGui.EndChild();
     }
 
     /// <summary>根据当前选中的模块卡片 + Tab 索引绘制内容</summary>
