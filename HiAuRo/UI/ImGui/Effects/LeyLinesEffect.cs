@@ -95,7 +95,7 @@ public sealed class LeyLinesEffect
     public void Update(float dt, Vector2 min, Vector2 max)
     {
         _time += dt;
-        _rotY += 1f * dt;
+        _rotY += 0.3f * dt;
 
         var mouse = ImGui.GetIO().MousePos;
         var center = (min + max) * 0.5f;
@@ -167,29 +167,29 @@ public sealed class LeyLinesEffect
 
         // --- 色差 pass 1: 青 (偏移 -2, 0) ---
         var cyanCol = ColorU32(new Vector4(0, 1, 1, 1), baseAlpha * 0.5f);
-        DrawAllWireframe(dl, cyanOff, cyanCol, 1f, projDiamond, DiamondEdges, projSquare, SquareEdges, projTriVerts);
-        DrawAllCircles(dl, cyanOff, cyanCol, 1f, center, _rotX, _rotY, scale);
+        DrawAllWireframe(dl, cyanOff, cyanCol, 3f, projDiamond, DiamondEdges, projSquare, SquareEdges, projTriVerts);
+        DrawAllCircles(dl, cyanOff, cyanCol, 3f, center, _rotX, _rotY, scale);
 
         // --- 色差 pass 2: 品红 (偏移 +2, 0) ---
         var magCol = ColorU32(new Vector4(1, 0, 1, 1), baseAlpha * 0.5f);
-        DrawAllWireframe(dl, magentaOff, magCol, 1f, projDiamond, DiamondEdges, projSquare, SquareEdges, projTriVerts);
-        DrawAllCircles(dl, magentaOff, magCol, 1f, center, _rotX, _rotY, scale);
+        DrawAllWireframe(dl, magentaOff, magCol, 3f, projDiamond, DiamondEdges, projSquare, SquareEdges, projTriVerts);
+        DrawAllCircles(dl, magentaOff, magCol, 3f, center, _rotX, _rotY, scale);
 
         // --- 色差 pass 3: 主色 (无偏移) ---
         var mainCol = ColorU32(new Vector4(0.7f, 0.8f, 1f, 1), baseAlpha);
-        DrawAllWireframe(dl, Vector2.Zero, mainCol, 1.5f, projDiamond, DiamondEdges, projSquare, SquareEdges, projTriVerts);
-        DrawAllCircles(dl, Vector2.Zero, mainCol, 1.5f, center, _rotX, _rotY, scale);
+        DrawAllWireframe(dl, Vector2.Zero, mainCol, 4.5f, projDiamond, DiamondEdges, projSquare, SquareEdges, projTriVerts);
+        DrawAllCircles(dl, Vector2.Zero, mainCol, 4.5f, center, _rotX, _rotY, scale);
 
         // 顶点亮点
         foreach (var p in projDiamond)
-            dl.AddCircleFilled(p, 2f, ColorU32(new Vector4(0.7f, 0.8f, 1f, 1), baseAlpha));
+            dl.AddCircleFilled(p, 6f, ColorU32(new Vector4(0.7f, 0.8f, 1f, 1), baseAlpha));
         foreach (var p in projSquare)
-            dl.AddCircleFilled(p, 2f, ColorU32(new Vector4(0.7f, 0.8f, 1f, 1), baseAlpha * 0.8f));
+            dl.AddCircleFilled(p, 6f, ColorU32(new Vector4(0.7f, 0.8f, 1f, 1), baseAlpha * 0.8f));
         foreach (var p in projFCenters)
-            dl.AddCircleFilled(p, 1.5f, ColorU32(new Vector4(0.7f, 0.8f, 1f, 1), baseAlpha * 0.7f));
+            dl.AddCircleFilled(p, 4.5f, ColorU32(new Vector4(0.7f, 0.8f, 1f, 1), baseAlpha * 0.7f));
         foreach (var tri in projTriVerts)
             foreach (var p in tri)
-                dl.AddCircleFilled(p, 1.5f, ColorU32(new Vector4(0.7f, 0.8f, 1f, 1), baseAlpha * 0.5f));
+                dl.AddCircleFilled(p, 4.5f, ColorU32(new Vector4(0.7f, 0.8f, 1f, 1), baseAlpha * 0.5f));
 
         DrawScanNoise(dl, winMin, winMax);
 
