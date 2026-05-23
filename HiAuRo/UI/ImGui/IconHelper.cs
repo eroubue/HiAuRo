@@ -19,7 +19,13 @@ public static class IconHelper
         public const string ArrowUp = "\ueb39";
         public const string ArrowDown = "\ueb30";
         public const string Cross = "\uebb2";
-        // 共 504 个图标可用，命名格式: Category_iconname，如 UI_settings, Game_trophy 等
+        public const string Settings = "\uebe3";
+        public const string Bug = "\ueadb";
+        public const string Clock = "\ueadf";
+        public const string Puzzle = "\uea5d";
+        public const string Wrench = "\uead5";
+        public const string DarkMode = "\uebb3";
+        public const string LightMode = "\uebc6";
     }
 
     private static ImFontPtr? _iconFont18;

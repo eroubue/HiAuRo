@@ -68,9 +68,9 @@ public sealed class MainWindow : Window
     /// <summary>固定模块元数据</summary>
     private static readonly (string Name, string Icon, string[] Tabs)[] _modules = new[]
     {
-        ("主控", "⚙", new[] { "状态", "设置", "窗口设置" }),
-        ("调试", "◉", new[] { "Debug", "ACR Debug", "日志" }),
-        ("时间轴", "◎", new[] { "录制", "事实轴", "执行轴", "辅助轴" }),
+        ("主控", IconHelper.Icons.Settings, new[] { "状态", "设置", "窗口设置" }),
+        ("调试", IconHelper.Icons.Bug, new[] { "Debug", "ACR Debug", "日志" }),
+        ("时间轴", IconHelper.Icons.Clock, new[] { "录制", "事实轴", "执行轴", "辅助轴" }),
     };
 
     /// <summary>绘制窗口</summary>
@@ -183,16 +183,27 @@ public sealed class MainWindow : Window
         ImGui.SameLine(region.X - controlWidth - 4f);
         ImGui.SetCursorPosY(ImGui.GetCursorPosY() + 2);
         var isDark = Theme.Mode == Theme.ThemeMode.Dark;
-        if (ComponentLibrary.IconButton(
-            isDark ? ComponentLibrary.IconType.Stop : ComponentLibrary.IconType.Play,
-            Theme.Colors.AccentBlue,
-            new Vector2(28, 28),
-            ComponentLibrary.IconButtonStyle.Text))
+        var themeIcon = isDark ? IconHelper.Icons.DarkMode : IconHelper.Icons.LightMode;
+
+        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, Theme.RadiusMD);
+        ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(4, 2));
+        ImGui.PushStyleColor(ImGuiCol.Button, Vector4.Zero);
+        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, Theme.Colors.BgHover);
+        ImGui.PushStyleColor(ImGuiCol.ButtonActive, Theme.Colors.BgSpotlight);
+
+        if (ImGui.Button("##ThemeToggle", new Vector2(28, 28)))
         {
             Theme.Mode = isDark ? Theme.ThemeMode.Light : Theme.ThemeMode.Dark;
             _config.ImGuiThemeMode = isDark ? ImGuiThemeMode.Light : ImGuiThemeMode.Dark;
             _saveConfig();
         }
+
+        var btnCenter = (ImGui.GetItemRectMin() + ImGui.GetItemRectMax()) / 2;
+        IconHelper.DrawIcon(ImGui.GetWindowDrawList(), btnCenter, themeIcon,
+            ImGui.ColorConvertFloat4ToU32(Theme.Colors.AccentBlue), 18f);
+
+        ImGui.PopStyleColor(3);
+        ImGui.PopStyleVar(2);
         ImGui.EndChild();
     }
 
@@ -253,7 +264,7 @@ public sealed class MainWindow : Window
                 var isSelected = _selectedPluginName == pluginName;
                 var name = record.Plugin.Name;
                 var version = record.Plugin.Version;
-                if (SidebarCard(name, "◉", isSelected, version))
+                if (SidebarCard(name, IconHelper.Icons.Puzzle, isSelected, version))
                 {
                     _selectedCardIndex = _modules.Length;
                     _selectedPluginName = pluginName;
@@ -306,12 +317,12 @@ public sealed class MainWindow : Window
 
         // ── 文字叠加 ──
         var textPos = ImGui.GetItemRectMin() + new Vector2(16, 4);
-        dl.AddText(textPos, ImGui.ColorConvertFloat4ToU32(textColor), icon);
-        dl.AddText(textPos + new Vector2(16, 0), ImGui.ColorConvertFloat4ToU32(textColor), title);
+        IconHelper.DrawIcon(dl, textPos + new Vector2(8, cardHeight * 0.5f), icon, ImGui.ColorConvertFloat4ToU32(textColor), 16f);
+        dl.AddText(textPos + new Vector2(24, 0), ImGui.ColorConvertFloat4ToU32(textColor), title);
 
         if (subtitle != null)
         {
-            dl.AddText(textPos + new Vector2(0, 18),
+            dl.AddText(textPos + new Vector2(24, 18),
                 ImGui.ColorConvertFloat4ToU32(Theme.Colors.TextTertiary), subtitle);
         }
 
