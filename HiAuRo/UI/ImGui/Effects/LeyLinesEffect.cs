@@ -16,22 +16,22 @@ public sealed class LeyLinesEffect
 
     private static readonly Vector2[] TriTips =
     [
-        new(6f, 3.464102f),
-        new(0f, 6.928203f),
-        new(-6f, 3.464102f),
-        new(-6f, -3.464102f),
-        new(0f, -6.928203f),
-        new(6f, -3.464102f),
+        new(4.5f, 2.598076f),
+        new(0f, 5.196152f),
+        new(-4.5f, 2.598076f),
+        new(-4.5f, -2.598076f),
+        new(0f, -5.196152f),
+        new(4.5f, -2.598076f),
     ];
 
     private static readonly Vector2[] TriCentroids =
     [
-        new(4f, 2.309401f),
-        new(0f, 4.618802f),
-        new(-4f, 2.309401f),
-        new(-4f, -2.309401f),
-        new(0f, -4.618802f),
-        new(4f, -2.309401f),
+        new(3.5f, 2.020726f),
+        new(0f, 4.041452f),
+        new(-3.5f, 2.020726f),
+        new(-3.5f, -2.020726f),
+        new(0f, -4.041452f),
+        new(3.5f, -2.020726f),
     ];
 
     private static readonly Vector2[] DiamondC =
