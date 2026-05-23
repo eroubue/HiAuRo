@@ -32,6 +32,11 @@ public sealed class MainWindow : Window
         _clickRipple = new ClickRippleEffect(8);
         _matrixRain = new MatrixRainEffect(40);
         _geometricGlow = new GeometricGlowEffect();
+        _sakura = new SakuraEffect();
+        _particleNebula = new ParticleNebulaEffect();
+        _neonGrid = new NeonGridEffect();
+        _aurora = new AuroraEffect();
+        _firefly = new FireflyEffect();
     }
 
     // ── 背景特效 ──
@@ -41,6 +46,11 @@ public sealed class MainWindow : Window
     private readonly ClickRippleEffect _clickRipple;
     private readonly MatrixRainEffect _matrixRain;
     private readonly GeometricGlowEffect _geometricGlow;
+    private readonly SakuraEffect _sakura;
+    private readonly ParticleNebulaEffect _particleNebula;
+    private readonly NeonGridEffect _neonGrid;
+    private readonly AuroraEffect _aurora;
+    private readonly FireflyEffect _firefly;
 
     // ── 新布局状态字段 ──
 
@@ -128,6 +138,26 @@ public sealed class MainWindow : Window
             case BgEffectMode.GeometricGlow:
                 _geometricGlow.Update(dt, winMin, winMax);
                 break;
+
+            case BgEffectMode.Sakura:
+                _sakura.Update(dt, winMin, winMax);
+                break;
+
+            case BgEffectMode.ParticleNebula:
+                _particleNebula.Update(dt, winMin, winMax);
+                break;
+
+            case BgEffectMode.NeonGrid:
+                _neonGrid.Update(dt, winMin, winMax);
+                break;
+
+            case BgEffectMode.Aurora:
+                _aurora.Update(dt, winMin, winMax);
+                break;
+
+            case BgEffectMode.Firefly:
+                _firefly.Update(dt, winMin, winMax);
+                break;
         }
 
         // ── 全局 ImGui 样式色（跟随主题）──
@@ -212,6 +242,21 @@ public sealed class MainWindow : Window
                 break;
             case BgEffectMode.GeometricGlow:
                 _geometricGlow.Draw(fg, winMin, winMax);
+                break;
+            case BgEffectMode.Sakura:
+                _sakura.Draw(fg, winMin, winMax);
+                break;
+            case BgEffectMode.ParticleNebula:
+                _particleNebula.Draw(fg, winMin, winMax);
+                break;
+            case BgEffectMode.NeonGrid:
+                _neonGrid.Draw(fg, winMin, winMax);
+                break;
+            case BgEffectMode.Aurora:
+                _aurora.Draw(fg, winMin, winMax);
+                break;
+            case BgEffectMode.Firefly:
+                _firefly.Draw(fg, winMin, winMax);
                 break;
         }
     }
@@ -626,7 +671,7 @@ public sealed class MainWindow : Window
             ImGui.Spacing();
             ImGui.TextColored(Theme.Colors.AccentBlue, "背景特效:");
             ImGui.SameLine();
-            var bgModes = new[] { "无", "星云", "代码雨", "几何光效" };
+            var bgModes = new[] { "无", "星云", "代码雨", "几何光效", "樱花", "粒子星云", "霓虹网格", "极光", "萤火虫" };
             var bgIdx = (int)_config.BgEffect;
             ImGui.SetNextItemWidth(120);
             if (ImGui.Combo("##BgEffect", ref bgIdx, bgModes, bgModes.Length))
