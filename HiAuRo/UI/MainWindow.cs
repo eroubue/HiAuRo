@@ -132,10 +132,10 @@ public sealed class MainWindow : Window
 
         ImGui.SameLine(0, 4);
 
-        // 右侧内容（取消圆角，避免内容被裁剪）
-        ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, 0f);
+        // 右侧内容（保留圆角，加大内边距防裁剪）
+        ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, Theme.RadiusMD);
         ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(14, 8));
-        ImGui.BeginChild("##ContentPanel", new Vector2(-1, midHeight), false,
+        ImGui.BeginChild("##ContentPanel", new Vector2(-1, midHeight), true,
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
         DrawContent();
         ImGui.EndChild();
