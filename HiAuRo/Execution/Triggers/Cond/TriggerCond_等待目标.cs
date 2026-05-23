@@ -4,15 +4,6 @@ using static HiAuRo.Data;
 namespace HiAuRo.Execution.Triggers.Cond;
 
 /// <summary>
-/// 触发条件参数 —— 等待目标
-/// </summary>
-public sealed class TriggerCondParams_等待目标 : ITriggerCondParams
-{
-    /// <summary>等待出现的单位 DataId</summary>
-    public uint DataId;
-}
-
-/// <summary>
 /// 等待指定 DataId 的单位在对象表中出现（可选中 + 未死亡）
 /// </summary>
 [TriggerDisplay("等待目标", "等待指定DataId的目标出现")]

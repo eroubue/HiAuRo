@@ -5,15 +5,6 @@ using static HiAuRo.Data;
 namespace HiAuRo.Execution.Triggers.Cond;
 
 /// <summary>
-/// 触发条件参数 —— 收到技能效果
-/// </summary>
-public sealed class TriggerCondParams_收到技能效果 : ITriggerCondParams
-{
-    /// <summary>收到的技能效果 ID</summary>
-    public uint SpellId;
-}
-
-/// <summary>
 /// 检测是否收到特定的技能效果（任意目标收到指定 ActionId 的效果）
 /// 事件驱动：匹配 ActionEffectParams；轮询：查询 BattleData 近期行动效果历史
 /// </summary>

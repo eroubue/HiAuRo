@@ -5,15 +5,6 @@ using static HiAuRo.Data;
 namespace HiAuRo.Execution.Triggers.Cond;
 
 /// <summary>
-/// 触发条件参数 —— 连线
-/// </summary>
-public sealed class TriggerCondParams_连线 : ITriggerCondParams
-{
-    /// <summary>连线 ID</summary>
-    public uint TetherId;
-}
-
-/// <summary>
 /// 检测是否有指定连线生效
 /// 事件驱动：匹配 TetherCreateParams；轮询：查询 BattleData 活跃连线列表
 /// </summary>

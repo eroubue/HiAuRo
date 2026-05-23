@@ -4,15 +4,6 @@ using static HiAuRo.Data;
 namespace HiAuRo.Execution.Triggers.Cond;
 
 /// <summary>
-/// 触发条件参数 —— 目标图标
-/// </summary>
-public sealed class TriggerCondParams_检查目标图标 : ITriggerCondParams
-{
-    /// <summary>目标身上的图标 ID（NamePlateIconID）</summary>
-    public uint IconId;
-}
-
-/// <summary>
 /// 检测指定目标（或任意敌人）身上是否有特定图标
 /// </summary>
 [TriggerDisplay("检查目标图标", "检测目标是否有指定图标")]

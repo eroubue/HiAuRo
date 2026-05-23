@@ -5,17 +5,6 @@ using static HiAuRo.Data;
 namespace HiAuRo.Execution.Triggers.Cond;
 
 /// <summary>
-/// 触发条件参数 —— 敌人读条
-/// </summary>
-public sealed class TriggerCondParams_敌人读条 : ITriggerCondParams
-{
-    /// <summary>需要检测的读条技能 ID</summary>
-    public uint SpellId;
-    /// <summary>指定敌人 DataId（null = 任意敌人）</summary>
-    public uint? EnemyDataId;
-}
-
-/// <summary>
 /// 检测敌人是否在读指定技能
 /// 事件驱动：匹配 ActorCastParams 快速唤醒；轮询：遍历 Objects.Enemies 检查 CastActionID
 /// </summary>

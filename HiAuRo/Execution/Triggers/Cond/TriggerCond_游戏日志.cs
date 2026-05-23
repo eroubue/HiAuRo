@@ -3,14 +3,7 @@ using HiAuRo.Execution.Events;
 
 namespace HiAuRo.Execution.Triggers.Cond;
 
-/// <summary>
-/// 触发条件参数 —— 游戏日志
-/// </summary>
-public sealed class TriggerCondParams_游戏日志 : ITriggerCondParams
-{
-    /// <summary>日志消息匹配模式</summary>
-    public string MessagePattern = string.Empty;
-}
+
 
 /// <summary>
 /// 检测游戏聊天日志中是否出现指定消息

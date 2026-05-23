@@ -4,15 +4,6 @@ using HiAuRo.Runtime;
 namespace HiAuRo.Execution.Triggers.Cond;
 
 /// <summary>
-/// 触发条件参数 —— 上次技能
-/// </summary>
-public sealed class TriggerCondParams_上次技能 : ITriggerCondParams
-{
-    /// <summary>最近一次使用的技能 ID</summary>
-    public uint SpellId;
-}
-
-/// <summary>
 /// 检测最近一次成功执行的技能
 /// </summary>
 [TriggerDisplay("上次技能", "检测上次使用的技能是否为指定技能")]

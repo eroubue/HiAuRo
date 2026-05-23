@@ -5,15 +5,6 @@ using static HiAuRo.Data;
 namespace HiAuRo.Execution.Triggers.Cond;
 
 /// <summary>
-/// 触发条件参数 —— 地图特效
-/// </summary>
-public sealed class TriggerCondParams_地图特效 : ITriggerCondParams
-{
-    /// <summary>地图特效 ID</summary>
-    public uint EffectId;
-}
-
-/// <summary>
 /// 检测是否出现指定的地图特效
 /// 事件驱动：匹配 MapEffectParams.PositionIndex；轮询：查询 BattleData 近期地图特效历史
 /// </summary>

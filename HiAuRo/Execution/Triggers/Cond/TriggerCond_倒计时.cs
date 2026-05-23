@@ -3,15 +3,6 @@ using HiAuRo.ACR;
 namespace HiAuRo.Execution.Triggers.Cond;
 
 /// <summary>
-/// 触发条件参数 —— 倒计时
-/// </summary>
-public sealed class TriggerCondParams_倒计时 : ITriggerCondParams
-{
-    /// <summary>倒计时剩余秒数阈值（到达此值时触发）</summary>
-    public int TimeLeftSec;
-}
-
-/// <summary>
 /// 检测副本战斗倒计时是否达到指定剩余秒数
 /// 通过 Dalamud CountdownTimer IPC 接口读取当前倒计时
 /// </summary>

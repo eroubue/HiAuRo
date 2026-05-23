@@ -4,15 +4,6 @@ using static HiAuRo.Data;
 namespace HiAuRo.Execution.Triggers.Cond;
 
 /// <summary>
-/// 触发条件参数 —— Actor 死亡
-/// </summary>
-public sealed class TriggerCondParams_Actor死亡 : ITriggerCondParams
-{
-    /// <summary>死亡的 Actor DataId</summary>
-    public uint DataId;
-}
-
-/// <summary>
 /// 检测指定 DataId 的敌人是否已死亡（从对象表中消失或标记为死）
 /// </summary>
 [TriggerDisplay("Actor死亡", "检测指定DataId的Actor死亡")]
