@@ -6,8 +6,6 @@ public sealed class LeyLinesEffect
 {
     private float _rotationAngle;
     private float _time;
-    private float _pulseTimer;
-    private bool _pulsing;
 
     private static readonly int[] PentagramOrder = [0, 2, 4, 1, 3];
 
@@ -15,26 +13,6 @@ public sealed class LeyLinesEffect
     {
         _time += dt;
         _rotationAngle += 1f * dt;
-
-        var center = (min + max) * 0.5f;
-        var mouse = ImGui.GetIO().MousePos;
-        if (ImGui.IsMouseClicked(ImGuiMouseButton.Left))
-        {
-            var dist = Vector2.Distance(mouse, center);
-            var R = Math.Min(max.X - min.X, max.Y - min.Y) * 0.35f;
-            if (dist < R)
-                _pulsing = true;
-        }
-
-        if (_pulsing)
-        {
-            _pulseTimer += dt;
-            if (_pulseTimer > 0.3f)
-            {
-                _pulseTimer = 0f;
-                _pulsing = false;
-            }
-        }
     }
 
     public void Draw(ImDrawListPtr dl, Vector2 winMin, Vector2 winMax)
@@ -56,14 +34,10 @@ public sealed class LeyLinesEffect
         var mouseDist = Vector2.Distance(mouse, center);
         var mouseProximity = mouseDist < R * 1.2f ? 1.3f : 1f;
 
-        var pulseAlpha = 0f;
-        if (_pulsing)
-            pulseAlpha = 1f - (_pulseTimer / 0.3f);
-
         var breathe = 0.85f + 0.15f * MathF.Sin(_time * 2f);
         var alphaMod = breathe * mouseProximity;
 
-        float A(float baseA) => Math.Min(1f, baseA * alphaMod + pulseAlpha * 0.5f);
+        float A(float baseA) => Math.Min(1f, baseA * alphaMod);
 
         // 第1层 — 底层光晕
         dl.AddCircleFilled(center, R * 1.3f, U32(purple, A(0.06f)), 64);
