@@ -1,4 +1,6 @@
 using System.Numerics;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace HiAuRo.ImGuiLib.Effects;
 
@@ -74,16 +76,6 @@ public sealed class LeyLinesEffect
         (0, 1), (1, 2), (2, 3), (3, 0),
     ];
 
-    // 6 组三角形，每组 3 条边
-    private static readonly (int Tri, int A, int B)[] TriEdges =
-    [
-        (0, 0, 1), (0, 1, 2), (0, 2, 0),
-        (1, 0, 1), (1, 1, 2), (1, 2, 0),
-        (2, 0, 1), (2, 1, 2), (2, 2, 0),
-        (3, 0, 1), (3, 1, 2), (3, 2, 0),
-        (4, 0, 1), (4, 1, 2), (4, 2, 0),
-        (5, 0, 1), (5, 1, 2), (5, 2, 0),
-    ];
 
     private float _rotX;
     private float _rotY;
@@ -92,6 +84,10 @@ public sealed class LeyLinesEffect
     private float _flickerAlpha = 0.2f;
     private float _flickerTimer = 2f;
     private bool _inFlicker;
+
+    private Task? _computeTask;
+    private FrameData _front = new();
+    private FrameData _back = new();
 
     public void Update(float dt, Vector2 min, Vector2 max)
     {
@@ -134,103 +130,144 @@ public sealed class LeyLinesEffect
         {
             _flickerAlpha = 0.2f + MathF.Sin(_time * 0.5f) * 0.05f;
         }
+
+        if (_computeTask == null || _computeTask.IsCompleted)
+        {
+            if (_computeTask?.IsCompleted == true)
+                SwapBuffers();
+
+            var rotX = _rotX;
+            var rotY = _rotY;
+            var flatRot = _flatRot;
+            var flickerAlpha = _flickerAlpha;
+
+            _computeTask = Task.Run(() => ComputeFrameData(rotX, rotY, flatRot, flickerAlpha, min, max));
+        }
     }
 
     public void Draw(ImDrawListPtr dl, Vector2 winMin, Vector2 winMax)
     {
         dl.PushClipRect(winMin, winMax, true);
 
-        var center = (winMin + winMax) * 0.5f;
-        var scale = MathF.Min(winMax.X - winMin.X, winMax.Y - winMin.Y) * 0.06f;
-        var baseAlpha = _flickerAlpha;
-
         DrawBaseGradient(dl, winMin, winMax);
 
-        // 预投影所有几何到屏幕坐标
-        var projDiamond = ProjectVerts(DiamondC, center, scale);
-        var projSquare = ProjectVerts(SquareD, center, scale);
-        var projFCenters = ProjectVerts(FCenters, center, scale);
+        var data = Volatile.Read(ref _front);
+        if (data.Lines == null)
+        {
+            dl.PopClipRect();
+            return;
+        }
 
-        // 6 组三角形投影
+        foreach (var (a, b, col, thickness) in data.Lines)
+            dl.AddLine(a, b, col, thickness);
+        foreach (var (center, radius, col) in data.Dots)
+            dl.AddCircleFilled(center, radius, col);
+        foreach (var (a, b, col, thickness) in data.ScanLines)
+            dl.AddLine(a, b, col, thickness);
+
+        dl.PopClipRect();
+    }
+
+    private void SwapBuffers()
+    {
+        var tmp = _front;
+        _front = _back;
+        _back = tmp;
+    }
+
+    private void ComputeFrameData(float rotX, float rotY, float flatRot, float flickerAlpha, Vector2 min, Vector2 max)
+    {
+        var center = (min + max) * 0.5f;
+        var scale = MathF.Min(max.X - min.X, max.Y - min.Y) * 0.06f;
+
+        var projDiamond = ProjectVerts(DiamondC, center, scale, rotX, rotY, flatRot);
+        var projSquare = ProjectVerts(SquareD, center, scale, rotX, rotY, flatRot);
+        var projFCenters = ProjectVerts(FCenters, center, scale, rotX, rotY, flatRot);
+
         var projTriVerts = new Vector2[6][];
         for (var i = 0; i < 6; i++)
         {
             projTriVerts[i] =
             [
-                Project(new Vector3(TriBase1[i].X * scale, TriBase1[i].Y * scale, 0), center, _rotX, _rotY, _flatRot),
-                Project(new Vector3(TriBase2[i].X * scale, TriBase2[i].Y * scale, 0), center, _rotX, _rotY, _flatRot),
-                Project(new Vector3(TriTips[i].X * scale, TriTips[i].Y * scale, 0), center, _rotX, _rotY, _flatRot),
+                Project(new Vector3(TriBase1[i].X * scale, TriBase1[i].Y * scale, 0), center, rotX, rotY, flatRot),
+                Project(new Vector3(TriBase2[i].X * scale, TriBase2[i].Y * scale, 0), center, rotX, rotY, flatRot),
+                Project(new Vector3(TriTips[i].X * scale, TriTips[i].Y * scale, 0), center, rotX, rotY, flatRot),
             ];
         }
 
-        // 色差偏移
+        var lines = new List<(Vector2 A, Vector2 B, uint Col, float Thickness)>();
+        var dots = new List<(Vector2 Center, float Radius, uint Col)>();
+
         var cyanOff = new Vector2(-2f, 0);
         var magentaOff = new Vector2(2f, 0);
 
-        // --- 色差 pass 1: 青 (偏移 -2, 0) ---
-        var cyanCol = ColorU32(new Vector4(0, 1, 1, 1), baseAlpha * 0.5f);
-        DrawAllWireframe(dl, cyanOff, cyanCol, 3f, projDiamond, DiamondEdges, projSquare, SquareEdges, projTriVerts);
-        DrawAllCircles(dl, cyanOff, cyanCol, 3f, center, _rotX, _rotY, _flatRot, scale);
+        var cyanCol = ColorU32(new Vector4(0, 1, 1, 1), flickerAlpha * 0.5f);
+        ComputeWireframe(lines, cyanOff, cyanCol, 3f, projDiamond, DiamondEdges, projSquare, SquareEdges, projTriVerts);
+        ComputeCircles(lines, cyanOff, cyanCol, 3f, center, rotX, rotY, flatRot, scale);
 
-        // --- 色差 pass 2: 品红 (偏移 +2, 0) ---
-        var magCol = ColorU32(new Vector4(1, 0, 1, 1), baseAlpha * 0.5f);
-        DrawAllWireframe(dl, magentaOff, magCol, 3f, projDiamond, DiamondEdges, projSquare, SquareEdges, projTriVerts);
-        DrawAllCircles(dl, magentaOff, magCol, 3f, center, _rotX, _rotY, _flatRot, scale);
+        var magCol = ColorU32(new Vector4(1, 0, 1, 1), flickerAlpha * 0.5f);
+        ComputeWireframe(lines, magentaOff, magCol, 3f, projDiamond, DiamondEdges, projSquare, SquareEdges, projTriVerts);
+        ComputeCircles(lines, magentaOff, magCol, 3f, center, rotX, rotY, flatRot, scale);
 
-        // --- 色差 pass 3: 主色 (无偏移) ---
-        var mainCol = ColorU32(new Vector4(0.7f, 0.8f, 1f, 1), baseAlpha);
-        DrawAllWireframe(dl, Vector2.Zero, mainCol, 4.5f, projDiamond, DiamondEdges, projSquare, SquareEdges, projTriVerts);
-        DrawAllCircles(dl, Vector2.Zero, mainCol, 4.5f, center, _rotX, _rotY, _flatRot, scale);
+        var mainCol = ColorU32(new Vector4(0.7f, 0.8f, 1f, 1), flickerAlpha);
+        ComputeWireframe(lines, Vector2.Zero, mainCol, 4.5f, projDiamond, DiamondEdges, projSquare, SquareEdges, projTriVerts);
+        ComputeCircles(lines, Vector2.Zero, mainCol, 4.5f, center, rotX, rotY, flatRot, scale);
 
-        // 顶点亮点
         foreach (var p in projDiamond)
-            dl.AddCircleFilled(p, 6f, ColorU32(new Vector4(0.7f, 0.8f, 1f, 1), baseAlpha));
+            dots.Add((p, 6f, ColorU32(new Vector4(0.7f, 0.8f, 1f, 1), flickerAlpha)));
         foreach (var p in projSquare)
-            dl.AddCircleFilled(p, 6f, ColorU32(new Vector4(0.7f, 0.8f, 1f, 1), baseAlpha * 0.8f));
+            dots.Add((p, 6f, ColorU32(new Vector4(0.7f, 0.8f, 1f, 1), flickerAlpha * 0.8f)));
         foreach (var p in projFCenters)
-            dl.AddCircleFilled(p, 4.5f, ColorU32(new Vector4(0.7f, 0.8f, 1f, 1), baseAlpha * 0.7f));
+            dots.Add((p, 4.5f, ColorU32(new Vector4(0.7f, 0.8f, 1f, 1), flickerAlpha * 0.7f)));
         foreach (var tri in projTriVerts)
             foreach (var p in tri)
-                dl.AddCircleFilled(p, 4.5f, ColorU32(new Vector4(0.7f, 0.8f, 1f, 1), baseAlpha * 0.5f));
+                dots.Add((p, 4.5f, ColorU32(new Vector4(0.7f, 0.8f, 1f, 1), flickerAlpha * 0.5f)));
 
-        DrawScanNoise(dl, winMin, winMax);
+        var scanLines = ComputeScanNoise(min, max);
 
-        dl.PopClipRect();
+        var back = _back;
+        back.Lines = lines.ToArray();
+        back.Dots = dots.ToArray();
+        back.ScanLines = scanLines;
     }
 
-    private static void DrawAllWireframe(ImDrawListPtr dl, Vector2 offset, uint col, float thickness,
+    private static void ComputeWireframe(
+        List<(Vector2 A, Vector2 B, uint Col, float Thickness)> lines,
+        Vector2 offset, uint col, float thickness,
         Vector2[] diamond, (int A, int B)[] diamondEdges,
         Vector2[] square, (int A, int B)[] squareEdges,
         Vector2[][] triVerts)
     {
         for (var i = 0; i < diamondEdges.Length; i++)
-            dl.AddLine(diamond[diamondEdges[i].A] + offset, diamond[diamondEdges[i].B] + offset, col, thickness);
+            lines.Add((diamond[diamondEdges[i].A] + offset, diamond[diamondEdges[i].B] + offset, col, thickness));
         for (var i = 0; i < squareEdges.Length; i++)
-            dl.AddLine(square[squareEdges[i].A] + offset, square[squareEdges[i].B] + offset, col, thickness);
+            lines.Add((square[squareEdges[i].A] + offset, square[squareEdges[i].B] + offset, col, thickness));
         for (var t = 0; t < triVerts.Length; t++)
         {
             var tri = triVerts[t];
-            dl.AddLine(tri[0] + offset, tri[1] + offset, col, thickness);
-            dl.AddLine(tri[1] + offset, tri[2] + offset, col, thickness);
-            dl.AddLine(tri[2] + offset, tri[0] + offset, col, thickness);
+            lines.Add((tri[0] + offset, tri[1] + offset, col, thickness));
+            lines.Add((tri[1] + offset, tri[2] + offset, col, thickness));
+            lines.Add((tri[2] + offset, tri[0] + offset, col, thickness));
         }
     }
 
-    private static void DrawAllCircles(ImDrawListPtr dl, Vector2 offset, uint col, float thickness,
+    private static void ComputeCircles(
+        List<(Vector2 A, Vector2 B, uint Col, float Thickness)> lines,
+        Vector2 offset, uint col, float thickness,
         Vector2 screenCenter, float rotX, float rotY, float flatRot, float scale)
     {
-        var origin3D = new Vector3(0, 0, 0);
-        DrawProjectedCircle(dl, origin3D, 6f * scale, screenCenter, rotX, rotY, flatRot, offset, col, thickness, 128);
-        DrawProjectedCircle(dl, origin3D, 4f * scale, screenCenter, rotX, rotY, flatRot, offset, col, thickness, 128);
+        ComputeProjectedCircle(lines, Vector3.Zero, 6f * scale, screenCenter, rotX, rotY, flatRot, offset, col, thickness, 128);
+        ComputeProjectedCircle(lines, Vector3.Zero, 4f * scale, screenCenter, rotX, rotY, flatRot, offset, col, thickness, 128);
         for (var i = 0; i < FCenters.Length; i++)
-            DrawProjectedCircle(dl, new Vector3(FCenters[i].X * scale, FCenters[i].Y * scale, 0), 2f * scale,
+            ComputeProjectedCircle(lines, new Vector3(FCenters[i].X * scale, FCenters[i].Y * scale, 0), 2f * scale,
                 screenCenter, rotX, rotY, flatRot, offset, col, thickness, 96);
         for (var i = 0; i < TriCentroids.Length; i++)
-            DrawProjectedCircle(dl, new Vector3(TriCentroids[i].X * scale, TriCentroids[i].Y * scale, 0), 0.23f * scale,
+            ComputeProjectedCircle(lines, new Vector3(TriCentroids[i].X * scale, TriCentroids[i].Y * scale, 0), 0.23f * scale,
                 screenCenter, rotX, rotY, flatRot, offset, col, thickness, 48);
     }
 
-    private static void DrawProjectedCircle(ImDrawListPtr dl,
+    private static void ComputeProjectedCircle(
+        List<(Vector2 A, Vector2 B, uint Col, float Thickness)> lines,
         Vector3 center3D, float radius3D,
         Vector2 screenCenter, float rotX, float rotY, float flatRot,
         Vector2 offset, uint color, float thickness, int segs)
@@ -246,21 +283,21 @@ public sealed class LeyLinesEffect
             screenPts[i] = Project(localPt, screenCenter, rotX, rotY, flatRot) + offset;
         }
         for (var i = 0; i < segs; i++)
-            dl.AddLine(screenPts[i], screenPts[(i + 1) % segs], color, thickness);
+            lines.Add((screenPts[i], screenPts[(i + 1) % segs], color, thickness));
     }
 
-    private Vector2[] ProjectVerts(Vector2[] localVerts, Vector2 screenCenter, float scale)
+    private static Vector2[] ProjectVerts(Vector2[] localVerts, Vector2 screenCenter, float scale,
+        float rotX, float rotY, float flatRot)
     {
         var result = new Vector2[localVerts.Length];
         for (var i = 0; i < localVerts.Length; i++)
             result[i] = Project(new Vector3(localVerts[i].X * scale, localVerts[i].Y * scale, 0),
-                screenCenter, _rotX, _rotY, _flatRot);
+                screenCenter, rotX, rotY, flatRot);
         return result;
     }
 
     private static Vector2 Project(Vector3 v, Vector2 center, float rotX, float rotY, float flatRot)
     {
-        // Z轴自转（平面内旋转，0.1°/s）
         var zCos = MathF.Cos(flatRot);
         var zSin = MathF.Sin(flatRot);
         var x0 = v.X * zCos - v.Y * zSin;
@@ -281,19 +318,22 @@ public sealed class LeyLinesEffect
         return center + new Vector2(x1, y1) * s;
     }
 
-    private void DrawScanNoise(ImDrawListPtr dl, Vector2 min, Vector2 max)
+    private static (Vector2 A, Vector2 B, uint Col, float Thickness)[] ComputeScanNoise(Vector2 min, Vector2 max)
     {
         var w = max.X - min.X;
+        var h = max.Y - min.Y;
         var count = 8 + (Random.Shared.NextSingle() < 0.3f ? 12 : 0);
+        var result = new (Vector2 A, Vector2 B, uint Col, float Thickness)[count];
         for (var i = 0; i < count; i++)
         {
             var x = min.X + Random.Shared.NextSingle() * w;
-            var y = min.Y + Random.Shared.NextSingle() * (max.Y - min.Y);
+            var y = min.Y + Random.Shared.NextSingle() * h;
             var len = 5f + Random.Shared.NextSingle() * 20f;
             var a = 0.05f + Random.Shared.NextSingle() * 0.15f;
-            dl.AddLine(new Vector2(x, y), new Vector2(x + len, y),
-                ImGui.ColorConvertFloat4ToU32(new Vector4(0.7f, 0.8f, 1f, a)), 1f);
+            result[i] = (new Vector2(x, y), new Vector2(x + len, y),
+                ColorU32(new Vector4(0.7f, 0.8f, 1f, 1), a), 1f);
         }
+        return result;
     }
 
     private static void DrawBaseGradient(ImDrawListPtr dl, Vector2 min, Vector2 max)
@@ -308,10 +348,23 @@ public sealed class LeyLinesEffect
             var y1 = min.Y + i * stepH;
             var y2 = y1 + stepH;
             dl.AddRectFilled(new Vector2(min.X, y1), new Vector2(max.X, y2),
-                ImGui.ColorConvertFloat4ToU32(new Vector4(0.1f, 0.2f, 0.4f, alpha)));
+                ColorU32(new Vector4(0.1f, 0.2f, 0.4f, 1), alpha));
         }
     }
 
     private static uint ColorU32(Vector4 c, float a)
-        => ImGui.ColorConvertFloat4ToU32(new Vector4(c.X, c.Y, c.Z, a));
+    {
+        var r = (byte)Math.Clamp(c.X * 255f, 0, 255);
+        var g = (byte)Math.Clamp(c.Y * 255f, 0, 255);
+        var b = (byte)Math.Clamp(c.Z * 255f, 0, 255);
+        var alpha = (byte)Math.Clamp(a * 255f, 0, 255);
+        return (uint)((alpha << 24) | (b << 16) | (g << 8) | r);
+    }
+
+    private sealed class FrameData
+    {
+        public (Vector2 A, Vector2 B, uint Col, float Thickness)[]? Lines;
+        public (Vector2 Center, float Radius, uint Col)[]? Dots;
+        public (Vector2 A, Vector2 B, uint Col, float Thickness)[]? ScanLines;
+    }
 }
