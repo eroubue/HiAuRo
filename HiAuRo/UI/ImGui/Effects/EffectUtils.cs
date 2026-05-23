@@ -55,5 +55,13 @@ public static class EffectUtils
         dl.AddText(pos, textU32, text);
     }
 
+    public static uint PackColor(float r, float g, float b, float a)
+    {
+        return (uint)((byte)Math.Clamp(a * 255f, 0, 255) << 24
+                      | (byte)Math.Clamp(b * 255f, 0, 255) << 16
+                      | (byte)Math.Clamp(g * 255f, 0, 255) << 8
+                      | (byte)Math.Clamp(r * 255f, 0, 255));
+    }
+
     private static readonly Dictionary<string, float> _hoverStates = new();
 }

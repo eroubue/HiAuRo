@@ -1,10 +1,8 @@
 using System.Numerics;
+using System.Threading.Tasks;
 
 namespace HiAuRo.ImGuiLib.Effects;
 
-/// <summary>
-/// 几何光效 — 赛博朋克风格动态霓虹线条：角落装饰 + 旋转多边形 + 扫描线 + 网格
-/// </summary>
 public sealed class GeometricGlowEffect
 {
     private float _rotationAngle;
@@ -12,18 +10,17 @@ public sealed class GeometricGlowEffect
     private float _scanDir = 1f;
     private const float ScanSpeed = 120f;
     private const float RotationSpeed = 15f * MathF.PI / 180f;
-    private float _windowHeight;
+
+    private Task? _computeTask;
+    private FrameData _front = new();
+    private FrameData _back = new();
 
     public void Update(float dt, Vector2 min, Vector2 max)
     {
-        var w = max.X - min.X;
         var h = max.Y - min.Y;
-        _windowHeight = h;
 
-        // 中心多边形旋转
         _rotationAngle += RotationSpeed * dt;
 
-        // 扫描线往返
         _scanLineY += _scanDir * ScanSpeed * dt;
         if (_scanLineY > h)
         {
@@ -35,31 +32,55 @@ public sealed class GeometricGlowEffect
             _scanLineY = 0f;
             _scanDir = 1f;
         }
+
+        if (_computeTask == null || _computeTask.IsCompleted)
+        {
+            if (_computeTask?.IsCompleted == true)
+                SwapBuffers();
+            var rot = _rotationAngle;
+            var scanY = _scanLineY;
+            _computeTask = Task.Run(() => ComputeFrameData(rot, scanY, min, max));
+        }
     }
 
     public void Draw(ImDrawListPtr dl, Vector2 winMin, Vector2 winMax)
     {
         dl.PushClipRect(winMin, winMax, true);
 
-        var accent = Theme.Colors.AccentBlue;
-        var tertiary = Theme.Colors.TextTertiary;
-
-        DrawCornerDecos(dl, winMin, winMax, accent);
-        DrawCenterPolygon(dl, winMin, winMax, accent);
-        DrawScanLine(dl, winMin, winMax, accent);
-        DrawGrid(dl, winMin, winMax, tertiary);
+        var data = Volatile.Read(ref _front);
+        if (data.Lines != null)
+            foreach (var (a, b, col, thick) in data.Lines)
+                dl.AddLine(a, b, col, thick);
 
         dl.PopClipRect();
     }
 
-    /// <summary>四角 L 形装饰线</summary>
-    private static void DrawCornerDecos(ImDrawListPtr dl, Vector2 min, Vector2 max, Vector4 accent)
+    private void SwapBuffers()
+    {
+        var tmp = _front;
+        _front = _back;
+        _back = tmp;
+    }
+
+    private void ComputeFrameData(float rot, float scanY, Vector2 min, Vector2 max)
+    {
+        var accent = Theme.Colors.AccentBlue;
+        var tertiary = Theme.Colors.TextTertiary;
+
+        var lines = new List<(Vector2 A, Vector2 B, uint Col, float Thick)>();
+
+        ComputeCornerLines(lines, min, max, accent);
+        ComputePolygonLines(lines, min, max, accent, rot);
+        ComputeScanLine(lines, min, max, accent, scanY);
+        ComputeGridLines(lines, min, max, tertiary);
+
+        var back = _back;
+        back.Lines = lines.ToArray();
+    }
+
+    private static void ComputeCornerLines(List<(Vector2 A, Vector2 B, uint Col, float Thick)> lines, Vector2 min, Vector2 max, Vector4 accent)
     {
         var len = 28f;
-        var thick = 1.5f;
-        var glowThick = 4f;
-
-        // 角落位置和方向
         var corners = new (Vector2 origin, Vector2 dirH, Vector2 dirV)[]
         {
             (min, new Vector2(1, 0), new Vector2(0, 1)),
@@ -68,88 +89,72 @@ public sealed class GeometricGlowEffect
             (max, new Vector2(-1, 0), new Vector2(0, -1)),
         };
 
+        var glowCol = EffectUtils.PackColor(accent.X, accent.Y, accent.Z, 0.12f);
+        var mainCol = EffectUtils.PackColor(accent.X, accent.Y, accent.Z, 0.5f);
+
         foreach (var (origin, dirH, dirV) in corners)
         {
             var hEnd = origin + dirH * len;
             var vEnd = origin + dirV * len;
-
-            // 辉光层
-            var glowColor = ImGui.ColorConvertFloat4ToU32(
-                new Vector4(accent.X, accent.Y, accent.Z, 0.12f));
-            dl.AddLine(origin, hEnd, glowColor, glowThick);
-            dl.AddLine(origin, vEnd, glowColor, glowThick);
-
-            // 主线条
-            var mainColor = ImGui.ColorConvertFloat4ToU32(
-                new Vector4(accent.X, accent.Y, accent.Z, 0.5f));
-            dl.AddLine(origin, hEnd, mainColor, thick);
-            dl.AddLine(origin, vEnd, mainColor, thick);
+            lines.Add((origin, hEnd, glowCol, 4f));
+            lines.Add((origin, vEnd, glowCol, 4f));
+            lines.Add((origin, hEnd, mainCol, 1.5f));
+            lines.Add((origin, vEnd, mainCol, 1.5f));
         }
     }
 
-    /// <summary>中心旋转六边形</summary>
-    private void DrawCenterPolygon(ImDrawListPtr dl, Vector2 min, Vector2 max, Vector4 accent)
+    private static void ComputePolygonLines(List<(Vector2 A, Vector2 B, uint Col, float Thick)> lines, Vector2 min, Vector2 max, Vector4 accent, float rot)
     {
         var center = (min + max) * 0.5f;
         var radius = Math.Min(max.X - min.X, max.Y - min.Y) * 0.2f;
         if (radius < 10f) return;
 
         var sides = 6;
+        var glowCol = EffectUtils.PackColor(accent.X, accent.Y, accent.Z, 0.08f);
+        var mainCol = EffectUtils.PackColor(accent.X, accent.Y, accent.Z, 0.25f);
+        var innerCol = EffectUtils.PackColor(accent.X, accent.Y, accent.Z, 0.15f);
 
-        // 辉光层
-        var glowColor = ImGui.ColorConvertFloat4ToU32(
-            new Vector4(accent.X, accent.Y, accent.Z, 0.08f));
-        DrawPolygon(dl, center, radius + 4f, sides, _rotationAngle, glowColor, 3f);
-
-        // 主线条
-        var mainColor = ImGui.ColorConvertFloat4ToU32(
-            new Vector4(accent.X, accent.Y, accent.Z, 0.25f));
-        DrawPolygon(dl, center, radius, sides, _rotationAngle, mainColor, 1.5f);
-
-        // 内层小多边形（反方向旋转）
-        var innerColor = ImGui.ColorConvertFloat4ToU32(
-            new Vector4(accent.X, accent.Y, accent.Z, 0.15f));
-        DrawPolygon(dl, center, radius * 0.5f, sides, -_rotationAngle * 0.7f, innerColor, 1f);
+        AddPolygon(lines, center, radius + 4f, sides, rot, glowCol, 3f);
+        AddPolygon(lines, center, radius, sides, rot, mainCol, 1.5f);
+        AddPolygon(lines, center, radius * 0.5f, sides, -rot * 0.7f, innerCol, 1f);
     }
 
-    private static void DrawPolygon(ImDrawListPtr dl, Vector2 center, float radius, int sides, float angle, uint color, float thickness)
+    private static void AddPolygon(List<(Vector2 A, Vector2 B, uint Col, float Thick)> lines, Vector2 center, float radius, int sides, float angle, uint color, float thickness)
     {
         for (var i = 0; i < sides; i++)
         {
             var a1 = angle + i * MathF.Tau / sides;
             var a2 = angle + ((i + 1) % sides) * MathF.Tau / sides;
-            var p1 = center + new Vector2(MathF.Cos(a1), MathF.Sin(a1)) * radius;
-            var p2 = center + new Vector2(MathF.Cos(a2), MathF.Sin(a2)) * radius;
-            dl.AddLine(p1, p2, color, thickness);
+            lines.Add((center + new Vector2(MathF.Cos(a1), MathF.Sin(a1)) * radius,
+                        center + new Vector2(MathF.Cos(a2), MathF.Sin(a2)) * radius,
+                        color, thickness));
         }
     }
 
-    /// <summary>水平扫描线（CRT 效果）</summary>
-    private void DrawScanLine(ImDrawListPtr dl, Vector2 min, Vector2 max, Vector4 accent)
+    private static void ComputeScanLine(List<(Vector2 A, Vector2 B, uint Col, float Thick)> lines, Vector2 min, Vector2 max, Vector4 accent, float scanY)
     {
-        var y = min.Y + _scanLineY;
+        var y = min.Y + scanY;
         if (y < min.Y || y > max.Y) return;
 
-        var scanColor = ImGui.ColorConvertFloat4ToU32(
-            new Vector4(accent.X, accent.Y, accent.Z, 0.3f));
-        var glowColor = ImGui.ColorConvertFloat4ToU32(
-            new Vector4(accent.X, accent.Y, accent.Z, 0.08f));
-
-        dl.AddLine(new Vector2(min.X, y), new Vector2(max.X, y), glowColor, 8f);
-        dl.AddLine(new Vector2(min.X, y), new Vector2(max.X, y), scanColor, 1f);
+        lines.Add((new Vector2(min.X, y), new Vector2(max.X, y),
+            EffectUtils.PackColor(accent.X, accent.Y, accent.Z, 0.08f), 8f));
+        lines.Add((new Vector2(min.X, y), new Vector2(max.X, y),
+            EffectUtils.PackColor(accent.X, accent.Y, accent.Z, 0.3f), 1f));
     }
 
-    /// <summary>淡色细网格背景（HUD overlay）</summary>
-    private static void DrawGrid(ImDrawListPtr dl, Vector2 min, Vector2 max, Vector4 tertiary)
+    private static void ComputeGridLines(List<(Vector2 A, Vector2 B, uint Col, float Thick)> lines, Vector2 min, Vector2 max, Vector4 tertiary)
     {
-        var gridColor = ImGui.ColorConvertFloat4ToU32(
-            new Vector4(tertiary.X, tertiary.Y, tertiary.Z, 0.04f));
+        var gridCol = EffectUtils.PackColor(tertiary.X, tertiary.Y, tertiary.Z, 0.04f);
         var spacing = 40f;
 
         for (var x = min.X + spacing; x < max.X; x += spacing)
-            dl.AddLine(new Vector2(x, min.Y), new Vector2(x, max.Y), gridColor, 0.5f);
-
+            lines.Add((new Vector2(x, min.Y), new Vector2(x, max.Y), gridCol, 0.5f));
         for (var y = min.Y + spacing; y < max.Y; y += spacing)
-            dl.AddLine(new Vector2(min.X, y), new Vector2(max.X, y), gridColor, 0.5f);
+            lines.Add((new Vector2(min.X, y), new Vector2(max.X, y), gridCol, 0.5f));
+    }
+
+    private sealed class FrameData
+    {
+        public (Vector2 A, Vector2 B, uint Col, float Thick)[]? Lines;
     }
 }

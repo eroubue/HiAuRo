@@ -1,10 +1,8 @@
 using System.Numerics;
+using System.Threading.Tasks;
 
 namespace HiAuRo.ImGuiLib.Effects;
 
-/// <summary>
-/// 数据流管道特效 — 管道、数据包、节点、鼠标互动
-/// </summary>
 public sealed class DataPipelineEffect
 {
     private struct Pipe
@@ -33,38 +31,35 @@ public sealed class DataPipelineEffect
 
     private const int PipeCount = 20;
     private const int InitialPackets = 20;
-    private static readonly Vector3[] PacketColors =
-    [
-        new(0, 1, 1),
-        new(1, 0, 1),
-        new(1, 1, 0),
-    ];
+    private static readonly Vector3[] PacketColors = [new(0, 1, 1), new(1, 0, 1), new(1, 1, 0)];
 
     private readonly Pipe[] _pipes = new Pipe[PipeCount];
     private readonly List<PipeNode> _nodes = new();
     private readonly List<DataPacket> _packets = new();
     private bool _initialized;
-    private float _scrollOffset;
+
+    private Vector2 _mousePos;
+    private bool _mouseClicked;
+
+    private Task? _computeTask;
+    private FrameData _front = new();
+    private FrameData _back = new();
 
     public void Update(float dt, Vector2 min, Vector2 max)
     {
-        if (!_initialized)
-            InitLayout(min, max);
+        if (!_initialized) InitLayout(min, max);
 
-        _scrollOffset += dt * 8f;
+        _mousePos = ImGui.GetIO().MousePos;
+        _mouseClicked = ImGui.IsMouseClicked(ImGuiMouseButton.Left);
 
-        // 更新数据包
         for (var i = _packets.Count - 1; i >= 0; i--)
         {
             var p = _packets[i];
             p.T += p.Speed * dt;
-            if (p.T > 1f)
-                _packets.RemoveAt(i);
-            else
-                _packets[i] = p;
+            if (p.T > 1f) _packets.RemoveAt(i);
+            else _packets[i] = p;
         }
 
-        // 节点定期发射新数据包
         for (var i = 0; i < _nodes.Count; i++)
         {
             var node = _nodes[i];
@@ -87,7 +82,6 @@ public sealed class DataPipelineEffect
             }
         }
 
-        // 保持最小数据包数
         while (_packets.Count < InitialPackets)
         {
             var pipeIdx = Random.Shared.Next(_pipes.Length);
@@ -102,34 +96,17 @@ public sealed class DataPipelineEffect
             });
         }
 
-        // 鼠标悬停管道加速
-        var mouse = ImGui.GetIO().MousePos;
-        for (var i = 0; i < _packets.Count; i++)
-        {
-            if (_packets[i].PipeIdx >= _pipes.Length) continue;
-            var pipe = _pipes[_packets[i].PipeIdx];
-            var pos = Vector2.Lerp(pipe.A, pipe.B, _packets[i].T);
-            if (Vector2.Distance(mouse, pos) < 15f)
-            {
-                var p = _packets[i];
-                p.Speed *= 1.8f;
-                _packets[i] = p;
-            }
-        }
-
-        // 点击节点爆发数据包
         if (ImGui.IsMouseClicked(ImGuiMouseButton.Left))
         {
             for (var i = 0; i < _nodes.Count; i++)
             {
-                if (Vector2.Distance(mouse, _nodes[i].Pos) < 15f)
+                if (Vector2.Distance(_mousePos, _nodes[i].Pos) < 15f)
                 {
                     for (var j = 0; j < 6 && _packets.Count < 60; j++)
                     {
-                        var pipeIdx = Random.Shared.Next(_pipes.Length);
                         _packets.Add(new DataPacket
                         {
-                            PipeIdx = pipeIdx,
+                            PipeIdx = Random.Shared.Next(_pipes.Length),
                             T = 0.5f,
                             Speed = (Random.Shared.Next(2) == 0 ? 1f : -1f) * (0.8f + Random.Shared.NextSingle()),
                             Color = PacketColors[Random.Shared.Next(PacketColors.Length)],
@@ -139,6 +116,14 @@ public sealed class DataPipelineEffect
                     break;
                 }
             }
+        }
+
+        if (_computeTask == null || _computeTask.IsCompleted)
+        {
+            if (_computeTask?.IsCompleted == true)
+                SwapBuffers();
+            var mpos = _mousePos;
+            _computeTask = Task.Run(() => ComputeFrameData(mpos));
         }
     }
 
@@ -192,30 +177,60 @@ public sealed class DataPipelineEffect
     {
         dl.PushClipRect(winMin, winMax, true);
 
-        var mouse = ImGui.GetIO().MousePos;
+        var data = Volatile.Read(ref _front);
 
-        // 管道
+        if (data.PipeWalls != null)
+            foreach (var (min, max, col) in data.PipeWalls)
+                dl.AddRectFilled(min, max, col);
+
+        if (data.PipeLines != null)
+            foreach (var (a, b, col) in data.PipeLines)
+                dl.AddLine(a, b, col, 1f);
+
+        if (data.PacketRects != null)
+            foreach (var (min, max, col) in data.PacketRects)
+                dl.AddRectFilled(min, max, col);
+
+        if (data.Nodes != null)
+            foreach (var (pos, glowRadius, glowCol, radius, mainCol) in data.Nodes)
+            {
+                dl.AddCircleFilled(pos, glowRadius, glowCol);
+                dl.AddCircleFilled(pos, radius, mainCol);
+            }
+
+        dl.PopClipRect();
+    }
+
+    private void SwapBuffers()
+    {
+        var tmp = _front;
+        _front = _back;
+        _back = tmp;
+    }
+
+    private void ComputeFrameData(Vector2 mousePos)
+    {
+        var pipeWalls = new List<(Vector2 Min, Vector2 Max, uint Col)>();
+        var pipeLines = new List<(Vector2 A, Vector2 B, uint Col)>();
+
         for (var i = 0; i < _pipes.Length; i++)
         {
             var pipe = _pipes[i];
-            var near = IsMouseNearPipe(mouse, pipe);
+            var near = IsMouseNearPipe(mousePos, pipe);
             var wallAlpha = near ? 0.15f : 0.07f;
-            var lineAlpha = near ? 0.4f : 0.15f;
             var thick = near ? 8f : 6f;
+            var lineAlpha = near ? 0.4f : 0.15f;
 
-            // 管壁
-            var wallColor = ImGui.ColorConvertFloat4ToU32(new Vector4(0.1f, 0.2f, 0.3f, wallAlpha));
+            var wallColor = EffectUtils.PackColor(0.1f, 0.2f, 0.3f, wallAlpha);
             if (pipe.Horizontal)
-                dl.AddRectFilled(pipe.A - new Vector2(0, thick * 0.5f), pipe.B + new Vector2(0, thick * 0.5f), wallColor);
+                pipeWalls.Add((pipe.A - new Vector2(0, thick * 0.5f), pipe.B + new Vector2(0, thick * 0.5f), wallColor));
             else
-                dl.AddRectFilled(pipe.A - new Vector2(thick * 0.5f, 0), pipe.B + new Vector2(thick * 0.5f, 0), wallColor);
+                pipeWalls.Add((pipe.A - new Vector2(thick * 0.5f, 0), pipe.B + new Vector2(thick * 0.5f, 0), wallColor));
 
-            // 中心流线
-            dl.AddLine(pipe.A, pipe.B,
-                ImGui.ColorConvertFloat4ToU32(new Vector4(0, 1, 1, lineAlpha)), 1f);
+            pipeLines.Add((pipe.A, pipe.B, EffectUtils.PackColor(0, 1, 1, lineAlpha)));
         }
 
-        // 数据包
+        var packetRects = new List<(Vector2 Min, Vector2 Max, uint Col)>();
         foreach (var packet in _packets)
         {
             if (packet.PipeIdx >= _pipes.Length) continue;
@@ -224,27 +239,24 @@ public sealed class DataPipelineEffect
             var pos = Vector2.Lerp(pipe.A, pipe.B, t);
             var fade = 1f - MathF.Abs(t - 0.5f) * 2f;
             var alpha = Math.Max(0f, fade) * 0.9f;
-
-            dl.AddRectFilled(pos - new Vector2(packet.Size, packet.Size * 0.6f),
-                pos + new Vector2(packet.Size, packet.Size * 0.6f),
-                ImGui.ColorConvertFloat4ToU32(new Vector4(packet.Color.X, packet.Color.Y, packet.Color.Z, alpha)));
+            packetRects.Add((pos - new Vector2(packet.Size, packet.Size * 0.6f), pos + new Vector2(packet.Size, packet.Size * 0.6f), EffectUtils.PackColor(packet.Color.X, packet.Color.Y, packet.Color.Z, alpha)));
         }
 
-        // 节点
+        var nodes = new (Vector2 Pos, float GlowRadius, uint GlowCol, float Radius, uint MainCol)[_nodes.Count];
         for (var i = 0; i < _nodes.Count; i++)
         {
             var node = _nodes[i];
-            var pulse = EffectUtils.StatePulse(node.PulseFreq);
+            var pulse = (MathF.Sin(node.PulsePhase) + 1f) * 0.5f;
             var alpha = 0.2f + pulse * 0.3f;
             var r = 4f + pulse * 2f;
-
-            dl.AddCircleFilled(node.Pos, r + 5f,
-                ImGui.ColorConvertFloat4ToU32(new Vector4(0, 1, 1, alpha * 0.1f)));
-            dl.AddCircleFilled(node.Pos, r,
-                ImGui.ColorConvertFloat4ToU32(new Vector4(0, 1, 1, alpha)));
+            nodes[i] = (node.Pos, r + 5f, EffectUtils.PackColor(0, 1, 1, alpha * 0.1f), r, EffectUtils.PackColor(0, 1, 1, alpha));
         }
 
-        dl.PopClipRect();
+        var back = _back;
+        back.PipeWalls = pipeWalls.ToArray();
+        back.PipeLines = pipeLines.ToArray();
+        back.PacketRects = packetRects.ToArray();
+        back.Nodes = nodes;
     }
 
     private static bool IsMouseNearPipe(Vector2 mouse, Pipe pipe)
@@ -255,5 +267,13 @@ public sealed class DataPipelineEffect
         t = Math.Clamp(t, 0f, 1f);
         var closest = pipe.A + ab * t;
         return Vector2.Distance(mouse, closest) < 15f;
+    }
+
+    private sealed class FrameData
+    {
+        public (Vector2 Min, Vector2 Max, uint Col)[]? PipeWalls;
+        public (Vector2 A, Vector2 B, uint Col)[]? PipeLines;
+        public (Vector2 Min, Vector2 Max, uint Col)[]? PacketRects;
+        public (Vector2 Pos, float GlowRadius, uint GlowCol, float Radius, uint MainCol)[]? Nodes;
     }
 }

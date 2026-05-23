@@ -1,10 +1,8 @@
 using System.Numerics;
+using System.Threading.Tasks;
 
 namespace HiAuRo.ImGuiLib.Effects;
 
-/// <summary>
-/// 霓虹电路板特效 — 走线、节点、数据脉冲、鼠标互动
-/// </summary>
 public sealed class NeonCircuitEffect
 {
     private struct Trace
@@ -31,7 +29,6 @@ public sealed class NeonCircuitEffect
     }
 
     private const int TraceCount = 30;
-    private const int PulsePerTrace = 2;
     private const int MaxPulses = 40;
 
     private static readonly Vector3 NeonCyan = new(0, 1, 1);
@@ -42,58 +39,56 @@ public sealed class NeonCircuitEffect
     private readonly List<Pulse> _pulses = new();
     private bool _initialized;
 
+    private Vector2 _mousePos;
+    private bool _mouseClicked;
+
+    private Task? _computeTask;
+    private FrameData _front = new();
+    private FrameData _back = new();
+
     public void Update(float dt, Vector2 min, Vector2 max)
     {
-        if (!_initialized)
-            InitLayout(min, max);
+        if (!_initialized) InitLayout(min, max);
 
-        // 更新脉冲
+        _mousePos = ImGui.GetIO().MousePos;
+        _mouseClicked = ImGui.IsMouseClicked(ImGuiMouseButton.Left);
+
         for (var i = _pulses.Count - 1; i >= 0; i--)
         {
             var p = _pulses[i];
             p.T += p.Speed * dt;
-            if (p.T > 1f)
-                _pulses.RemoveAt(i);
-            else
-                _pulses[i] = p;
+            if (p.T > 1f) _pulses.RemoveAt(i);
+            else _pulses[i] = p;
         }
 
-        // 补充脉冲
         while (_pulses.Count < MaxPulses)
         {
             var idx = Random.Shared.Next(_traces.Length);
             var color = Random.Shared.NextSingle() < 0.6f ? NeonCyan : NeonMagenta;
-            _pulses.Add(new Pulse
-            {
-                TraceIdx = idx,
-                T = 0f,
-                Speed = 0.3f + Random.Shared.NextSingle() * 0.8f,
-                Color = color,
-            });
+            _pulses.Add(new Pulse { TraceIdx = idx, T = 0f, Speed = 0.3f + Random.Shared.NextSingle() * 0.8f, Color = color });
         }
 
-        // 鼠标互动 — 点击节点发射脉冲波
-        if (ImGui.IsMouseClicked(ImGuiMouseButton.Left))
+        if (_mouseClicked)
         {
-            var mp = ImGui.GetMousePos();
             foreach (var node in _nodes)
             {
-                if (Vector2.Distance(mp, node.Pos) < 15f)
+                if (Vector2.Distance(_mousePos, node.Pos) < 15f)
                 {
                     for (var j = 0; j < 5 && _pulses.Count < MaxPulses + 10; j++)
                     {
-                        var idx = Random.Shared.Next(_traces.Length);
-                        _pulses.Add(new Pulse
-                        {
-                            TraceIdx = idx,
-                            T = 0f,
-                            Speed = 0.8f + Random.Shared.NextSingle() * 1f,
-                            Color = new Vector3(1, 1, 0),
-                        });
+                        _pulses.Add(new Pulse { TraceIdx = Random.Shared.Next(_traces.Length), T = 0f, Speed = 0.8f + Random.Shared.NextSingle() * 1f, Color = new Vector3(1, 1, 0) });
                     }
                     break;
                 }
             }
+        }
+
+        if (_computeTask == null || _computeTask.IsCompleted)
+        {
+            if (_computeTask?.IsCompleted == true)
+                SwapBuffers();
+            var mpos = _mousePos;
+            _computeTask = Task.Run(() => ComputeFrameData(mpos));
         }
     }
 
@@ -147,20 +142,50 @@ public sealed class NeonCircuitEffect
     {
         dl.PushClipRect(winMin, winMax, true);
 
-        var mouse = ImGui.GetIO().MousePos;
+        var data = Volatile.Read(ref _front);
 
-        // 走线 — 双层绘制
-        foreach (var trace in _traces)
+        if (data.TraceLines != null)
+            foreach (var (a, b, glowCol, mainCol) in data.TraceLines)
+            {
+                dl.AddLine(a, b, glowCol, 4f);
+                dl.AddLine(a, b, mainCol, 1f);
+            }
+
+        if (data.PulseDots != null)
+            foreach (var (pos, glowSize, glowCol, mainSize, mainCol) in data.PulseDots)
+            {
+                dl.AddCircleFilled(pos, glowSize, glowCol);
+                dl.AddCircleFilled(pos, mainSize, mainCol);
+            }
+
+        if (data.Nodes != null)
+            for (var i = 0; i < data.Nodes.Length; i++)
+            {
+                var (pos, radius, glowCol, mainCol) = data.Nodes[i];
+                if (glowCol != 0u) dl.AddCircleFilled(pos, radius + 8f, glowCol);
+                dl.AddCircleFilled(pos, radius, mainCol);
+            }
+
+        dl.PopClipRect();
+    }
+
+    private void SwapBuffers()
+    {
+        var tmp = _front;
+        _front = _back;
+        _back = tmp;
+    }
+
+    private void ComputeFrameData(Vector2 mousePos)
+    {
+        var traceLines = new (Vector2 A, Vector2 B, uint GlowCol, uint MainCol)[_traces.Length];
+        for (var i = 0; i < _traces.Length; i++)
         {
-            // 底层辉光
-            dl.AddLine(trace.A, trace.B,
-                ImGui.ColorConvertFloat4ToU32(new Vector4(0, 1, 1, 0.06f)), 4f);
-            // 顶层
-            dl.AddLine(trace.A, trace.B,
-                ImGui.ColorConvertFloat4ToU32(new Vector4(0, 1, 1, 0.2f)), 1f);
+            var trace = _traces[i];
+            traceLines[i] = (trace.A, trace.B, EffectUtils.PackColor(0, 1, 1, 0.06f), EffectUtils.PackColor(0, 1, 1, 0.2f));
         }
 
-        // 脉冲点
+        var pulseDots = new List<(Vector2 Pos, float GlowSize, uint GlowCol, float MainSize, uint MainCol)>();
         foreach (var pulse in _pulses)
         {
             if (pulse.TraceIdx >= _traces.Length) continue;
@@ -168,33 +193,30 @@ public sealed class NeonCircuitEffect
             var pos = Vector2.Lerp(trace.A, trace.B, pulse.T);
             var alpha = 1f - MathF.Abs(pulse.T - 0.5f) * 2f;
             alpha = Math.Max(0f, alpha) * 0.9f;
-            var size = 4f;
-
-            dl.AddCircleFilled(pos, size + 4f,
-                ImGui.ColorConvertFloat4ToU32(new Vector4(pulse.Color.X, pulse.Color.Y, pulse.Color.Z, alpha * 0.15f)));
-            dl.AddCircleFilled(pos, size,
-                ImGui.ColorConvertFloat4ToU32(new Vector4(pulse.Color.X, pulse.Color.Y, pulse.Color.Z, alpha)));
+            pulseDots.Add((pos, 8f, EffectUtils.PackColor(pulse.Color.X, pulse.Color.Y, pulse.Color.Z, alpha * 0.15f), 4f, EffectUtils.PackColor(pulse.Color.X, pulse.Color.Y, pulse.Color.Z, alpha)));
         }
 
-        // 节点 — 呼吸闪烁 + 鼠标靠近放大
-        var dt = ImGui.GetIO().DeltaTime;
+        var nodes = new (Vector2 Pos, float Radius, uint GlowCol, uint MainCol)[_nodes.Count];
         for (var i = 0; i < _nodes.Count; i++)
         {
             var node = _nodes[i];
-            node.PulsePhase += node.PulseFreq * dt;
-            var pulse = EffectUtils.StatePulse(node.PulseFreq);
-            var mouseNear = Vector2.Distance(mouse, node.Pos) < 20f;
+            var pulse = (MathF.Sin(node.PulsePhase) + 1f) * 0.5f;
+            var mouseNear = Vector2.Distance(mousePos, node.Pos) < 20f;
             var r = node.BaseRadius + (mouseNear ? 3f : 0f);
             var alpha = 0.3f + pulse * 0.3f + (mouseNear ? 0.3f : 0f);
-
-            if (mouseNear)
-                dl.AddCircleFilled(node.Pos, r + 8f,
-                    ImGui.ColorConvertFloat4ToU32(new Vector4(0, 1, 1, 0.1f)));
-
-            dl.AddCircleFilled(node.Pos, r,
-                ImGui.ColorConvertFloat4ToU32(new Vector4(0, 1, 1, alpha)));
+            nodes[i] = (node.Pos, r, mouseNear ? EffectUtils.PackColor(0, 1, 1, 0.1f) : 0u, EffectUtils.PackColor(0, 1, 1, alpha));
         }
 
-        dl.PopClipRect();
+        var back = _back;
+        back.TraceLines = traceLines;
+        back.PulseDots = pulseDots.ToArray();
+        back.Nodes = nodes;
+    }
+
+    private sealed class FrameData
+    {
+        public (Vector2 A, Vector2 B, uint GlowCol, uint MainCol)[]? TraceLines;
+        public (Vector2 Pos, float GlowSize, uint GlowCol, float MainSize, uint MainCol)[]? PulseDots;
+        public (Vector2 Pos, float Radius, uint GlowCol, uint MainCol)[]? Nodes;
     }
 }

@@ -1,10 +1,8 @@
 using System.Numerics;
+using System.Threading.Tasks;
 
 namespace HiAuRo.ImGuiLib.Effects;
 
-/// <summary>
-/// 星座连线特效 — 随机光点缓慢漂移 + 鼠标跟随星群，近邻连线时隐时现
-/// </summary>
 public sealed class ConstellationEffect
 {
     private struct Star
@@ -14,8 +12,6 @@ public sealed class ConstellationEffect
         public float Radius;
         public float FlickerPhase;
         public float FlickerFreq;
-
-        // 鼠标跟随星专用
         public float OffsetDist;
         public float OffsetAngle;
         public float RotSpeed;
@@ -39,6 +35,10 @@ public sealed class ConstellationEffect
     private float _leaveTimer;
     private Vector2 _smoothedCursor;
 
+    private Task? _computeTask;
+    private FrameData _front = new();
+    private FrameData _back = new();
+
     public ConstellationEffect()
     {
         _stars = new Star[NormalCount + CursorCount];
@@ -58,9 +58,7 @@ public sealed class ConstellationEffect
             ref var s = ref _stars[i];
             if (i < NormalCount)
             {
-                s.Pos = new Vector2(
-                    min.X + Random.Shared.NextSingle() * w,
-                    min.Y + Random.Shared.NextSingle() * h);
+                s.Pos = new Vector2(min.X + Random.Shared.NextSingle() * w, min.Y + Random.Shared.NextSingle() * h);
                 var angle = Random.Shared.NextSingle() * MathF.Tau;
                 var speed = 5f + Random.Shared.NextSingle() * 10f;
                 s.Vel = new Vector2(MathF.Cos(angle) * speed, MathF.Sin(angle) * speed);
@@ -88,15 +86,12 @@ public sealed class ConstellationEffect
 
     public void Update(float dt, Vector2 min, Vector2 max)
     {
-        if (!_initialized)
-            InitAll(min, max);
+        if (!_initialized) InitAll(min, max);
 
         var center = (min + max) * 0.5f;
 
-        // 鼠标跟随星状态
         var mouse = ImGui.GetIO().MousePos;
-        var inWindow = mouse.X >= min.X && mouse.X <= max.X
-                    && mouse.Y >= min.Y && mouse.Y <= max.Y;
+        var inWindow = mouse.X >= min.X && mouse.X <= max.X && mouse.Y >= min.Y && mouse.Y <= max.Y;
 
         if (inWindow)
         {
@@ -137,9 +132,16 @@ public sealed class ConstellationEffect
                 var driftY = MathF.Sin(s.DriftPhaseY) * s.DriftAmp;
                 var ox = MathF.Cos(s.OffsetAngle) * s.OffsetDist + driftX;
                 var oy = MathF.Sin(s.OffsetAngle) * s.OffsetDist + driftY;
-                var target = _smoothedCursor + new Vector2(ox, oy);
-                s.Pos = Vector2.Lerp(s.Pos, target, MathF.Min(1f, dt * 4f));
+                s.Pos = Vector2.Lerp(s.Pos, _smoothedCursor + new Vector2(ox, oy), MathF.Min(1f, dt * 4f));
             }
+        }
+
+        if (_computeTask == null || _computeTask.IsCompleted)
+        {
+            if (_computeTask?.IsCompleted == true)
+                SwapBuffers();
+            var alpha = _cursorAlpha;
+            _computeTask = Task.Run(() => ComputeFrameData(alpha));
         }
     }
 
@@ -147,9 +149,34 @@ public sealed class ConstellationEffect
     {
         dl.PushClipRect(winMin, winMax, true);
 
-        var accent = Theme.Colors.AccentBlue;
+        var data = Volatile.Read(ref _front);
+        if (data.Lines != null)
+            foreach (var (a, b, col) in data.Lines)
+                dl.AddLine(a, b, col, 1f);
+        if (data.Glows != null)
+            foreach (var (pos, radius, col) in data.Glows)
+                dl.AddCircleFilled(pos, radius, col);
+        if (data.Cores != null)
+            foreach (var (pos, radius, col) in data.Cores)
+                dl.AddCircleFilled(pos, radius, col);
 
-        // 连线 — 所有星点互相检测
+        dl.PopClipRect();
+    }
+
+    private void SwapBuffers()
+    {
+        var tmp = _front;
+        _front = _back;
+        _back = tmp;
+    }
+
+    private void ComputeFrameData(float cursorAlpha)
+    {
+        var accent = Theme.Colors.AccentBlue;
+        var lines = new List<(Vector2 A, Vector2 B, uint Col)>();
+        var glows = new List<(Vector2 Pos, float Radius, uint Col)>();
+        var cores = new List<(Vector2 Pos, float Radius, uint Col)>();
+
         for (var i = 0; i < _stars.Length; i++)
         {
             for (var j = i + 1; j < _stars.Length; j++)
@@ -163,7 +190,6 @@ public sealed class ConstellationEffect
                 var threshold = _connThreshold;
                 var lineAlphaBase = 0.25f;
 
-                // 涉及鼠标跟随星时用更大阈值和淡入
                 var iCursor = i >= NormalCount;
                 var jCursor = j >= NormalCount;
                 if (iCursor || jCursor)
@@ -176,19 +202,12 @@ public sealed class ConstellationEffect
                 {
                     var t = 1f - dist / threshold;
                     var lineAlpha = t * lineAlphaBase;
-
-                    // 鼠标跟随星的连线随 _cursorAlpha 淡入淡出
-                    if (iCursor || jCursor)
-                        lineAlpha *= _cursorAlpha;
-
-                    var lineColor = ImGui.ColorConvertFloat4ToU32(
-                        new Vector4(accent.X, accent.Y, accent.Z, lineAlpha));
-                    dl.AddLine(pi, pj, lineColor, 1f);
+                    if (iCursor || jCursor) lineAlpha *= cursorAlpha;
+                    lines.Add((pi, pj, EffectUtils.PackColor(accent.X, accent.Y, accent.Z, lineAlpha)));
                 }
             }
         }
 
-        // 光点
         for (var i = 0; i < _stars.Length; i++)
         {
             ref var s = ref _stars[i];
@@ -198,7 +217,7 @@ public sealed class ConstellationEffect
             float alpha, glowSize, glowAlpha;
             if (isCursor)
             {
-                alpha = (0.6f + flicker * 0.2f) * _cursorAlpha;
+                alpha = (0.6f + flicker * 0.2f) * cursorAlpha;
                 glowSize = 7f;
                 glowAlpha = alpha * 0.2f;
             }
@@ -209,12 +228,20 @@ public sealed class ConstellationEffect
                 glowAlpha = alpha * 0.15f;
             }
 
-            dl.AddCircleFilled(s.Pos, s.Radius + glowSize,
-                ImGui.ColorConvertFloat4ToU32(new Vector4(accent.X, accent.Y, accent.Z, glowAlpha)));
-            dl.AddCircleFilled(s.Pos, s.Radius,
-                ImGui.ColorConvertFloat4ToU32(new Vector4(accent.X, accent.Y, accent.Z, alpha)));
+            glows.Add((s.Pos, s.Radius + glowSize, EffectUtils.PackColor(accent.X, accent.Y, accent.Z, glowAlpha)));
+            cores.Add((s.Pos, s.Radius, EffectUtils.PackColor(accent.X, accent.Y, accent.Z, alpha)));
         }
 
-        dl.PopClipRect();
+        var back = _back;
+        back.Lines = lines.ToArray();
+        back.Glows = glows.ToArray();
+        back.Cores = cores.ToArray();
+    }
+
+    private sealed class FrameData
+    {
+        public (Vector2 A, Vector2 B, uint Col)[]? Lines;
+        public (Vector2 Pos, float Radius, uint Col)[]? Glows;
+        public (Vector2 Pos, float Radius, uint Col)[]? Cores;
     }
 }

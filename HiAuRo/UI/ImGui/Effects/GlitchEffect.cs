@@ -1,10 +1,8 @@
 using System.Numerics;
+using System.Threading.Tasks;
 
 namespace HiAuRo.ImGuiLib.Effects;
 
-/// <summary>
-/// 故障艺术特效 — 水平撕裂、色彩通道分离、噪点带、边缘锯齿波、鼠标互动
-/// </summary>
 public sealed class GlitchEffect
 {
     private struct TearLine
@@ -52,6 +50,10 @@ public sealed class GlitchEffect
     private float _mouseSpeed;
     private bool _initialized;
 
+    private Task? _computeTask;
+    private FrameData _front = new();
+    private FrameData _back = new();
+
     public void Update(float dt, Vector2 min, Vector2 max)
     {
         _time += dt;
@@ -64,13 +66,11 @@ public sealed class GlitchEffect
             _initialized = true;
         }
 
-        // 鼠标速度
         var mouse = ImGui.GetIO().MousePos;
         var dv = mouse - _lastMouse;
         _mouseSpeed = Vector2.Dot(dv, dv);
         _lastMouse = mouse;
 
-        // 大故障定时
         _burstTimer -= dt;
         if (_burstTimer <= 0f)
         {
@@ -82,60 +82,46 @@ public sealed class GlitchEffect
         if (_inBurst)
         {
             _burstDuration -= dt;
-            if (_burstDuration <= 0f)
-                _inBurst = false;
+            if (_burstDuration <= 0f) _inBurst = false;
         }
 
-        // 生成撕裂条
         var isBurst = _inBurst || _mouseSpeed > 2500f;
         var count = isBurst ? BurstTearCount : NormalTearCount;
-        for (var i = _tears.Count; i < count; i++)
-            SpawnTear(min, max);
+        while (_tears.Count < count) SpawnTear(min, max);
 
-        // 补充撕裂
-        while (_tears.Count < count)
-            SpawnTear(min, max);
-
-        // 更新撕裂条
         for (var i = _tears.Count - 1; i >= 0; i--)
         {
             var t = _tears[i];
             t.Life -= dt;
-            if (t.Life <= 0f)
-            {
-                _tears.RemoveAt(i);
-                continue;
-            }
+            if (t.Life <= 0f) { _tears.RemoveAt(i); continue; }
             t.Alpha = t.Life / t.MaxLife;
             _tears[i] = t;
         }
 
-        // EMP 环更新
         for (var i = _empRings.Count - 1; i >= 0; i--)
         {
             var r = _empRings[i];
             r.Radius += dt * 300f;
             r.Life -= dt * 2.5f;
-            if (r.Life <= 0f || r.Radius > r.MaxRadius)
-                _empRings.RemoveAt(i);
-            else
-                _empRings[i] = r;
+            if (r.Life <= 0f || r.Radius > r.MaxRadius) _empRings.RemoveAt(i);
+            else _empRings[i] = r;
         }
 
-        // 点击触发 EMP
         if (ImGui.IsMouseClicked(ImGuiMouseButton.Left))
         {
-            var mp = ImGui.GetMousePos();
-            if (mp.X >= min.X && mp.X <= max.X && mp.Y >= min.Y && mp.Y <= max.Y)
+            if (mouse.X >= min.X && mouse.X <= max.X && mouse.Y >= min.Y && mouse.Y <= max.Y)
             {
-                _empRings.Add(new EmpRing
-                {
-                    Center = mp,
-                    Radius = 0f,
-                    MaxRadius = Math.Max(max.X - min.X, h) * 0.5f,
-                    Life = 1f,
-                });
+                _empRings.Add(new EmpRing { Center = mouse, Radius = 0f, MaxRadius = Math.Max(max.X - min.X, h) * 0.5f, Life = 1f });
             }
+        }
+
+        if (_computeTask == null || _computeTask.IsCompleted)
+        {
+            if (_computeTask?.IsCompleted == true)
+                SwapBuffers();
+            var time = _time;
+            var inBurst2 = _inBurst;
+            _computeTask = Task.Run(() => ComputeFrameData(time, min, max, inBurst2));
         }
     }
 
@@ -158,53 +144,79 @@ public sealed class GlitchEffect
     {
         dl.PushClipRect(winMin, winMax, true);
 
-        var w = winMax.X - winMin.X;
-        var h = winMax.Y - winMin.Y;
+        var data = Volatile.Read(ref _front);
 
-        // 边缘锯齿波形线
-        DrawEdgeWave(dl, winMin, winMax);
-
-        // 撕裂条 + 通道分离
-        foreach (var tear in _tears)
+        if (data.EdgeWaveTop != null)
         {
-            var alpha = tear.Alpha;
-            // 三色通道分离
-            DrawChannel(dl, winMin, w, tear, Cyan, -2f, alpha);
-            DrawChannel(dl, winMin, w, tear, Magenta, 0f, alpha);
-            DrawChannel(dl, winMin, w, tear, Yellow, 2f, alpha);
+            dl.PathLineTo(data.EdgeWaveTop[0].A);
+            for (var i = 0; i < data.EdgeWaveTop.Length; i++)
+                dl.PathLineTo(data.EdgeWaveTop[i].B);
+            dl.PathStroke(data.EdgeWaveCol, ImDrawFlags.None, 1f);
         }
 
-        // 噪点带
-        DrawNoise(dl, winMin, winMax);
-
-        // EMP 圆环
-        foreach (var ring in _empRings)
+        if (data.EdgeWaveBottom != null)
         {
-            var a = ring.Life * 0.6f;
-            dl.AddCircle(ring.Center, ring.Radius,
-                ImGui.ColorConvertFloat4ToU32(new Vector4(0, 1, 1, a)),
-                0, 2f);
-            dl.AddCircle(ring.Center, ring.Radius * 0.7f,
-                ImGui.ColorConvertFloat4ToU32(new Vector4(1, 0, 1, a * 0.5f)),
-                0, 1f);
+            dl.PathLineTo(data.EdgeWaveBottom[0].A);
+            for (var i = 0; i < data.EdgeWaveBottom.Length; i++)
+                dl.PathLineTo(data.EdgeWaveBottom[i].B);
+            dl.PathStroke(data.EdgeWaveCol, ImDrawFlags.None, 1f);
         }
+
+        if (data.ChannelRects != null)
+            foreach (var (min, max, col) in data.ChannelRects)
+                dl.AddRectFilled(min, max, col);
+
+        if (data.NoiseLines != null)
+            foreach (var (a, b, col) in data.NoiseLines)
+                dl.AddLine(a, b, col, 1f);
+
+        if (data.EmpRings != null)
+            foreach (var (center, radius, col, thick) in data.EmpRings)
+                dl.AddCircle(center, radius, col, 0, thick);
 
         dl.PopClipRect();
     }
 
-    private static void DrawChannel(ImDrawListPtr dl, Vector2 winMin, float w, TearLine tear, Vector3 color, float extraOffset, float alpha)
+    private void SwapBuffers()
     {
-        var x = winMin.X + tear.OffsetX + extraOffset;
-        var y = tear.Y;
-        var h = tear.Height;
-        var col = ImGui.ColorConvertFloat4ToU32(new Vector4(color.X, color.Y, color.Z, alpha * 0.4f));
-        dl.AddRectFilled(new Vector2(x, y), new Vector2(x + w, y + h), col);
+        var tmp = _front;
+        _front = _back;
+        _back = tmp;
     }
 
-    private void DrawNoise(ImDrawListPtr dl, Vector2 min, Vector2 max)
+    private void ComputeFrameData(float time, Vector2 min, Vector2 max, bool inBurst)
     {
-        var count = 20 + (_inBurst ? 40 : 0);
-        for (var i = 0; i < count; i++)
+        var w = max.X - min.X;
+        var segLen = 20f;
+        var amp = 3f;
+        var waveCol = EffectUtils.PackColor(0, 1, 1, 0.15f);
+
+        var topPts = new List<(Vector2 A, Vector2 B)>();
+        for (var x = min.X; x < max.X - segLen; x += segLen)
+        {
+            var off = MathF.Sin(time * 5f + x * 0.05f) * amp;
+            topPts.Add((new Vector2(x, min.Y + off), new Vector2(x + segLen, min.Y + MathF.Sin(time * 5f + (x + segLen) * 0.05f) * amp)));
+        }
+
+        var botPts = new List<(Vector2 A, Vector2 B)>();
+        for (var x = min.X; x < max.X - segLen; x += segLen)
+        {
+            var off = MathF.Sin(time * 4.5f + x * 0.06f) * amp;
+            botPts.Add((new Vector2(x, max.Y + off), new Vector2(x + segLen, max.Y + MathF.Sin(time * 4.5f + (x + segLen) * 0.06f) * amp)));
+        }
+
+        var channelRects = new List<(Vector2 Min, Vector2 Max, uint Col)>();
+        foreach (var tear in _tears)
+        {
+            var alpha = tear.Alpha;
+            channelRects.Add((new Vector2(min.X + tear.OffsetX - 2f, tear.Y), new Vector2(min.X + tear.OffsetX - 2f + w, tear.Y + tear.Height), EffectUtils.PackColor(Cyan.X, Cyan.Y, Cyan.Z, alpha * 0.4f)));
+            channelRects.Add((new Vector2(min.X + tear.OffsetX, tear.Y), new Vector2(min.X + tear.OffsetX + w, tear.Y + tear.Height), EffectUtils.PackColor(Magenta.X, Magenta.Y, Magenta.Z, alpha * 0.4f)));
+            channelRects.Add((new Vector2(min.X + tear.OffsetX + 2f, tear.Y), new Vector2(min.X + tear.OffsetX + 2f + w, tear.Y + tear.Height), EffectUtils.PackColor(Yellow.X, Yellow.Y, Yellow.Z, alpha * 0.4f)));
+        }
+
+        var noiseLines = new List<(Vector2 A, Vector2 B, uint Col)>();
+        var noiseCount = 20 + (inBurst ? 40 : 0);
+        for (var i = 0; i < noiseCount; i++)
         {
             var x = min.X + Random.Shared.NextSingle() * (max.X - min.X);
             var y = min.Y + Random.Shared.NextSingle() * (max.Y - min.Y);
@@ -212,31 +224,33 @@ public sealed class GlitchEffect
             var colIdx = Random.Shared.Next(3);
             var color = colIdx == 0 ? Cyan : colIdx == 1 ? Magenta : Yellow;
             var a = 0.1f + Random.Shared.NextSingle() * 0.3f;
-            dl.AddLine(new Vector2(x, y), new Vector2(x + len, y),
-                ImGui.ColorConvertFloat4ToU32(new Vector4(color.X, color.Y, color.Z, a)),
-                1f);
+            noiseLines.Add((new Vector2(x, y), new Vector2(x + len, y), EffectUtils.PackColor(color.X, color.Y, color.Z, a)));
         }
+
+        var empRings = new (Vector2 Center, float Radius, uint Col, float Thick)[_empRings.Count];
+        for (var i = 0; i < _empRings.Count; i++)
+        {
+            var ring = _empRings[i];
+            var a = ring.Life * 0.6f;
+            empRings[i] = (ring.Center, ring.Radius, EffectUtils.PackColor(0, 1, 1, a), 2f);
+        }
+
+        var back = _back;
+        back.EdgeWaveTop = topPts.ToArray();
+        back.EdgeWaveBottom = botPts.ToArray();
+        back.EdgeWaveCol = waveCol;
+        back.ChannelRects = channelRects.ToArray();
+        back.NoiseLines = noiseLines.ToArray();
+        back.EmpRings = empRings;
     }
 
-    private void DrawEdgeWave(ImDrawListPtr dl, Vector2 min, Vector2 max)
+    private sealed class FrameData
     {
-        var color = ImGui.ColorConvertFloat4ToU32(new Vector4(0, 1, 1, 0.15f));
-        var segLen = 20f;
-        var amp = 3f;
-
-        // 上下边
-        for (var x = min.X; x < max.X - segLen; x += segLen)
-        {
-            var off = MathF.Sin(_time * 5f + x * 0.05f) * amp;
-            dl.PathLineTo(new Vector2(x, min.Y + off));
-        }
-        dl.PathStroke(color, ImDrawFlags.None, 1f);
-
-        for (var x = min.X; x < max.X - segLen; x += segLen)
-        {
-            var off = MathF.Sin(_time * 4.5f + x * 0.06f) * amp;
-            dl.PathLineTo(new Vector2(x, max.Y + off));
-        }
-        dl.PathStroke(color, ImDrawFlags.None, 1f);
+        public (Vector2 A, Vector2 B)[]? EdgeWaveTop;
+        public (Vector2 A, Vector2 B)[]? EdgeWaveBottom;
+        public uint EdgeWaveCol;
+        public (Vector2 Min, Vector2 Max, uint Col)[]? ChannelRects;
+        public (Vector2 A, Vector2 B, uint Col)[]? NoiseLines;
+        public (Vector2 Center, float Radius, uint Col, float Thick)[]? EmpRings;
     }
 }

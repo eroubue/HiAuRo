@@ -1,10 +1,8 @@
 using System.Numerics;
+using System.Threading.Tasks;
 
 namespace HiAuRo.ImGuiLib.Effects;
 
-/// <summary>
-/// 粒子系统 — 浮动光点，在指定矩形区域内随机生成和漂移
-/// </summary>
 public sealed class ParticleSystem
 {
     private struct Particle
@@ -21,11 +19,10 @@ public sealed class ParticleSystem
     private readonly float _spawnRate;
     private float _spawnAccum;
 
-    /// <summary>
-    /// 初始化粒子系统
-    /// </summary>
-    /// <param name="maxParticles">粒子池上限</param>
-    /// <param name="spawnRate">每秒生成粒子数</param>
+    private Task? _computeTask;
+    private FrameData _front = new();
+    private FrameData _back = new();
+
     public ParticleSystem(int maxParticles = 60, float spawnRate = 8f)
     {
         _maxParticles = maxParticles;
@@ -33,10 +30,8 @@ public sealed class ParticleSystem
         _spawnRate = spawnRate;
     }
 
-    /// <summary>每帧更新粒子状态</summary>
     public void Update(float dt, Vector2 min, Vector2 max)
     {
-        // 生成新粒子
         _spawnAccum += _spawnRate * dt;
         while (_spawnAccum >= 1f)
         {
@@ -44,7 +39,6 @@ public sealed class ParticleSystem
             SpawnParticle(min, max);
         }
 
-        // 更新现有粒子
         for (var i = 0; i < _pool.Length; i++)
         {
             ref var p = ref _pool[i];
@@ -53,17 +47,60 @@ public sealed class ParticleSystem
             p.Life -= dt;
             p.Pos += p.Vel * dt;
 
-            // 超出区域则反弹
             if (p.Pos.X < min.X || p.Pos.X > max.X) p.Vel.X *= -1f;
             if (p.Pos.Y < min.Y || p.Pos.Y > max.Y) p.Vel.Y *= -1f;
             p.Pos = Vector2.Clamp(p.Pos, min, max);
         }
+
+        if (_computeTask == null || _computeTask.IsCompleted)
+        {
+            if (_computeTask?.IsCompleted == true)
+                SwapBuffers();
+            _computeTask = Task.Run(ComputeFrameData);
+        }
     }
 
-    /// <summary>绘制所有活跃粒子</summary>
     public void Draw(ImDrawListPtr dl)
     {
+        var data = Volatile.Read(ref _front);
+        if (data.Dots == null) return;
+
+        foreach (var (pos, radius, col) in data.Dots)
+            dl.AddCircleFilled(pos, radius, col);
+    }
+
+    private void SpawnParticle(Vector2 min, Vector2 max)
+    {
+        var oldestIdx = -1;
+        var oldestLife = float.MaxValue;
+
+        for (var i = 0; i < _pool.Length; i++)
+        {
+            if (_pool[i].Life <= 0f) { oldestIdx = i; break; }
+            if (_pool[i].Life < oldestLife) { oldestLife = _pool[i].Life; oldestIdx = i; }
+        }
+
+        if (oldestIdx < 0) return;
+
+        ref var p = ref _pool[oldestIdx];
+        p.Pos = new Vector2(min.X + Random.Shared.NextSingle() * (max.X - min.X), min.Y + Random.Shared.NextSingle() * (max.Y - min.Y));
+        p.Vel = new Vector2((Random.Shared.NextSingle() - 0.5f) * 12f, (Random.Shared.NextSingle() - 0.5f) * 12f);
+        p.Size = 2f + Random.Shared.NextSingle() * 4f;
+        p.MaxLife = 2f + Random.Shared.NextSingle() * 2f;
+        p.Life = p.MaxLife;
+    }
+
+    private void SwapBuffers()
+    {
+        var tmp = _front;
+        _front = _back;
+        _back = tmp;
+    }
+
+    private void ComputeFrameData()
+    {
         var accent = Theme.Colors.AccentBlue;
+        var dots = new List<(Vector2 Pos, float Radius, uint Col)>();
 
         for (var i = 0; i < _pool.Length; i++)
         {
@@ -71,43 +108,14 @@ public sealed class ParticleSystem
             if (p.Life <= 0f) continue;
 
             var alpha = Math.Max(0f, p.Life / p.MaxLife);
-            var color = new Vector4(accent.X, accent.Y, accent.Z, alpha * 0.35f);
-            dl.AddCircleFilled(p.Pos, p.Size * (0.5f + alpha * 0.5f),
-                ImGui.ColorConvertFloat4ToU32(color));
+            dots.Add((p.Pos, p.Size * (0.5f + alpha * 0.5f), EffectUtils.PackColor(accent.X, accent.Y, accent.Z, alpha * 0.35f)));
         }
+
+        _back.Dots = dots.ToArray();
     }
 
-    private void SpawnParticle(Vector2 min, Vector2 max)
+    private sealed class FrameData
     {
-        // 复用最旧的已死粒子槽位
-        var oldestIdx = -1;
-        var oldestLife = float.MaxValue;
-
-        for (var i = 0; i < _pool.Length; i++)
-        {
-            if (_pool[i].Life <= 0f)
-            {
-                oldestIdx = i;
-                break;
-            }
-            if (_pool[i].Life < oldestLife)
-            {
-                oldestLife = _pool[i].Life;
-                oldestIdx = i;
-            }
-        }
-
-        if (oldestIdx < 0) return;
-
-        ref var p = ref _pool[oldestIdx];
-        p.Pos = new Vector2(
-            min.X + Random.Shared.NextSingle() * (max.X - min.X),
-            min.Y + Random.Shared.NextSingle() * (max.Y - min.Y));
-        p.Vel = new Vector2(
-            (Random.Shared.NextSingle() - 0.5f) * 12f,
-            (Random.Shared.NextSingle() - 0.5f) * 12f);
-        p.Size = 2f + Random.Shared.NextSingle() * 4f;
-        p.MaxLife = 2f + Random.Shared.NextSingle() * 2f;
-        p.Life = p.MaxLife;
+        public (Vector2 Pos, float Radius, uint Col)[]? Dots;
     }
 }
