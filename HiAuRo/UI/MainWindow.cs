@@ -141,8 +141,7 @@ public sealed class MainWindow : Window
 
         // ── 底部状态栏 ──
         ImGui.Separator();
-        DrawStatusBar(avail.X);
-
+        DrawStatusBar();
         ImGui.PopStyleVar(2);   // WindowPadding, ItemSpacing
         ImGui.PopStyleColor(10); // WindowBg, ChildBg, Text, TextDisabled, FrameBg, Border, Separator, Header, HeaderHovered, HeaderActive
     }
@@ -457,9 +456,9 @@ public sealed class MainWindow : Window
     }
 
     /// <summary>绘制底部状态栏</summary>
-    private static void DrawStatusBar(float width)
+    private static void DrawStatusBar()
     {
-        ImGui.BeginChild("##StatusBar", new Vector2(width, 20f), false,
+        ImGui.BeginChild("##StatusBar", new Vector2(-1, 20f), false,
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
 
         var running = RuntimeCore.IsRunning;
