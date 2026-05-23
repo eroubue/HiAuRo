@@ -65,6 +65,8 @@ public sealed class LeyLinesEffect
     ];
 
     private float _rotAngle;
+    private float _rotX;
+    private float _rotY;
     private float _time;
     private float _flickerAlpha = 0.2f;
     private float _flickerTimer = 2f;
@@ -74,6 +76,17 @@ public sealed class LeyLinesEffect
     {
         _time += dt;
         _rotAngle += 1f * dt;
+
+        var mouse = ImGui.GetIO().MousePos;
+        var center = (min + max) * 0.5f;
+        var inWindow = mouse.X >= min.X && mouse.X <= max.X && mouse.Y >= min.Y && mouse.Y <= max.Y;
+        if (inWindow)
+        {
+            var dx = (mouse.X - center.X) / Math.Max(1f, (max.X - min.X) * 0.5f);
+            var dy = (mouse.Y - center.Y) / Math.Max(1f, (max.Y - min.Y) * 0.5f);
+            _rotY += dx * dt * 1.5f;
+            _rotX += dy * dt * 1.5f;
+        }
 
         _flickerTimer -= dt;
         if (_flickerTimer <= 0f)
@@ -111,6 +124,8 @@ public sealed class LeyLinesEffect
         var a = _flickerAlpha;
         var accent = Theme.Colors.AccentBlue;
 
+        DrawBaseGradient(dl, winMin, winMax);
+
         DrawCircle(dl, center, scale, Vector2.Zero, 6f, accent, a, 7.5f);
         DrawCircle(dl, center, scale, Vector2.Zero, 4f, accent, a, 6f);
         DrawPoly(dl, center, scale, DiamondC, accent, a * 0.8f, 4.5f);
@@ -131,16 +146,18 @@ public sealed class LeyLinesEffect
         for (var i = 0; i < 6; i++)
             DrawCircle(dl, center, scale, TriCentroids[i], 0.23f, accent, a * 0.5f, 3f);
 
+        DrawScanNoise(dl, winMin, winMax);
+
         dl.PopClipRect();
     }
 
-    private Vector2 ToScreen(Vector2 screenCenter, float scale, Vector2 local)
+    private Vector2 ToScreen(Vector2 screenCenter, float scale, Vector2 local, Vector2 offset = default)
     {
         var cos = MathF.Cos(_rotAngle);
         var sin = MathF.Sin(_rotAngle);
         return screenCenter + new Vector2(
             local.X * cos - local.Y * sin,
-            local.X * sin + local.Y * cos) * scale;
+            local.X * sin + local.Y * cos) * scale + offset;
     }
 
     private void DrawCircle(ImDrawListPtr dl, Vector2 screenCenter, float scale,
@@ -148,29 +165,72 @@ public sealed class LeyLinesEffect
     {
         var c = ToScreen(screenCenter, scale, localCenter);
         var r = MathF.Max(radius * scale, 0.1f);
-        var glowCol = ColorU32(color, alpha * 0.25f);
-        var mainCol = ColorU32(color, alpha);
+        var cyanOff = new Vector2(-2f, 0);
+        var magentaOff = new Vector2(2f, 0);
 
         dl.PathArcTo(c, r, 0f, MathF.Tau, 48);
-        dl.PathStroke(glowCol, ImDrawFlags.None, thickness * 3f);
+        dl.PathStroke(ColorU32(color, alpha * 0.25f), ImDrawFlags.None, thickness * 3f);
+        dl.PathArcTo(c + cyanOff, r, 0f, MathF.Tau, 48);
+        dl.PathStroke(ColorU32(new Vector4(0, 1, 1, 1), alpha * 0.5f), ImDrawFlags.None, thickness);
+        dl.PathArcTo(c + magentaOff, r, 0f, MathF.Tau, 48);
+        dl.PathStroke(ColorU32(new Vector4(1, 0, 1, 1), alpha * 0.5f), ImDrawFlags.None, thickness);
         dl.PathArcTo(c, r, 0f, MathF.Tau, 48);
-        dl.PathStroke(mainCol, ImDrawFlags.None, thickness);
+        dl.PathStroke(ColorU32(color, alpha), ImDrawFlags.None, thickness);
     }
 
     private void DrawPoly(ImDrawListPtr dl, Vector2 screenCenter, float scale,
         ReadOnlySpan<Vector2> verts, Vector4 color, float alpha, float thickness)
     {
-        var glowCol = ColorU32(color, alpha * 0.25f);
-        var mainCol = ColorU32(color, alpha);
+        var cyanOff = new Vector2(-2f, 0);
+        var magentaOff = new Vector2(2f, 0);
 
-        for (var pass = 0; pass < 2; pass++)
+        FillPolyPath(dl, screenCenter, scale, verts, Vector2.Zero);
+        dl.PathStroke(ColorU32(color, alpha * 0.25f), ImDrawFlags.None, thickness * 3f);
+        FillPolyPath(dl, screenCenter, scale, verts, cyanOff);
+        dl.PathStroke(ColorU32(new Vector4(0, 1, 1, 1), alpha * 0.5f), ImDrawFlags.None, thickness);
+        FillPolyPath(dl, screenCenter, scale, verts, magentaOff);
+        dl.PathStroke(ColorU32(new Vector4(1, 0, 1, 1), alpha * 0.5f), ImDrawFlags.None, thickness);
+        FillPolyPath(dl, screenCenter, scale, verts, Vector2.Zero);
+        dl.PathStroke(ColorU32(color, alpha), ImDrawFlags.None, thickness);
+    }
+
+    private void FillPolyPath(ImDrawListPtr dl, Vector2 screenCenter, float scale,
+        ReadOnlySpan<Vector2> verts, Vector2 offset)
+    {
+        dl.PathLineTo(ToScreen(screenCenter, scale, verts[0], offset));
+        for (var i = 1; i < verts.Length; i++)
+            dl.PathLineTo(ToScreen(screenCenter, scale, verts[i], offset));
+        dl.PathLineTo(ToScreen(screenCenter, scale, verts[0], offset));
+    }
+
+    private void DrawScanNoise(ImDrawListPtr dl, Vector2 min, Vector2 max)
+    {
+        var w = max.X - min.X;
+        var count = 8 + (Random.Shared.NextSingle() < 0.3f ? 12 : 0);
+        for (var i = 0; i < count; i++)
         {
-            dl.PathLineTo(ToScreen(screenCenter, scale, verts[0]));
-            for (var i = 1; i < verts.Length; i++)
-                dl.PathLineTo(ToScreen(screenCenter, scale, verts[i]));
-            dl.PathLineTo(ToScreen(screenCenter, scale, verts[0]));
-            dl.PathStroke(pass == 0 ? glowCol : mainCol, ImDrawFlags.None,
-                pass == 0 ? thickness * 3f : thickness);
+            var x = min.X + Random.Shared.NextSingle() * w;
+            var y = min.Y + Random.Shared.NextSingle() * (max.Y - min.Y);
+            var len = 5f + Random.Shared.NextSingle() * 20f;
+            var a = 0.05f + Random.Shared.NextSingle() * 0.15f;
+            dl.AddLine(new Vector2(x, y), new Vector2(x + len, y),
+                ImGui.ColorConvertFloat4ToU32(new Vector4(0.7f, 0.8f, 1f, a)), 1f);
+        }
+    }
+
+    private static void DrawBaseGradient(ImDrawListPtr dl, Vector2 min, Vector2 max)
+    {
+        var h = max.Y - min.Y;
+        var steps = 6;
+        var stepH = h / steps;
+        for (var i = 0; i < steps; i++)
+        {
+            var t = i / (float)steps;
+            var alpha = 0.02f + t * 0.03f;
+            var y1 = min.Y + i * stepH;
+            var y2 = y1 + stepH;
+            dl.AddRectFilled(new Vector2(min.X, y1), new Vector2(max.X, y2),
+                ImGui.ColorConvertFloat4ToU32(new Vector4(0.1f, 0.2f, 0.4f, alpha)));
         }
     }
 
