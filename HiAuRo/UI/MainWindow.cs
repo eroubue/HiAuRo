@@ -209,6 +209,112 @@ public sealed class MainWindow : Window
         ImGui.PopTextWrapPos();
     }
 
+    /// <summary>绘制左侧栏：固定模块卡片 + 分隔线 + Plugin 动态卡片</summary>
+    private void DrawSidebar(float width, float height)
+    {
+        ImGui.BeginChild("##Sidebar", new Vector2(width, height), false,
+            ImGuiWindowFlags.NoScrollbar);
+        ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(4, 4));
+
+        // ── 固定模块卡片 ──
+        for (var i = 0; i < _modules.Length; i++)
+        {
+            var (name, icon, _) = _modules[i];
+            if (SidebarCard(name, icon, i == _selectedCardIndex && _selectedPluginName == null))
+            {
+                _selectedCardIndex = i;
+                _selectedPluginName = null;
+            }
+        }
+
+        // ── 分隔线（仅当有 Plugin 时显示）─
+        var plugins = PluginLoader.Plugins;
+        if (plugins.Count > 0)
+        {
+            ComponentLibrary.Divider();
+
+            // ── Plugin 动态卡片 ──
+            foreach (var (pluginName, record) in plugins.OrderBy(kv => kv.Key))
+            {
+                var isSelected = _selectedPluginName == pluginName;
+                var name = record.Plugin.Name;
+                var version = record.Plugin.Version;
+                if (SidebarCard(name, "◉", isSelected, version))
+                {
+                    _selectedCardIndex = _modules.Length;
+                    _selectedPluginName = pluginName;
+                }
+            }
+        }
+
+        ImGui.PopStyleVar(); // ItemSpacing
+        ImGui.EndChild();
+    }
+
+    /// <summary>绘制单张侧边栏卡片（极简风格，左侧 3px 竖条 + 图标 + 标题）</summary>
+    /// <returns>是否被点击</returns>
+    private static bool SidebarCard(string title, string icon, bool isSelected, string? subtitle = null)
+    {
+        var cardWidth = ImGui.GetContentRegionAvail().X;
+        var cardHeight = subtitle != null ? 46f : 38f;
+        var cursorStart = ImGui.GetCursorPos();
+
+        // 左侧竖条颜色
+        var accentColor = isSelected ? Theme.Colors.SidebarActiveBorder : Theme.Colors.BorderSecondary;
+        var bgColor = isSelected ? Theme.Colors.SidebarActive : Vector4.Zero;
+        var textColor = isSelected ? Theme.Colors.TextPrimary : Theme.Colors.TextSecondary;
+
+        // ── 背景绘制 ──
+        var dl = ImGui.GetWindowDrawList();
+        var min = ImGui.GetCursorScreenPos();
+        var max = min + new Vector2(cardWidth, cardHeight);
+
+        // 圆角背景
+        dl.AddRectFilled(min, max,
+            ImGui.ColorConvertFloat4ToU32(bgColor),
+            Theme.RadiusMD);
+
+        // 左侧竖条
+        dl.AddRectFilled(min,
+            min + new Vector2(3, cardHeight),
+            ImGui.ColorConvertFloat4ToU32(accentColor),
+            Theme.RadiusMD, ImDrawFlags.RoundCornersLeft);
+
+        // ── 可点击区域 ──
+        ImGui.SetCursorPos(cursorStart);
+        ImGui.PushStyleColor(ImGuiCol.Button, Vector4.Zero);
+        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, Theme.Colors.BgHover);
+        ImGui.PushStyleColor(ImGuiCol.ButtonActive, Theme.Colors.BgSpotlight);
+        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, Theme.RadiusMD);
+        ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(12, 4));
+
+        var clicked = ImGui.Button($"##card_{title}", new Vector2(cardWidth, cardHeight));
+
+        // ── 文字叠加 ──
+        var textPos = ImGui.GetItemRectMin() + new Vector2(16, 4);
+        dl.AddText(textPos, ImGui.ColorConvertFloat4ToU32(textColor), icon);
+        dl.AddText(textPos + new Vector2(16, 0), ImGui.ColorConvertFloat4ToU32(textColor), title);
+
+        if (subtitle != null)
+        {
+            dl.AddText(textPos + new Vector2(0, 18),
+                ImGui.ColorConvertFloat4ToU32(Theme.Colors.TextTertiary), subtitle);
+        }
+
+        ImGui.PopStyleVar(2);
+        ImGui.PopStyleColor(3);
+
+        // 悬停时在卡片上叠加白色半透明
+        if (ImGui.IsItemHovered() && !isSelected)
+        {
+            dl.AddRectFilled(min, max,
+                ImGui.ColorConvertFloat4ToU32(Theme.Colors.BgHover),
+                Theme.RadiusMD);
+        }
+
+        return clicked;
+    }
+
     private void DrawStatus()
     {
         // UI 渲染模式切换
