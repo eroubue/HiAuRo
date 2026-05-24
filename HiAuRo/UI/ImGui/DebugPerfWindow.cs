@@ -10,8 +10,12 @@ namespace HiAuRo.ImGuiLib;
 /// </summary>
 public sealed class DebugPerfWindow : Window
 {
+    /// <summary>全局单例，供 /hi debug 命令调用</summary>
+    public static DebugPerfWindow? Instance { get; private set; }
+
     public DebugPerfWindow() : base("HiAuRo 性能监控##Debug")
     {
+        Instance = this;
         SizeConstraints = new WindowSizeConstraints
         {
             MinimumSize = new Vector2(360, 200),

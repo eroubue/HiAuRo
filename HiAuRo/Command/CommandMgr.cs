@@ -15,7 +15,7 @@ public static class CommandMgr
     {
         DService.Instance().Command.AddHandler(MainCommand, new CommandInfo(OnCommand)
         {
-            HelpMessage = "HiAuRo: /hi on|off|toggle|status|panel|reload|fact|assist [load|unload]|gallery|catalog [export|upload]"
+            HelpMessage = "HiAuRo: /hi on|off|toggle|status|panel|reload|fact|assist [load|unload]|debug|gallery|catalog [export|upload]"
         });
     }
 
@@ -73,6 +73,15 @@ public static class CommandMgr
                 AssistAxis.Instance.UnloadAssistTimeline();
                 DService.Instance().Chat.Print("[HiAuRo] 辅助轴已卸载");
                 break;
+#if DEBUG
+            case "debug":
+                if (ImGuiLib.DebugPerfWindow.Instance is { } w)
+                {
+                    w.IsOpen = !w.IsOpen;
+                    DService.Instance().Chat.Print($"[HiAuRo] 性能监控窗口已{(w.IsOpen ? "打开" : "关闭")}");
+                }
+                break;
+#endif
             case "gallery":
             case "demo":
                 Plugin.Instance.ShowDemoWindow();
@@ -97,7 +106,7 @@ public static class CommandMgr
                     TaskContinuationOptions.OnlyOnFaulted);
                 break;
             default:
-                DService.Instance().Chat.Print("[HiAuRo] 用法: /hi on|off|toggle|status|panel|reload|fact|assist [load|unload]|catalog [export|upload]");
+                DService.Instance().Chat.Print("[HiAuRo] 用法: /hi on|off|toggle|status|panel|reload|fact|assist [load|unload]|debug|gallery|catalog [export|upload]");
                 break;
         }
     }
