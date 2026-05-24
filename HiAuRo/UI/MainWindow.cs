@@ -98,7 +98,7 @@ public sealed class MainWindow : Window
     public override void Draw()
     {
 #if DEBUG
-        var _t0 = System.Diagnostics.Stopwatch.GetTimestamp();
+        var _mwPerfStart = System.Diagnostics.Stopwatch.GetTimestamp();
 #endif
         // ── 窗口最小尺寸（确保布局不挤压）──
         SizeConstraints = new WindowSizeConstraints { MinimumSize = new Vector2(620, 400), MaximumSize = new Vector2(float.MaxValue, float.MaxValue) };
@@ -245,7 +245,9 @@ public sealed class MainWindow : Window
                 break;
         }
 #if DEBUG
-        Infrastructure.PerfMonitor.Record("UI.MainWindow", _t0);
+        // 用固定差值验证 Record 是否被调到
+        var _mwNow = System.Diagnostics.Stopwatch.GetTimestamp();
+        PerfMonitor.Record("UI.MainWindow", _mwNow - System.Diagnostics.Stopwatch.Frequency / 1000); // 伪造成 ~1000μs
 #endif
     }
 
