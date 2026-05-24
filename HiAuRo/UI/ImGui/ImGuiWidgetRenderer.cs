@@ -13,6 +13,8 @@ namespace HiAuRo.ImGuiLib;
 /// </summary>
 public static class ImGuiWidgetRenderer
 {
+    /// <summary>图标纹理缓存</summary>
+    private static readonly Dictionary<uint, ImTextureID> _iconCache = [];
     /// <summary>渲染指定 Tab 下的所有控件</summary>
     public static void Render(List<UiControlDef> controls, string activeTab)
     {
@@ -99,24 +101,18 @@ public static class ImGuiWidgetRenderer
             var available = hk.Check() >= 0;
             var binding = HiAuRo.ACR.HotkeyHelper.GetBinding(hk.Id);
 
-            var tex = hk.IconId > 0
-                ? DService.Instance().Texture.GetFromGameIcon(
-                    new GameIconLookup(hk.IconId))
-                : null;
+            var tex = hk.IconId > 0 ? LoadCachedIcon(hk.IconId) : default;
 
-            if (tex != null)
+            if (tex != default)
             {
-                var wrap = tex.GetWrapOrEmpty();
-                var handle = wrap?.Handle ?? 0;
                 ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 4);
                 ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(4, 4));
                 var clicked = ImGui.Button($"##hkbtn-{hk.Id}", new Vector2(36, 36));
                 var rectMin = ImGui.GetItemRectMin();
                 var rectMax = ImGui.GetItemRectMax();
                 var pad = 4f;
-                if (handle != (nint)0)
-                    ImGui.GetWindowDrawList().AddImage(
-                        handle, rectMin + new Vector2(pad), rectMax - new Vector2(pad));
+                ImGui.GetWindowDrawList().AddImage(
+                    tex, rectMin + new Vector2(pad), rectMax - new Vector2(pad));
                 ImGui.PopStyleVar(2);
                 if (clicked)
                     HiAuRo.ACR.HotkeyHelper.ExecuteById(hk.Id);
@@ -206,6 +202,19 @@ public static class ImGuiWidgetRenderer
             ImGuiOverlayState.SetValue(ctrl.Id, val);
             SaveSettings();
         }
+    }
+
+    private static ImTextureID LoadCachedIcon(uint iconId)
+    {
+        if (_iconCache.TryGetValue(iconId, out var cached))
+            return cached;
+
+        var wrap = DService.Instance().Texture
+            .GetFromGameIcon(new GameIconLookup(iconId))
+            .GetWrapOrDefault();
+        var handle = wrap?.Handle ?? default;
+        _iconCache[iconId] = handle;
+        return handle;
     }
 
     private static void SaveSettings()

@@ -17,6 +17,9 @@ public sealed class OverlayStatusBar : OverlayBase
     private string _activeTabId = string.Empty;
     private int _tabBarVersion;
     private bool _wasExpanded;
+    private List<UiControlDef> _allTabs = [];
+    private List<UiControlDef>? _cachedControlsRef;
+    private int _cachedControlsCount;
 
     /// <summary>无边距</summary>
     protected override Vector2 ContentPadding => Vector2.Zero;
@@ -95,9 +98,15 @@ public sealed class OverlayStatusBar : OverlayBase
             return;
         }
 
-        var tabs = controls.Where(c => c.Type == "tab").ToList();
-        var allTabs = new List<UiControlDef>(tabs);
-        allTabs.AddRange(_builtinTabs);
+        // 仅在控件列表变化时重建 tab 缓存
+        if (!ReferenceEquals(controls, _cachedControlsRef) || controls.Count != _cachedControlsCount)
+        {
+            _cachedControlsRef = controls;
+            _cachedControlsCount = controls.Count;
+            _allTabs = [.. controls.Where(c => c.Type == "tab"), .. _builtinTabs];
+        }
+
+        var allTabs = _allTabs;
         var activeTab = ImGuiOverlayState.ActiveTab;
 
         if (activeTab != _activeTabId)

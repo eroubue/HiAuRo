@@ -11,6 +11,7 @@ namespace HiAuRo.ImGuiLib;
 public sealed class OverlayHotkeyPanel : OverlayBase
 {
     private readonly Action _saveConfig;
+    private int _visibleCount;
 
     /// <summary>不允许缩放</summary>
     protected override bool AllowResize => false;
@@ -35,18 +36,17 @@ public sealed class OverlayHotkeyPanel : OverlayBase
     /// <summary>预绘制时计算窗口尺寸</summary>
     protected override void OnPreDraw()
     {
-        // 根据内容网格计算初始窗口大小
         var hotkeys = ImGuiOverlayState.Hotkeys;
-        var visibleCount = hotkeys.Count(h => ImGuiOverlayState.UiSettings.HkVisible.GetValueOrDefault(h.Id, true));
+        _visibleCount = hotkeys.Count(h => ImGuiOverlayState.UiSettings.HkVisible.GetValueOrDefault(h.Id, true));
+        if (_visibleCount == 0) return;
         var cols = ImGuiOverlayState.UiSettings.HkCols > 0 ? ImGuiOverlayState.UiSettings.HkCols : 5;
-        if (visibleCount == 0) return;
-        var rows = (visibleCount + cols - 1) / cols;
-        var actualCols = Math.Min(visibleCount, cols);
-        var pad = ContentOffset.X;       // 内容起始偏移
-        var gapX = 6f;                   // ItemSpacing.X
-        var gapY = 4f;                   // ItemSpacing.Y
+        var rows = (_visibleCount + cols - 1) / cols;
+        var actualCols = Math.Min(_visibleCount, cols);
+        var pad = ContentOffset.X;
+        var gapX = 6f;
+        var gapY = 4f;
         var btnW = ImGuiOverlayState.UiSettings.HkBtnSize > 0 ? ImGuiOverlayState.UiSettings.HkBtnSize : 50f;
-        var btnH = btnW;                 // 方形按钮
+        var btnH = btnW;
         var w = pad * 2 + btnW * actualCols + gapX * (actualCols - 1);
         var h = pad * 2 + btnH * rows + gapY * (rows - 1);
         ImGui.SetNextWindowSize(new Vector2(w, h), ImGuiCond.Always);
@@ -65,12 +65,21 @@ public sealed class OverlayHotkeyPanel : OverlayBase
         }
 
         BeginContent();
+        if (_visibleCount == 0) return;
 
         var cols = ImGuiOverlayState.UiSettings.HkCols;
         if (cols <= 0) cols = 5;
         var btnSize = ImGuiOverlayState.UiSettings.HkBtnSize > 0
             ? ImGuiOverlayState.UiSettings.HkBtnSize : 50;
         var col = 0;
+
+        // 公共样式：圆角、内边距、颜色（所有按钮相同）
+        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, Theme.RadiusMD);
+        ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(4, 4));
+        ImGui.PushStyleColor(ImGuiCol.Button, Theme.Colors.BgContainer);
+        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, Theme.Colors.BgHover);
+        ImGui.PushStyleColor(ImGuiCol.ButtonActive, Theme.Colors.FillPrimary);
+        ImGui.PushStyleColor(ImGuiCol.Border, Theme.Colors.BorderSecondary);
 
         for (var i = 0; i < hotkeys.Count; i++)
         {
@@ -101,37 +110,27 @@ public sealed class OverlayHotkeyPanel : OverlayBase
 
             SameLineOrWrap(ref col, cols);
         }
+
+        ImGui.PopStyleColor(4);
+        ImGui.PopStyleVar(2);
     }
 
-    /// <summary>AntdUI 风格图标按钮 — 游戏技能图标 + 圆角边框</summary>
+    /// <summary>AntdUI 风格图标按钮 — 游戏技能图标 + 圆角边框（样式由外层循环管理）</summary>
     private bool DrawIconButton(uint iconId, Vector2 btnSize)
     {
-        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, Theme.RadiusMD);
-        ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(4, 4));
-
-        ImGui.PushStyleColor(ImGuiCol.Button, Theme.Colors.BgContainer);
-        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, Theme.Colors.BgHover);
-        ImGui.PushStyleColor(ImGuiCol.ButtonActive, Theme.Colors.FillPrimary);
-        ImGui.PushStyleColor(ImGuiCol.Border, Theme.Colors.BorderSecondary);
-
         var clicked = ImGui.Button($"##hkb_{iconId}_{btnSize.X}", btnSize);
 
         var rectMin = ImGui.GetItemRectMin();
         var rectMax = ImGui.GetItemRectMax();
         var pad = 4f;
-        var iconPos = rectMin + new Vector2(pad, pad);
-        var iconSize = btnSize - new Vector2(pad * 2, pad * 2);
 
         if (iconId != 0)
         {
             var handle = LoadIconTexture(iconId);
             if (handle != (nint)0)
                 ImGui.GetWindowDrawList().AddImage(
-                    handle, iconPos, iconPos + iconSize);
+                    handle, rectMin + new Vector2(pad), rectMax - new Vector2(pad));
         }
-
-        ImGui.PopStyleColor(4);
-        ImGui.PopStyleVar(2);
 
         return clicked;
     }
