@@ -12,6 +12,18 @@ public static class RuntimeCore
     public static void Start()
     {
         if (IsRunning) return;
+#if DEBUG
+        Infrastructure.PerfMonitor.Register(
+            // RuntimeCore 层级
+            "ImGuiState", "CombatContext", "EventSystem", "HotkeyPoller", "ACRLifecycle", "PluginLifecycle",
+            // AIRunner 层级
+            "Objects.Refresh", "Party.Refresh", "BattleUpdate",
+            "ExecutionAxis", "FactAxis", "AssistAxis",
+            "AILoop", "SlotExec",
+            // UI 层级
+            "UI.Hotkey", "UI.QtPanel", "UI.StatusBar", "UI.MainWindow"
+        );
+#endif
         ACR.MainControlHelper.Unpause();
         OmenTools.OmenService.FrameworkManager.Instance().Reg(OnTick);
         IsRunning = true;

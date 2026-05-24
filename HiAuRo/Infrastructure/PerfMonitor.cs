@@ -10,15 +10,26 @@ public static class PerfMonitor
 {
     private static readonly Dictionary<string, double> _lastFrame = [];
     private static readonly Dictionary<string, double> _max = [];
+    private static readonly HashSet<string> _modules = [];
 
-    /// <summary>上一帧各模块耗时(μs)，用于 UI 展示</summary>
+    /// <summary>上一帧各模块耗时(μs)，用于 UI 展示（含未执行模块，值为 0）</summary>
     public static IReadOnlyDictionary<string, double> LastFrame => _lastFrame;
 
     /// <summary>历史最大值(μs)</summary>
     public static IReadOnlyDictionary<string, double> Max => _max;
 
-    /// <summary>每帧开始前调用，清空上帧数据</summary>
-    public static void BeginFrame() => _lastFrame.Clear();
+    /// <summary>注册模块名（在启动时调用一次），确保未执行模块也显示在面板中</summary>
+    public static void Register(params string[] names)
+    {
+        foreach (var n in names) _modules.Add(n);
+    }
+
+    /// <summary>每帧开始前调用，将所有已注册模块重置为 0</summary>
+    public static void BeginFrame()
+    {
+        foreach (var m in _modules)
+            _lastFrame[m] = 0;
+    }
 
     /// <summary>记录模块耗时。传入模块开始时 Stopwatch.GetTimestamp() 的值</summary>
     public static double Record(string name, long startTick)
