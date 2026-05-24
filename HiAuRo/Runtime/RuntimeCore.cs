@@ -15,13 +15,13 @@ public static class RuntimeCore
 #if DEBUG
         Infrastructure.PerfMonitor.Register(
             // RuntimeCore 层级
-            "ImGuiState", "CombatContext", "EventSystem", "HotkeyPoller", "ACRLifecycle", "PluginLifecycle",
+            "Tick.Total", "ImGuiState", "CombatContext", "EventSystem", "HotkeyPoller", "ACRLifecycle", "PluginLifecycle",
             // AIRunner 层级
             "Objects.Refresh", "Party.Refresh", "BattleUpdate",
             "ExecutionAxis", "FactAxis", "AssistAxis",
             "AILoop", "SlotExec",
             // UI 层级
-            "UI.Hotkey", "UI.QtPanel", "UI.StatusBar", "UI.MainWindow"
+            "UI.Total", "UI.Hotkey", "UI.QtPanel", "UI.StatusBar", "UI.MainWindow"
         );
 #endif
         ACR.MainControlHelper.Unpause();
@@ -46,7 +46,8 @@ public static class RuntimeCore
     private static void OnTick(Dalamud.Plugin.Services.IFramework _)
     {
 #if DEBUG
-        long _pt0 = System.Diagnostics.Stopwatch.GetTimestamp();
+        long _totalStart = System.Diagnostics.Stopwatch.GetTimestamp();
+        long _pt0 = _totalStart;
 #endif
         ACRLifecycle.PushImGuiState(); // 无论是否运行，每帧同步 ImGui 悬浮窗状态
 #if DEBUG
@@ -82,6 +83,7 @@ public static class RuntimeCore
             PluginLifecycle.Update();
 #if DEBUG
             PerfMonitor.Record("PluginLifecycle", _pt0);
+            PerfMonitor.Record("Tick.Total", _totalStart);
 #endif
         }
         catch (Exception ex)

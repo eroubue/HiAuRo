@@ -112,7 +112,16 @@ public partial class Plugin : IDalamudPlugin
 
             _mainWindow = new MainWindow(_config, () => _pluginInterface.SavePluginConfig(_config));
             _windowSystem.AddWindow(_mainWindow);
+#if DEBUG
+            _pluginInterface.UiBuilder.Draw += () =>
+            {
+                var _uiTotal = System.Diagnostics.Stopwatch.GetTimestamp();
+                _windowSystem.Draw();
+                Infrastructure.PerfMonitor.Record("UI.Total", _uiTotal);
+            };
+#else
             _pluginInterface.UiBuilder.Draw += _windowSystem.Draw;
+#endif
             _pluginInterface.UiBuilder.OpenMainUi += () => _mainWindow.IsOpen = !_mainWindow.IsOpen;
             _pluginInterface.UiBuilder.OpenConfigUi += () => _mainWindow.IsOpen = !_mainWindow.IsOpen;
 

@@ -79,6 +79,20 @@ public sealed class DebugPerfWindow : Window
             ImGui.EndTable();
         }
 
+        // 计算未计量开销
+        double tickTotal = snapshot.GetValueOrDefault("Tick.Total", 0);
+        double uiTotal = snapshot.GetValueOrDefault("UI.Total", 0);
+        double accounted = 0;
+        foreach (var kv in snapshot)
+        {
+            if (kv.Key is "Tick.Total" or "UI.Total") continue;
+            accounted += kv.Value;
+        }
+        double unaccounted = tickTotal + uiTotal - accounted;
+
+        ImGui.Spacing();
+        ImGui.TextColored(new Vector4(0.8f, 0.6f, 0.2f, 1),
+            $"未计量: {unaccounted:F1}μs (Tick={tickTotal:F0} + UI={uiTotal:F0} - 子项={accounted:F0})");
         ImGui.Spacing();
         if (ImGui.Button("重置最大值"))
             PerfMonitor.ResetMax();
