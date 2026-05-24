@@ -18,22 +18,25 @@ public static class DemandBuffer
         _pending.Enqueue(demand);
     }
 
-    /// <summary>按 factNodeId 分组取出所有积压需求</summary>
+    /// <summary>按 factNodeId 分组取出所有积压需求（空队列快速返回）</summary>
     public static ILookup<string, MovementDemand> GetGrouped()
     {
+        if (_pending.IsEmpty)
+            return Array.Empty<MovementDemand>().ToLookup(d => d.FactNodeId);
         return _pending.ToArray().ToLookup(d => d.FactNodeId);
     }
 
-    /// <summary>移除已释放的需求</summary>
+    /// <summary>移除已释放的需求（省去 Where().ToArray() 中间分配）</summary>
     public static void Remove(IEnumerable<string> demandIds)
     {
         lock (_rebuildLock)
         {
             var ids = new HashSet<string>(demandIds);
-            var remaining = _pending.Where(d => !ids.Contains(d.Id)).ToArray();
+            var snapshot = _pending.ToArray();
             while (_pending.TryDequeue(out _)) { }
-            foreach (var d in remaining)
-                _pending.Enqueue(d);
+            foreach (var d in snapshot)
+                if (!ids.Contains(d.Id))
+                    _pending.Enqueue(d);
         }
     }
 

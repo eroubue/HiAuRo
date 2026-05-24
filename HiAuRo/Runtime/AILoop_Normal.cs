@@ -11,6 +11,7 @@ public sealed class AILoop_Normal : IAILoop
 {
     private readonly List<SlotResolverData> _resolvers;
     private readonly List<ResolverDebugInfo> _debugInfos;
+    private int[] _checkResults = []; // 复用数组，避免每帧 new 分配
 
     /// <summary>ACR Debug 面板数据（每帧刷新，只读访问）</summary>
     public IReadOnlyList<ResolverDebugInfo> DebugResolvers => _debugInfos;
@@ -68,7 +69,8 @@ public sealed class AILoop_Normal : IAILoop
         float gcdRemain = isGcdReady ? 0 : GCDHelper.GetGCDCooldown();
 
         // ── 第一遍：遍历所有 Resolver，执行 Check()，记录结果 ──
-        int[] checkResults = new int[_resolvers.Count];
+        if (_checkResults.Length != _resolvers.Count)
+            _checkResults = new int[_resolvers.Count];
         for (int i = 0; i < _resolvers.Count; i++)
         {
             var data = _resolvers[i];
@@ -88,7 +90,7 @@ public sealed class AILoop_Normal : IAILoop
                 info.CheckError = ex.Message;
                 DService.Instance().Log.Error($"[AILoop] Check#{data.Resolver.GetType().Name} 异常: {ex}");
             }
-            checkResults[i] = checkResult;
+            _checkResults[i] = checkResult;
         }
 
         // 暂停/停止时只阻断 Build，Check 已全部执行完毕
@@ -97,7 +99,7 @@ public sealed class AILoop_Normal : IAILoop
         // ── 第二遍：按顺序找到第一个 Check >= 0 且窗口匹配的 Resolver，调 Build ──
         for (int i = 0; i < _resolvers.Count; i++)
         {
-            if (checkResults[i] < 0) continue;
+            if (_checkResults[i] < 0) continue;
 
             var data = _resolvers[i];
             var info = _debugInfos[i];
@@ -131,7 +133,7 @@ public sealed class AILoop_Normal : IAILoop
                 info.BuiltSlot = true;
                 info.BuiltSkills = string.Join(",", slot.Actions.Select(a => a.Spell.Name));
 
-                DService.Instance().Log.Information($"[AILoop] Build: {resolverName} → {slot.Actions.Count}个技能 = [{string.Join(", ", slot.Actions.Select(a => $"{a.Spell.Name}({a.Spell.Id})"))}] (GCD={isGcdReady} oGCD={isOffGcdWindow} GCDr={gcdRemain:F0}ms ab={Data.Combat.AbilityCountInGcd}/{Data.Combat.MaxAbilityTimesInGcd})");
+                DService.Instance().Log.Debug($"[AILoop] Build: {resolverName} → {slot.Actions.Count}个技能 = [{string.Join(", ", slot.Actions.Select(a => $"{a.Spell.Name}({a.Spell.Id})"))}] (GCD={isGcdReady} oGCD={isOffGcdWindow} GCDr={gcdRemain:F0}ms ab={Data.Combat.AbilityCountInGcd}/{Data.Combat.MaxAbilityTimesInGcd})");
 
                 if (data.Mode == SlotMode.Gcd)
                     Data.Combat.AbilityCountInGcd = 0;

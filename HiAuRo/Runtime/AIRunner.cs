@@ -143,10 +143,10 @@ public sealed class AIRunner
             // 进入战斗时清掉非战斗攒下的热键队列，避免延迟爆发
             if (state != _prevState)
             {
-                DService.Instance().Log.Information($"[AIRunner] 战斗状态切换: {_prevState} → {state}");
+                DService.Instance().Log.Debug($"[AIRunner] 战斗状态切换: {_prevState} → {state}");
                 if (state == CombatContext.State.InCombat)
                 {
-                    DService.Instance().Log.Information("[AIRunner] 进入战斗, 清空旧 SpellQueue");
+                    DService.Instance().Log.Debug("[AIRunner] 进入战斗, 清空旧 SpellQueue");
                     SpellQueue.Clear();
                 }
             }
@@ -196,7 +196,7 @@ public sealed class AIRunner
             {
                 if (TryResolveTarget())
                 {
-                    DService.Instance().Log.Information($"[AIRunner] 自动选择目标: {Data.Target.Current?.Name}");
+                    DService.Instance().Log.Debug($"[AIRunner] 自动选择目标: {Data.Target.Current?.Name}");
                     // 目标已选中，继续正常循环
                 }
                 else
@@ -538,7 +538,7 @@ public sealed class AIRunner
         var queued = SpellQueue.GetNext();
         if (queued != null)
         {
-            DService.Instance().Log.Information($"[AIRunner] ProcessSpellQueue: executing {queued.Actions.Count} spell(s)");
+            DService.Instance().Log.Debug($"[AIRunner] ProcessSpellQueue: executing {queued.Actions.Count} spell(s)");
             SlotExecutor.ExecuteSlot(queued);
             return true;
         }

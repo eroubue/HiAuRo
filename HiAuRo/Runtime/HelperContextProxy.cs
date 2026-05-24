@@ -84,7 +84,14 @@ sealed class HiAuRoContextImpl
     {
         var self = Data.Me.Object;
         if (self == null) return 0;
-        return Data.Objects.Enemies.Count(e => Data.Me.DistanceToObject2D(e) <= range);
+        int count = 0;
+        var enemies = Data.Objects.Enemies;
+        for (int i = 0; i < enemies.Count; i++)
+        {
+            if (Data.Me.DistanceToObject2D(enemies[i]) <= range)
+                count++;
+        }
+        return count;
     }
 
     public int GetEnemyCountNearTarget(float range)

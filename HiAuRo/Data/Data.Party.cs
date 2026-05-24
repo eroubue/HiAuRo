@@ -54,8 +54,9 @@ public static partial class Data
             {
                 if (member.GameObject == null) continue;
 
-                var player = DService.Instance().ObjectTable
-                    .CreateObjectReference(member.GameObject.Address) as IPlayerCharacter;
+                // 先直接转型，避免 CreateObjectReference 原生调用
+                var player = member.GameObject as IPlayerCharacter
+                    ?? DService.Instance().ObjectTable.CreateObjectReference(member.GameObject.Address) as IPlayerCharacter;
                 if (player == null) continue;
 
                 var distance = Me.DistanceToObject2D(player);

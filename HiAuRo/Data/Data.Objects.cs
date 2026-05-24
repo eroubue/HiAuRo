@@ -1,4 +1,5 @@
 using OmenTools.Dalamud.Services.ObjectTable.Abstractions.ObjectKinds;
+using OmenTools.Dalamud.Services.ObjectTable.Enums;
 using Dalamud.Game.ClientState.Objects.Enums;
 using IGameObj = OmenTools.Dalamud.Services.ObjectTable.Abstractions.ObjectKinds.IGameObject;
 
@@ -22,15 +23,23 @@ public static partial class Data
 
         private static readonly Dictionary<uint, IGameObj> _byEntityId = [];
 
+        // 缓存 BuddyList EntityID，避免每对象嵌套遍历 BuddyList
+        private static readonly HashSet<uint> _buddyEntityIds = [];
+
         public static void Refresh()
         {
             ClearAll();
             _byEntityId.Clear();
+            _buddyEntityIds.Clear();
 
             if (!IsReady) return;
 
             var self = Me.Object;
             if (self == null) return;
+
+            // 预缓存 BuddyList，将 O(N*BuddyCount) 降为 O(BuddyCount) + O(1)
+            foreach (var buddy in DService.Instance().BuddyList)
+                _buddyEntityIds.Add(buddy.EntityId);
 
             foreach (var obj in DService.Instance().ObjectTable)
             {
@@ -109,32 +118,28 @@ public static partial class Data
             return obj.IsTargetable && obj.IsDead != true;
         }
 
-        /// <summary>是否被 BuddyList 中的宠物持有</summary>
+        /// <summary>是否被 BuddyList 中的宠物持有（用缓存 HashSet 替代嵌套遍历）</summary>
         private static bool IsOwnedByBuddy(IGameObj obj)
         {
-            if (obj.OwnerID == 0) return false;
-            foreach (var buddy in DService.Instance().BuddyList)
-            {
-                if (buddy.EntityId == obj.OwnerID)
-                    return true;
-            }
-            return false;
+            return obj.OwnerID != 0 && _buddyEntityIds.Contains(obj.OwnerID);
         }
 
-        /// <summary>是否由队友持有 (通过 OwnerID)</summary>
+        /// <summary>是否由队友持有（用 _byEntityId 替代 SearchByID 原生调用）</summary>
         private static bool IsOwnedByParty(IGameObj obj)
         {
             if (obj.OwnerID == 0) return false;
-            var owner = DService.Instance().ObjectTable.SearchByID(obj.OwnerID);
-            return owner is IPlayerCharacter pc && pc.ObjectKind == ObjectKind.Pc;
+            return _byEntityId.TryGetValue(obj.OwnerID, out var owner) && owner.ObjectKind == ObjectKind.Pc;
         }
 
-        /// <summary>排除假阳性 (单人 duty 友方 NPC)</summary>
+        /// <summary>排除假阳性（用 StatusFlags + _byEntityId 替代 SearchByID 原生调用）</summary>
         private static bool IsActuallyFriendly(IGameObj obj)
         {
+            // 自身宠物/召唤物
             if (obj.OwnerID == Me.Object?.EntityID) return true;
-            var owner = DService.Instance().ObjectTable.SearchByID(obj.OwnerID);
-            return owner is IPlayerCharacter;
+            // StatusFlags 位标志快速判断：友方/队友/联盟成员
+            if (obj is ICharacter c && (c.StatusFlags & (StatusFlags.Friend | StatusFlags.PartyMember | StatusFlags.AllianceMember)) != 0)
+                return true;
+            return false;
         }
     }
 }

@@ -22,7 +22,7 @@ public sealed class SlotExecutor
     {
         var handler = _runner.EventHandler;
 
-        DService.Instance().Log.Information($"[SlotExec] 开始执行 Slot, Actions={slot.Actions.Count}");
+        DService.Instance().Log.Debug($"[SlotExec] 开始执行 Slot, Actions={slot.Actions.Count}");
 
         foreach (var action in slot.Actions)
         {
@@ -65,9 +65,9 @@ public sealed class SlotExecutor
             var targetName = GetTargetNameById(targetId);
             var actionType = SpellCategoryToActionType(spell.SpellCategory);
 
-            DService.Instance().Log.Information($"[SlotExec] UseAction: {spell.Name}({spell.Id}) TargetType={spell.TargetType} TargetId={targetId:X}({targetName}) ActionType={actionType}");
+            DService.Instance().Log.Debug($"[SlotExec] UseAction: {spell.Name}({spell.Id}) TargetType={spell.TargetType} TargetId={targetId:X}({targetName}) ActionType={actionType}");
             var useResult = UseActionManager.Instance().UseAction(actionType, spell.Id, targetId, 0, 0, 0);
-            DService.Instance().Log.Information($"[SlotExec] UseAction result={useResult}");
+            DService.Instance().Log.Debug($"[SlotExec] UseAction result={useResult}");
 
             if (useResult)
             {
@@ -87,7 +87,7 @@ public sealed class SlotExecutor
                 action(seqSlot);
             if (seqSlot.Actions.Count > 0)
             {
-                DService.Instance().Log.Information($"[SlotExec] 追加序列, 入队 {seqSlot.Actions.Count}个技能");
+                DService.Instance().Log.Debug($"[SlotExec] 追加序列, 入队 {seqSlot.Actions.Count}个技能");
                 _runner.SpellQueue.Enqueue(seqSlot);
             }
         }
