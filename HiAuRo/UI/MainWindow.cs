@@ -37,6 +37,24 @@ public sealed class MainWindow : Window
         _leyLines = new LeyLinesEffect();
     }
 
+#if DEBUG
+    private long _mwDrawStart;
+
+    /// <summary>DEBUG: 绘制前记录起始时间戳</summary>
+    public override void PreDraw()
+    {
+        _mwDrawStart = System.Diagnostics.Stopwatch.GetTimestamp();
+        base.PreDraw();
+    }
+
+    /// <summary>DEBUG: 绘制后记录耗时</summary>
+    public override void PostDraw()
+    {
+        base.PostDraw();
+        PerfMonitor.Record("UI.MainWindow", _mwDrawStart);
+    }
+#endif
+
     // ── 背景特效 ──
 
     private readonly ParticleSystem _particleSystem;
@@ -97,9 +115,6 @@ public sealed class MainWindow : Window
     /// <summary>绘制窗口</summary>
     public override void Draw()
     {
-#if DEBUG
-        var _mwPerfStart = System.Diagnostics.Stopwatch.GetTimestamp();
-#endif
         // ── 窗口最小尺寸（确保布局不挤压）──
         SizeConstraints = new WindowSizeConstraints { MinimumSize = new Vector2(620, 400), MaximumSize = new Vector2(float.MaxValue, float.MaxValue) };
 
@@ -244,11 +259,6 @@ public sealed class MainWindow : Window
                 _leyLines.Draw(fg, winMin, winMax);
                 break;
         }
-#if DEBUG
-        // 用固定差值验证 Record 是否被调到
-        var _mwNow = System.Diagnostics.Stopwatch.GetTimestamp();
-        PerfMonitor.Record("UI.MainWindow", _mwNow - System.Diagnostics.Stopwatch.Frequency / 1000); // 伪造成 ~1000μs
-#endif
     }
 
     /// <summary>绘制顶部信息栏：Logo行(居中) + Tips行(全宽)</summary>
