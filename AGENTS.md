@@ -2,7 +2,7 @@
 
 ## What This Is
 
-HiAuRo is a FFXIV Dalamud **combat assist framework** (.NET 10, Dalamud.NET.Sdk 15.0.0). It is NOT a job rotation — it provides the runtime, data layer, and ACR interfaces for ACR authors to build job rotations on top.
+HiAuRo is a FFXIV Dalamud **全栈战斗辅助框架** (.NET 10, Dalamud.NET.Sdk 15.0.0)。提供运行时调度、ACR 接口、执行轴/事实轴引擎、智能决策层、ImGui+Web 双模式 UI、副本记录与分析等功能。ACR 作者可在此基础上开发各职业的战斗逻辑，普通用户可直接使用内置的执行轴/事实轴获得完整战斗辅助体验。
 
 ## Build & Verify
 
