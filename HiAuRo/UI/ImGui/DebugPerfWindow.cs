@@ -30,6 +30,9 @@ public sealed class DebugPerfWindow : Window
         var total = PerfMonitor.TotalUs;
         var maxData = PerfMonitor.Max;
 
+        // 读完旧帧数据后立即重置，为下一帧做准备
+        PerfMonitor.BeginFrame();
+
         if (data.Count == 0)
         {
             ImGui.TextColored(new Vector4(0.6f, 0.6f, 0.6f, 1), "等待数据... (启动 ACR 后采集)");

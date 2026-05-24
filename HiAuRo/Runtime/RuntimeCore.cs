@@ -47,7 +47,6 @@ public static class RuntimeCore
     {
 #if DEBUG
         long _pt0 = System.Diagnostics.Stopwatch.GetTimestamp();
-        PerfMonitor.BeginFrame();
 #endif
         ACRLifecycle.PushImGuiState(); // 无论是否运行，每帧同步 ImGui 悬浮窗状态
 #if DEBUG
