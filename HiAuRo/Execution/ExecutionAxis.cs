@@ -77,6 +77,7 @@ public sealed class ExecutionAxis
         if (Root == null || IsRunning) return;
 
         IsRunning = true;
+        Hi.Verbose($"[ExecAxis] Start: {TimelineName}");
         Context.Reset();
         _forceSpell = null;
         _paused = false;
@@ -95,8 +96,11 @@ public sealed class ExecutionAxis
         _cts?.Cancel();
 
         // 取消所有等待中的条件
-        foreach (var (_, tcs) in _waitingConds)
+        foreach (var (node, tcs) in _waitingConds)
+        {
+            Hi.Verbose($"[ExecAxis] Stop: 取消 WaitCond {node.DisplayName}(#{node.Id})");
             tcs.TrySetResult(false);
+        }
         _waitingConds.Clear();
     }
 
@@ -126,6 +130,7 @@ public sealed class ExecutionAxis
     {
         var tcs = new TaskCompletionSource<bool>();
         _waitingConds[node] = tcs;
+        Hi.Verbose($"[ExecAxis] WaitCond 注册: {node.DisplayName}(#{node.Id})");
         return tcs.Task;
     }
 
@@ -133,6 +138,7 @@ public sealed class ExecutionAxis
     private void CheckWaitingConds()
     {
         if (_waitingConds.IsEmpty) return;
+        Hi.Verbose($"[ExecAxis] CheckWaitingConds: 检查 {_waitingConds.Count} 个挂起条件");
 
         var toWake = new List<TriggerLeafNode>();
         foreach (var (node, _) in _waitingConds)
@@ -145,7 +151,11 @@ public sealed class ExecutionAxis
                     TreeScriptNode scriptNode => scriptNode.EvaluateConds(),
                     _ => false
                 };
-                if (met) toWake.Add(node);
+                if (met)
+                {
+                    Hi.Verbose($"[ExecAxis] CheckWaitingConds: 条件满足 → {node.DisplayName}(#{node.Id})");
+                    toWake.Add(node);
+                }
             }
             catch { }
         }
@@ -153,7 +163,10 @@ public sealed class ExecutionAxis
         foreach (var node in toWake)
         {
             if (_waitingConds.TryRemove(node, out var tcs))
+            {
+                Hi.Verbose($"[ExecAxis] WaitCond 唤醒: {node.DisplayName}(#{node.Id})");
                 tcs.TrySetResult(true);
+            }
         }
     }
 
@@ -161,6 +174,7 @@ public sealed class ExecutionAxis
     public void UseCondParams(ITriggerCondParams condParams)
     {
         if (_waitingConds.IsEmpty) return;
+        Hi.Verbose($"[ExecAxis] UseCondParams: {condParams.GetType().Name} (挂起 {_waitingConds.Count} 个)");
 
         var toWake = new List<TriggerLeafNode>();
         foreach (var (node, _) in _waitingConds)
@@ -173,7 +187,11 @@ public sealed class ExecutionAxis
                     TreeScriptNode scriptNode => scriptNode.EvaluateForEvent(condParams),
                     _ => false
                 };
-                if (met) toWake.Add(node);
+                if (met)
+                {
+                    Hi.Verbose($"[ExecAxis] UseCondParams 匹配 → {node.DisplayName}(#{node.Id})");
+                    toWake.Add(node);
+                }
             }
             catch { }
         }
@@ -243,17 +261,20 @@ public sealed class ExecutionAxis
         var territory = OmenTools.OmenService.GameState.TerritoryType;
         if (territory != 0 && territory != _previousTerritoryId)
         {
+            Hi.Verbose($"[ExecAxis] Update: 副本切换 {_previousTerritoryId} → {territory}，重新加载");
             _previousTerritoryId = territory;
             Stop();
             AutoLoadTimeline();
         }
 
         // 唤醒挂起的条件节点
+        Hi.Verbose($"[ExecAxis] Update: battleTimeMs={battleTimeMs}");
         CheckWaitingConds();
 
         // 检查强制技能
         if (_forceSpell != null)
         {
+            Hi.Verbose($"[ExecAxis] Update: 强制技能 {_forceSpell.Name}");
             CurrentOutput.ConsumeFrame = true;
             CurrentOutput.ForceSpell = _forceSpell;
             CurrentOutput.Description = $"执行轴强制技能: {_forceSpell.Name}";
@@ -264,6 +285,7 @@ public sealed class ExecutionAxis
         // 检查暂停
         if (_paused)
         {
+            Hi.Verbose($"[ExecAxis] Update: 暂停 ACR");
             CurrentOutput.ConsumeFrame = true;
             CurrentOutput.PauseAcr = true;
             CurrentOutput.Description = "执行轴暂停 ACR";
