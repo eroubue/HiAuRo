@@ -97,6 +97,11 @@ public sealed class MainWindow : Window
     /// <summary>绘制窗口</summary>
     public override void Draw()
     {
+#if DEBUG
+        var _uiTick = System.Diagnostics.Stopwatch.GetTimestamp();
+        try
+        {
+#endif
         // ── 窗口最小尺寸（确保布局不挤压）──
         SizeConstraints = new WindowSizeConstraints { MinimumSize = new Vector2(620, 400), MaximumSize = new Vector2(float.MaxValue, float.MaxValue) };
 
@@ -241,6 +246,13 @@ public sealed class MainWindow : Window
                 _leyLines.Draw(fg, winMin, winMax);
                 break;
         }
+#if DEBUG
+        }
+        finally
+        {
+            Infrastructure.PerfMonitor.Record("UI.MainWindow", _uiTick);
+        }
+#endif
     }
 
     /// <summary>绘制顶部信息栏：Logo行(居中) + Tips行(全宽)</summary>
