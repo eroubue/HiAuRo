@@ -26,20 +26,19 @@ public sealed class DebugPerfWindow : Window
 
     public override void Draw()
     {
-        var data = PerfMonitor.LastFrame;
+        // 先快照上一帧数据（引用会被 BeginFrame 清掉）
+        var snapshot = new Dictionary<string, double>(PerfMonitor.LastFrame);
         var total = PerfMonitor.TotalUs;
         var maxData = PerfMonitor.Max;
-
-        // 读完旧帧数据后立即重置，为下一帧做准备
         PerfMonitor.BeginFrame();
 
-        if (data.Count == 0)
+        if (snapshot.Count == 0)
         {
             ImGui.TextColored(new Vector4(0.6f, 0.6f, 0.6f, 1), "等待数据... (启动 ACR 后采集)");
             return;
         }
 
-        var sorted = data.OrderByDescending(kv => kv.Value).ToList();
+        var sorted = snapshot.OrderByDescending(kv => kv.Value).ToList();
 
         if (ImGui.BeginTable("perfTable", 4,
                 ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.SizingStretchProp))
