@@ -118,6 +118,9 @@ internal class UIManager : IDisposable
         _windowSystem.AddWindow(_overlayStatusBar);
         _windowSystem.AddWindow(_overlayQtPanel);
         _windowSystem.AddWindow(_overlayHotkeyPanel);
+#if DEBUG
+        _windowSystem.AddWindow(new DebugPerfWindow());
+#endif
     }
 
     private void RemoveImGuiOverlays()

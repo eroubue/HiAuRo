@@ -55,6 +55,9 @@ public sealed class OverlayQtPanel : OverlayBase
     /// <summary>绘制 QT 面板内容</summary>
     protected override void DrawContent()
     {
+#if DEBUG
+        var _uiTick = System.Diagnostics.Stopwatch.GetTimestamp();
+#endif
         var qts = ImGuiOverlayState.Qts;
         if (qts.Count == 0)
         {
@@ -112,6 +115,9 @@ public sealed class OverlayQtPanel : OverlayBase
 
         ImGui.PopStyleColor(4);
         ImGui.PopStyleVar(2);
+#if DEBUG
+        PerfMonitor.Record("UI.QtPanel", _uiTick);
+#endif
     }
 
     /// <summary>解析激活颜色（带缓存）</summary>

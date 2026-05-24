@@ -69,6 +69,11 @@ public sealed class OverlayStatusBar : OverlayBase
     /// <summary>绘制状态栏内容</summary>
     protected override void DrawContent()
     {
+#if DEBUG
+        var _uiTick = System.Diagnostics.Stopwatch.GetTimestamp();
+        try
+        {
+#endif
         var expanded = _config.OverlayStatusBarExpanded;
         var currentSize = ImGui.GetWindowSize();
 
@@ -140,6 +145,13 @@ public sealed class OverlayStatusBar : OverlayBase
             }
             ImGui.EndTabBar();
         }
+#if DEBUG
+        }
+        finally
+        {
+            PerfMonitor.Record("UI.StatusBar", _uiTick);
+        }
+#endif
     }
 
     private static void DrawQtSetup()

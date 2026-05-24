@@ -33,7 +33,14 @@ public static class RuntimeCore
 
     private static void OnTick(Dalamud.Plugin.Services.IFramework _)
     {
+#if DEBUG
+        long _pt0 = System.Diagnostics.Stopwatch.GetTimestamp();
+        PerfMonitor.BeginFrame();
+#endif
         ACRLifecycle.PushImGuiState(); // 无论是否运行，每帧同步 ImGui 悬浮窗状态
+#if DEBUG
+        PerfMonitor.Record("ImGuiState", _pt0); _pt0 = System.Diagnostics.Stopwatch.GetTimestamp();
+#endif
 
         if (!IsRunning) return;
         try
@@ -46,10 +53,25 @@ public static class RuntimeCore
 
             Coroutine.Instance.Update();
             CombatContext.Check();
+#if DEBUG
+            PerfMonitor.Record("CombatContext", _pt0); _pt0 = System.Diagnostics.Stopwatch.GetTimestamp();
+#endif
             EventSystem.CheckTargetChanged();
+#if DEBUG
+            PerfMonitor.Record("EventSystem", _pt0); _pt0 = System.Diagnostics.Stopwatch.GetTimestamp();
+#endif
             ACR.HotkeyPoller.Update();
+#if DEBUG
+            PerfMonitor.Record("HotkeyPoller", _pt0); _pt0 = System.Diagnostics.Stopwatch.GetTimestamp();
+#endif
             ACRLifecycle.Update();
+#if DEBUG
+            PerfMonitor.Record("ACRLifecycle", _pt0); _pt0 = System.Diagnostics.Stopwatch.GetTimestamp();
+#endif
             PluginLifecycle.Update();
+#if DEBUG
+            PerfMonitor.Record("PluginLifecycle", _pt0);
+#endif
         }
         catch (Exception ex)
         {

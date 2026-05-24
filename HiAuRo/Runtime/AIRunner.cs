@@ -188,8 +188,17 @@ public sealed class AIRunner
             }
 
             // 更新战斗数据和对象扫描
+#if DEBUG
+            long _aiPt = System.Diagnostics.Stopwatch.GetTimestamp();
+#endif
             Data.Objects.Refresh();
+#if DEBUG
+            PerfMonitor.Record("Objects.Refresh", _aiPt); _aiPt = System.Diagnostics.Stopwatch.GetTimestamp();
+#endif
             Data.Party.Refresh();
+#if DEBUG
+            PerfMonitor.Record("Party.Refresh", _aiPt); _aiPt = System.Diagnostics.Stopwatch.GetTimestamp();
+#endif
 
             // 无目标 → 尝试通过 TargetResolvers 自动选择
             if (Data.Target.Current == null)
@@ -210,6 +219,9 @@ public sealed class AIRunner
             // 战斗计时器
             _battleTimeMs += (int)(Data.Combat.DeltaTime * 1000);
             CurrentRotation?.EventHandler?.OnBattleUpdate(_battleTimeMs);
+#if DEBUG
+            PerfMonitor.Record("BattleUpdate", _aiPt); _aiPt = System.Diagnostics.Stopwatch.GetTimestamp();
+#endif
 
             // ACR 暂停检查
             if (CurrentRotation?.CanPauseACRCheck != null)
@@ -284,15 +296,22 @@ public sealed class AIRunner
                     }
                 }
             }
-
-            // --- 事实轴检查（Phase 7） ---
+#if DEBUG
+            PerfMonitor.Record("ExecutionAxis", _aiPt); _aiPt = System.Diagnostics.Stopwatch.GetTimestamp();
+#endif
             if (ModeSwitch.CurrentMode == ModeSwitch.Mode.FactAxis)
             {
                 UpdateFactAxis(state);
             }
+#if DEBUG
+            PerfMonitor.Record("FactAxis", _aiPt); _aiPt = System.Diagnostics.Stopwatch.GetTimestamp();
+#endif
 
             // --- 辅助轴（始终运行，独立于执行轴/事实轴） ---
             UpdateAssistAxis(state);
+#if DEBUG
+            PerfMonitor.Record("AssistAxis", _aiPt); _aiPt = System.Diagnostics.Stopwatch.GetTimestamp();
+#endif
 
             // 起手序列（受 blockBuild 影响）
             if (!blockBuild && CurrentRotation?.Opener != null && OpenerMgr.CurrentState == OpenerMgr.State.NotStarted)
@@ -324,8 +343,14 @@ public sealed class AIRunner
 
             // 从 AI 循环获取下一个 Slot（Check 总是执行，Build 受 blockBuild 影响）
             var nextSlot = AiLoop.GetNextSlot(blockBuild);
+#if DEBUG
+            PerfMonitor.Record("AILoop", _aiPt); _aiPt = System.Diagnostics.Stopwatch.GetTimestamp();
+#endif
             if (nextSlot != null)
                 SlotExecutor.ExecuteSlot(nextSlot);
+#if DEBUG
+            PerfMonitor.Record("SlotExec", _aiPt);
+#endif
         }
         catch (Exception ex)
         {

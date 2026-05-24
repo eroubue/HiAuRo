@@ -55,6 +55,9 @@ public sealed class OverlayHotkeyPanel : OverlayBase
     /// <summary>绘制热键面板内容</summary>
     protected override void DrawContent()
     {
+#if DEBUG
+        var _uiTick = System.Diagnostics.Stopwatch.GetTimestamp();
+#endif
         var hotkeys = ImGuiOverlayState.Hotkeys;
 
         if (hotkeys.Count == 0)
@@ -113,6 +116,9 @@ public sealed class OverlayHotkeyPanel : OverlayBase
 
         ImGui.PopStyleColor(4);
         ImGui.PopStyleVar(2);
+#if DEBUG
+        PerfMonitor.Record("UI.Hotkey", _uiTick);
+#endif
     }
 
     /// <summary>AntdUI 风格图标按钮 — 游戏技能图标 + 圆角边框（样式由外层循环管理）</summary>
