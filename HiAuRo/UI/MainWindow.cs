@@ -98,9 +98,7 @@ public sealed class MainWindow : Window
     public override void Draw()
     {
 #if DEBUG
-        var _uiTick = System.Diagnostics.Stopwatch.GetTimestamp();
-        try
-        {
+        var _t0 = System.Diagnostics.Stopwatch.GetTimestamp();
 #endif
         // ── 窗口最小尺寸（确保布局不挤压）──
         SizeConstraints = new WindowSizeConstraints { MinimumSize = new Vector2(620, 400), MaximumSize = new Vector2(float.MaxValue, float.MaxValue) };
@@ -247,11 +245,7 @@ public sealed class MainWindow : Window
                 break;
         }
 #if DEBUG
-        }
-        finally
-        {
-            Infrastructure.PerfMonitor.Record("UI.MainWindow", _uiTick);
-        }
+        Infrastructure.PerfMonitor.Record("UI.MainWindow", _t0);
 #endif
     }
 
