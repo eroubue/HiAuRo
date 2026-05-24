@@ -231,6 +231,14 @@ public sealed class MainWindow : Window
         // ── 底部状态栏 ──
         ImGui.Separator();
         DrawStatusBar();
+        // 版本号右下角（编译时间，北京时间）
+        var ver = typeof(MainWindow).Assembly
+            .GetCustomAttributes(typeof(System.Reflection.AssemblyInformationalVersionAttribute), false)
+            .FirstOrDefault() as System.Reflection.AssemblyInformationalVersionAttribute;
+        var verText = ver?.InformationalVersion ?? "Dev";
+        ImGui.SameLine(ImGui.GetWindowWidth() - ImGui.CalcTextSize(verText).X - 20);
+        ImGui.TextColored(Theme.Colors.TextTertiary, verText);
+
         ImGui.PopStyleVar(2);   // WindowPadding, ItemSpacing
         ImGui.PopStyleColor(14); // 所有 ImGuiCol
 

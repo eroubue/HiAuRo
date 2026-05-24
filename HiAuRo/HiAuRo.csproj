@@ -13,6 +13,13 @@
     <SatelliteResourceLanguages>en</SatelliteResourceLanguages>
   </PropertyGroup>
 
+  <!-- 编译时注入 Dev-时间戳 到 AssemblyInformationalVersion -->
+  <Target Name="SetDevVersion" BeforeTargets="BeforeBuild">
+    <PropertyGroup>
+      <InformationalVersion>Dev-$([System.DateTime]::UtcNow.AddHours(8).ToString(yyyyMMdd-HHmm))</InformationalVersion>
+    </PropertyGroup>
+  </Target>
+
   <ItemGroup>
     <ProjectReference Include="../OmenTools/OmenTools.csproj" />
   </ItemGroup>
