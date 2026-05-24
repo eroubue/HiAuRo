@@ -11,6 +11,10 @@ public static class Hi
     public static void Debug(string msg) =>
         DService.Instance().Log.Debug($"[HiAuRo] {msg}");
 
+    /// <summary>输出详细日志（Verbose）</summary>
+    public static void Verbose(string msg) =>
+        DService.Instance().Log.Verbose($"[HiAuRo] {msg}");
+
     /// <summary>输出信息日志</summary>
     public static void Info(string msg) =>
         DService.Instance().Log.Information($"[HiAuRo] {msg}");
