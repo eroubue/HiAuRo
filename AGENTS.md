@@ -86,3 +86,23 @@ All 9 phases are **completed** (46/46 v1 requirements).
 - **Don't iterate `IPartyMember.GameObject` multiple times** — expensive. Resolve once per scan.
 - **Don't classify enemies by `BattleNpcSubKind.Enemy` alone** — some solo-duty allies also carry this flag. Must also check `ObjectKind`, `OwnerId`, `BuddyList`, `IsTargetable`.
 - **Don't add wrapper layers around OmenTools** — DService is already the service locator. `HiAuRo.Data` is a thin forwarding facade, not a repository.
+
+## OmenTools 即用即取（禁止重复造轮子）
+
+以下能力 OmenTools 已直接提供，HiAuRo 代码中**必须直接用，不得自行封装或重新实现**：
+
+| 需求 | 用这个 | 不要自己做 |
+|------|--------|-----------|
+| 对象表访问 | `DService.Instance().ObjectTable`（零分配 CachedEntry） | 自己封装 ObjectTable |
+| 队伍/友方判断 | `ICharacter.StatusFlags`（PartyMember / AllianceMember / Friend 位标志） | `ObjectTable.SearchByID()` 查 OwnerID |
+| 敌人判断 | `ICharacter.BattalionFlags`（Enemy = 4） | 多层 if 组合推断 |
+| 玩家状态 | `LocalPlayerState.*`（职业/等级/移动/距离） | 自己读 ClientState |
+| 战斗状态 | `GameState.*` + `DService.Condition.*` 扩展方法 | 自己组合 ICondition |
+| 目标链 | `TargetManager.Target` 等（可读写） | 原生 `ITargetManager` |
+| 技能释放 | `UseActionManager.UseAction()` | 自己封装 ActionManager |
+| 帧调度 | `FrameworkManager.Reg(method, throttleMS)` | 自己写 Update 循环 |
+| 距离计算 | `LocalPlayerState.DistanceToObject2D/3D`（含 hitbox） | 手算 Vector3.Distance |
+| Buff 查询 | `IBattleChara.StatusList.HasStatus/TryGetStatus` | 自己遍历 StatusList |
+| 对象分类 | `IObjectTable.CharactersRange`（..200，PC+BattleNPC） | 遍历全部 729 槽 |
+| 伙伴查询 | 预缓存 `BuddyList` 的 EntityID 到 `HashSet<uint>` | 每对象嵌套遍历 BuddyList |
+| 对象引用 | `member.GameObject as IPlayerCharacter`（直接转型） | `CreateObjectReference()` |
