@@ -60,6 +60,7 @@ public sealed class AssistAxis
         _paused = false;
         _waitingConds.Clear();
         _cts = new CancellationTokenSource();
+        Hi.Verbose($"[AssistAxis] Start: {TimelineName}");
         _ = RunTreeAsync(_cts.Token);
     }
 
@@ -69,8 +70,11 @@ public sealed class AssistAxis
         IsRunning = false;
         Context.IsDisposed = true;
         _cts?.Cancel();
-        foreach (var (_, tcs) in _waitingConds)
+        foreach (var (node, tcs) in _waitingConds)
+        {
+            Hi.Verbose($"[AssistAxis] Stop: 取消 WaitCond {node.DisplayName}(#{node.Id})");
             tcs.TrySetResult(false);
+        }
         _waitingConds.Clear();
     }
 
@@ -90,18 +94,23 @@ public sealed class AssistAxis
     {
         var tcs = new TaskCompletionSource<bool>();
         _waitingConds[node] = tcs;
+        Hi.Verbose($"[AssistAxis] WaitCond 注册: {node.DisplayName}(#{node.Id})");
         return tcs.Task;
     }
 
     private void CheckWaitingConds()
     {
         if (_waitingConds.IsEmpty) return;
+        Hi.Verbose($"[AssistAxis] CheckWaitingConds: 检查 {_waitingConds.Count} 个挂起条件");
         foreach (var (node, tcs) in _waitingConds)
         {
             try
             {
                 if (node.EvaluateConds() && _waitingConds.TryRemove(node, out var removedTcs))
+                {
+                    Hi.Verbose($"[AssistAxis] WaitCond 唤醒: {node.DisplayName}(#{node.Id})");
                     removedTcs.TrySetResult(true);
+                }
             }
             catch { }
         }
@@ -165,15 +174,18 @@ public sealed class AssistAxis
         var territory = OmenTools.OmenService.GameState.TerritoryType;
         if (territory != 0 && territory != _previousTerritoryId)
         {
+            Hi.Verbose($"[AssistAxis] Update: 副本切换 {_previousTerritoryId} → {territory}，重新加载");
             _previousTerritoryId = territory;
             Stop();
             AutoLoadTimeline();
         }
 
+        Hi.Verbose($"[AssistAxis] Update: battleTimeMs={battleTimeMs}");
         CheckWaitingConds();
 
         if (_forceSpell != null)
         {
+            Hi.Verbose($"[AssistAxis] Update: 强制技能 {_forceSpell.Name}");
             CurrentOutput.ConsumeFrame = true;
             CurrentOutput.ForceSpell = _forceSpell;
             CurrentOutput.Description = $"辅助轴强制技能: {_forceSpell.Name}";
@@ -183,6 +195,7 @@ public sealed class AssistAxis
 
         if (_paused)
         {
+            Hi.Verbose($"[AssistAxis] Update: 暂停 ACR");
             CurrentOutput.ConsumeFrame = true;
             CurrentOutput.PauseAcr = true;
             CurrentOutput.Description = "辅助轴暂停 ACR";
