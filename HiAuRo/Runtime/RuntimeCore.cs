@@ -21,7 +21,7 @@ public static class RuntimeCore
             "ExecutionAxis", "FactAxis", "AssistAxis",
             "AILoop", "SlotExec",
             // UI 层级
-            "UI.Total", "UI.Hotkey", "UI.QtPanel", "UI.StatusBar", "UI.MainWindow"
+            "UI.Total", "UI.PerfMon", "UI.Hotkey", "UI.QtPanel", "UI.StatusBar", "UI.MainWindow"
         );
 #endif
         ACR.MainControlHelper.Unpause();

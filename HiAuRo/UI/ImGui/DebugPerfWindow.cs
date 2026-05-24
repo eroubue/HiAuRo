@@ -13,6 +13,10 @@ public sealed class DebugPerfWindow : Window
     /// <summary>全局单例，供 /hi debug 命令调用</summary>
     public static DebugPerfWindow? Instance { get; private set; }
 
+    private long _perfDrawStart;
+    // 复用快照字典，避免每帧 new 分配
+    private readonly Dictionary<string, double> _snapshot = [];
+
     public DebugPerfWindow() : base("HiAuRo 性能监控##Debug")
     {
         Instance = this;
@@ -24,21 +28,35 @@ public sealed class DebugPerfWindow : Window
         IsOpen = false;
     }
 
+    public override void PreDraw()
+    {
+        _perfDrawStart = Stopwatch.GetTimestamp();
+        base.PreDraw();
+    }
+
+    public override void PostDraw()
+    {
+        base.PostDraw();
+        PerfMonitor.Record("UI.PerfMon", _perfDrawStart);
+    }
+
     public override void Draw()
     {
-        // 先快照上一帧数据（引用会被 BeginFrame 清掉）
-        var snapshot = new Dictionary<string, double>(PerfMonitor.LastFrame);
+        // 先快照上一帧数据（引用会被 BeginFrame 清掉，复用字典避免分配）
+        _snapshot.Clear();
+        foreach (var kv in PerfMonitor.LastFrame)
+            _snapshot[kv.Key] = kv.Value;
         var total = PerfMonitor.TotalUs;
         var maxData = PerfMonitor.Max;
         PerfMonitor.BeginFrame();
 
-        if (snapshot.Count == 0)
+        if (_snapshot.Count == 0)
         {
             ImGui.TextColored(new Vector4(0.6f, 0.6f, 0.6f, 1), "等待数据... (启动 ACR 后采集)");
             return;
         }
 
-        var sorted = snapshot.OrderByDescending(kv => kv.Value).ToList();
+        var sorted = _snapshot.OrderByDescending(kv => kv.Value).ToList();
 
         if (ImGui.BeginTable("perfTable", 4,
                 ImGuiTableFlags.Borders | ImGuiTableFlags.RowBg | ImGuiTableFlags.SizingStretchProp))
@@ -79,20 +97,21 @@ public sealed class DebugPerfWindow : Window
             ImGui.EndTable();
         }
 
-        // 计算未计量开销
-        double tickTotal = snapshot.GetValueOrDefault("Tick.Total", 0);
-        double uiTotal = snapshot.GetValueOrDefault("UI.Total", 0);
-        double accounted = 0;
-        foreach (var kv in snapshot)
+        // 计算未计量开销（排除监控窗口自身）
+        double perfSelf = _snapshot.GetValueOrDefault("UI.PerfMon", 0);
+        double tickTotal = _snapshot.GetValueOrDefault("Tick.Total", 0);
+        double uiTotal = _snapshot.GetValueOrDefault("UI.Total", 0);
+        double accountedOther = 0;
+        foreach (var kv in _snapshot)
         {
-            if (kv.Key is "Tick.Total" or "UI.Total") continue;
-            accounted += kv.Value;
+            if (kv.Key is "Tick.Total" or "UI.Total" or "UI.PerfMon") continue;
+            accountedOther += kv.Value;
         }
-        double unaccounted = tickTotal + uiTotal - accounted;
+        double unaccounted = tickTotal + uiTotal - accountedOther;
 
         ImGui.Spacing();
-        ImGui.TextColored(new Vector4(0.8f, 0.6f, 0.2f, 1),
-            $"未计量: {unaccounted:F1}μs (Tick={tickTotal:F0} + UI={uiTotal:F0} - 子项={accounted:F0})");
+        ImGui.TextColored(new Vector4(0.6f, 0.6f, 0.6f, 1),
+            $"监控自身: {perfSelf:F1}μs  |  框架缺口: {unaccounted:F1}μs");
         ImGui.Spacing();
         if (ImGui.Button("重置最大值"))
             PerfMonitor.ResetMax();
