@@ -24,7 +24,10 @@ public abstract class TriggerNode
     {
         if (!Enable) return true;
         if (ctx.IsDisposed) return false;
-        return await OnExecute(ctx);
+        Hi.Verbose($"[ExecNode] ▶ {DisplayName}(#{Id}) 进入");
+        var result = await OnExecute(ctx);
+        Hi.Verbose($"[ExecNode] ◀ {DisplayName}(#{Id}) 退出 → {(result ? "成功" : "失败")}");
+        return result;
     }
 
     /// <summary>子类实现的异步求值逻辑</summary>
@@ -55,15 +58,18 @@ public sealed class TreeSequence : TriggerCompositeNode
     /// <summary>依次执行子节点，支持短路</summary>
     protected override async Task<bool> OnExecute(EvalContext ctx)
     {
-        foreach (var child in Childs)
+        for (int i = 0; i < Childs.Count; i++)
         {
+            var child = Childs[i];
             if (!child.Enable) continue;
             if (ctx.IsDisposed) return false;
-
+            Hi.Verbose($"[ExecNode] Sequence({Tag}) → 子节点 [{i}/{Childs.Count}] {child.DisplayName}(#{child.Id})");
             var result = await child.Execute(ctx);
-
             if (!result && !IgnoreNodeResult)
-                return false; // 短路失败
+            {
+                Hi.Verbose($"[ExecNode] Sequence({Tag}) 短路退出");
+                return false;
+            }
         }
         return true;
     }
@@ -81,20 +87,20 @@ public sealed class TreeParallel : TriggerCompositeNode
     /// <summary>并行执行所有子节点</summary>
     protected override async Task<bool> OnExecute(EvalContext ctx)
     {
+        var tasks = Childs.Where(c => c.Enable).Select(c => c.Execute(ctx)).ToList();
+        Hi.Verbose($"[ExecNode] Parallel({Tag}) 启动 {tasks.Count} 子节点 [AnyReturn={AnyReturn}]");
+        if (tasks.Count == 0) return true;
         if (AnyReturn)
         {
-            var tasks = Childs.Where(c => c.Enable).Select(c => c.Execute(ctx)).ToList();
-            if (tasks.Count == 0) return true;
             var winner = await Task.WhenAny(tasks);
-            return true; // 对齐 AE: 竞赛模式总是返回 true
+            Hi.Verbose($"[ExecNode] Parallel({Tag}) 竞赛胜出");
         }
         else
         {
-            var tasks = Childs.Where(c => c.Enable).Select(c => c.Execute(ctx)).ToList();
-            if (tasks.Count == 0) return true;
             await Task.WhenAll(tasks);
-            return true; // 对齐 AE: 忽略子节点结果
+            Hi.Verbose($"[ExecNode] Parallel({Tag}) 全部完成");
         }
+        return true;
     }
 }
 
@@ -110,10 +116,15 @@ public sealed class TreeSelect : TriggerCompositeNode
         foreach (var child in Childs)
         {
             if (!child.Enable) continue;
+            Hi.Verbose($"[ExecNode] Select({Tag}) → 尝试 {child.DisplayName}(#{child.Id})");
             if (await child.Execute(ctx))
+            {
+                Hi.Verbose($"[ExecNode] Select({Tag}) → {child.DisplayName} 成功");
                 return true;
+            }
+            Hi.Verbose($"[ExecNode] Select({Tag}) → {child.DisplayName} 失败");
         }
-        return true; // 对齐 AE
+        return true;
     }
 }
 
@@ -130,6 +141,7 @@ public sealed class TreeLoop : TriggerCompositeNode
     {
         for (int i = 0; i < Times; i++)
         {
+            Hi.Verbose($"[ExecNode] Loop({Tag}) 第 {i + 1}/{Times} 轮");
             foreach (var child in Childs)
             {
                 if (!child.Enable) continue;
@@ -168,7 +180,12 @@ public sealed class TreeScriptNode : TriggerLeafNode
 
         if (OnlyCheck)
         {
-            try { return _compiled.Check(null); }
+            try
+            {
+                var checkResult = _compiled.Check(null);
+                Hi.Verbose($"[ExecNode] Script({Tag}) OnlyCheck: {checkResult}");
+                return checkResult;
+            }
             catch (Exception ex)
             {
                 DService.Instance().Log.Error($"[TreeScriptNode] 脚本执行异常: {ex.Message}");
@@ -181,14 +198,22 @@ public sealed class TreeScriptNode : TriggerLeafNode
         {
             DService.Instance().Log.Error($"[TreeScriptNode] 脚本执行异常: {ex.Message}");
         }
-        return await ExecutionAxis.Instance.WaitCond(this);
+        Hi.Verbose($"[ExecNode] Script({Tag}) 进入等待模式");
+        var result = await ExecutionAxis.Instance.WaitCond(this);
+        Hi.Verbose($"[ExecNode] Script({Tag}) WaitCond 返回: {(result ? "满足" : "取消")}");
+        return result;
     }
 
     /// <summary>每帧轮询：Check() 返回 false = 继续等，true = 节点完成</summary>
     public bool EvaluateConds()
     {
         if (_compiled == null) return true;
-        try { return _compiled.Check(null); }
+        try
+        {
+            var r = _compiled.Check(null);
+            Hi.Verbose($"[ExecNode] Script({Tag}) EvaluateConds: {r}");
+            return r;
+        }
         catch { return false; }
     }
 
@@ -235,12 +260,16 @@ public sealed class TreeCondNode : TriggerLeafNode
     {
         if (CheckOnce)
         {
-            return EvaluateConds();
+            var met = EvaluateConds();
+            Hi.Verbose($"[ExecNode] Cond({Tag}) CheckOnce: {(met ? "满足" : "不满足")}");
+            return met;
         }
         else
         {
-            // 等待模式: 挂起直到条件满足（对齐 AE WaitCond）
-            return await ExecutionAxis.Instance.WaitCond(this);
+            Hi.Verbose($"[ExecNode] Cond({Tag}) 进入等待模式");
+            var result = await ExecutionAxis.Instance.WaitCond(this);
+            Hi.Verbose($"[ExecNode] Cond({Tag}) WaitCond 返回: {(result ? "满足" : "取消")}");
+            return result;
         }
     }
 
@@ -254,6 +283,7 @@ public sealed class TreeCondNode : TriggerLeafNode
             : TriggerConds.Any(c => { try { return c.Handle(); } catch { return false; } });
 
         if (ReverseResult) met = !met;
+        Hi.Verbose($"[ExecNode] Cond({Tag}) [{CondLogicType}] {TriggerConds.Count}个条件 → {(met ? "满足" : "不满足")}");
         return met;
     }
 
@@ -282,7 +312,11 @@ public sealed class TreeActionNode : TriggerLeafNode
     {
         foreach (var action in TriggerActions)
         {
-            try { action.Handle(); }
+            try
+            {
+                Hi.Verbose($"[ExecNode] Action({Tag}) → {action.GetType().Name}");
+                action.Handle();
+            }
             catch (Exception ex) { DService.Instance().Log.Error($"[TriggerNode] 动作异常: {ex.Message}"); }
         }
         return Task.FromResult(true);
@@ -299,7 +333,9 @@ public sealed class TreeDelayNode : TriggerLeafNode
     protected override async Task<bool> OnExecute(EvalContext ctx)
     {
         if (ctx.IsDisposed) return false;
+        Hi.Verbose($"[ExecNode] Delay({Tag}) 延迟 {Delay}s 开始");
         await HiAuRo.Runtime.Coroutine.Instance.DelayAsync(Delay * 1000);
+        Hi.Verbose($"[ExecNode] Delay({Tag}) 延迟完成");
         return !ctx.IsDisposed;
     }
 }
