@@ -1,45 +1,79 @@
-# Trigger 序列化 + Draw() 改造设计
+# Trigger 序列化 + IUiBuilder Draw() 改造设计
 
 ## 问题
 
 1. 所有内置 ITriggerCond / ITriggerAction 使用 `private readonly` 字段，JSON 不可序列化
-2. 编辑器没有参数编辑 UI，用户只能手改 JSON
-3. JSON 反序列化依赖 hardcoded switch（`ConvertKnownCondition`/`ConvertKnownAction`），无法扩展
+2. Web 编辑器没有参数编辑 UI
+3. JSON 反序列化依赖 hardcoded switch（`ConvertKnownCondition/ConvertKnownAction`）
 
-## 解决方案总览
+## 数据流（核心架构决策）
 
-| 层面 | 改动 |
-|------|------|
-| Interfaces | `ITriggerCond` / `ITriggerAction` 加 `Draw()` + `Remark` |
-| 类型字段 | `private readonly` → `public` auto-property + `[JsonPropertyName]` |
-| Draw() | 反射 `[JsonPropertyName]` 自动生成 HTML，特殊类型可重写 |
-| JSON 反序列化 | 所有内置类型注册到 STJ 字典，去掉 hardcoded switch |
-| Catalog | 增加 `draw` HTML 字段 |
-| Web 编辑器 | 用 catalog 的 `draw` HTML + `data-field` 绑定渲染参数控件 |
+```
+Web 编辑器编辑触发条件参数 → 保存 JSON 文件
+     ↓
+C# 加载 JSON 文件 → STJ 反序列化 → 设置公共属性
+     ↓
+运行时调用 Handle() 使用已设置的属性值
+```
+
+**无实时双向通信**。Edit→Save→Load 是完整周期：
+
+- `Draw()` 只声明"这个类型有哪些字段、什么类型"，不负责实时值绑定
+- `defaultValue` 只在新建实例时使用，实际值来自 JSON 反序列化
+- `IUiBuilder` 复用现有的 C#→JSON→Web 渲染管线
 
 ---
 
-## 1. 接口变更
+## 1. IUiBuilder 新增控件
+
+```csharp
+public interface IUiBuilder
+{
+    // === 已有 ===
+    void AddCheckbox(string label, bool defaultValue);
+    void AddSlider(string label, float min, float max, float defaultValue);
+    void AddDropdown(string label, string[] options, string defaultValue);
+    void AddIntInput(string label, int defaultValue, int step = 1, int stepFast = 10);
+    void AddLabel(string text);
+    void AddQtToggle(...);
+    // ... 结构方法 (AddTab, AddGroup 等)
+
+    // === 新增（满足 trigger 字段类型需求） ===
+    void AddFloatInput(string label, float defaultValue);
+    void AddTextInput(string label, string defaultValue);
+}
+```
+
+| 控件 | C# 类型 | 用于 |
+|------|---------|------|
+| `AddCheckbox` | `bool` | 开关选项 |
+| `AddIntInput` | `int` / `uint` | 技能ID、DataId、时间毫秒 |
+| `AddFloatInput` | `float` / `double` | 坐标、检测时间秒数 |
+| `AddTextInput` | `string` | 命令、按键、变量名 |
+| `AddDropdown` | 枚举 | 目标类型、职业分类 |
+| `AddSlider` | `float` | 范围值 |
+
+## 2. 接口变更
 
 ```csharp
 public interface ITriggerCond : ITriggerBase
 {
     bool Handle(ITriggerCondParams? condParams = null);
     string Remark { get; set; }
-    string Draw() => TriggerDrawHelper.GenerateHtml(this);  // 默认实现
+    void Draw(IUiBuilder builder);  // 新增
 }
 
 public interface ITriggerAction : ITriggerBase
 {
     bool Handle();
     string Remark { get; set; }
-    string Draw() => TriggerDrawHelper.GenerateHtml(this);  // 默认实现
+    void Draw(IUiBuilder builder);  // 新增
 }
 ```
 
-`Draw()` 返回 HTML 片段，默认用反射自动生成。类型可显式实现 `Draw()` 覆盖默认行为。
+**不破坏现有 ACR 类型**（内部测试阶段，ACR 后续适配即可）。
 
-## 2. 类型字段改造模式
+## 3. 类型字段改造模式
 
 ### 改前
 ```csharp
@@ -47,7 +81,7 @@ public sealed class TriggerCond_Actor死亡 : ITriggerCond
 {
     private readonly uint _dataId;
     public TriggerCond_Actor死亡(uint dataId) { _dataId = dataId; }
-    public bool Handle(ITriggerCondParams? condParams = null) { ... }
+    public bool Handle(...) { ... _dataId ... }
 }
 ```
 
@@ -57,11 +91,14 @@ public sealed class TriggerCond_Actor死亡 : ITriggerCond
 [TriggerTypeName("TriggerCondActorDeath")]
 public sealed class TriggerCond_Actor死亡 : ITriggerCond
 {
-    [JsonPropertyName("DataId")]
     public uint DataId { get; set; }
-    
     public string Remark { get; set; } = "";
-    
+
+    public void Draw(IUiBuilder builder)
+    {
+        builder.AddIntInput("DataId", (int)DataId);
+    }
+
     public bool Handle(ITriggerCondParams? condParams = null)
     {
         foreach (var obj in Objects.All)
@@ -69,270 +106,145 @@ public sealed class TriggerCond_Actor死亡 : ITriggerCond
                 return false;
         return true;
     }
-    
-    // Draw() 使用默认接口实现 → 自动生成 HTML
 }
 ```
 
-关键规则：
-- `private readonly` 字段 → `[JsonPropertyName("X")] public T X { get; set; }`
-- 去掉构造函数
-- `Handle()` 中用 `DataId` 替代 `_dataId`
-- （可选）`Draw()` 可重写，默认自动生成
+### 改造规则
 
-## 3. `[JsonPropertyName]` 命名规则
+| 原模式 | 新模式 |
+|--------|--------|
+| `private readonly uint _dataId` | `public uint DataId { get; set; }` |
+| 构造函数设置字段 | STJ 反序列化直接设置属性 |
+| `_dataId` 引用 | `DataId` 引用 |
+| 无 `Draw()` | `void Draw(IUiBuilder builder)` 调用 builder 方法 |
+| `[JsonPropertyName]` 可选 | 如果 JSON 字段名和属性名不同，加 `[JsonPropertyName("...")]` |
 
-以 AE JSON 字段名为准（即 hardcoded switch 中使用的名字）：
+## 4. UI Builder 实现（UiBuilderImpl）
 
-| 含义 | JsonPropertyName |
-|------|-----------------|
-| DataId | `"DataId"` |
-| SpellId | `"SpellId"` |
-| IconId / 图标ID | `"IconId"` |
-| 天气ID | `"WeatherId"` |
-| 效果ID | `"EffectId"` |
-| 职业分类 | `"PartyRole"` 或 `"CategoryType"`（已存在的字段名） |
-| 冷却时间 | `"CoolDown"`（当前 converter 用的名字） |
-| 经过时间 | `"TimeMs"` |
-| 延迟秒数 | `"CheckTime"` 或 `"Time"` |
-| 目标类型 | `"TargetType"` |
-| 是否启用 | `"Enable"` / `"Pull"` / `"Stop"`（不同 action 用不同名） |
-| 变量名 | `"VariableName"` |
-| 变量值 | `"VariableVaule"`（注意 AE 的拼写） |
-| 坐标 | `"X"` / `"Y"` / `"Z"` |
-| 按键/命令 | `"Command"` |
-| 物品ID | `"ItemId"` |
-
-**不保留 `SpellConfig` 嵌套。** Web 编辑器产生的 JSON 是扁平格式（`{ "$type": "...", "SpellId": 123 }`），C# 端直接 STJ 反序列化。
-
-## 4. Draw() 自动生成（`TriggerDrawHelper.GenerateHtml()`）
+新增 `AddFloatInput` 和 `AddTextInput` 的实现：
 
 ```csharp
-public static class TriggerDrawHelper
-{
-    public static string GenerateHtml(object trigger)
-    {
-        var sb = new StringBuilder();
-        var type = trigger.GetType();
-        var props = type.GetProperties(BindingFlags.Public | BindingFlags.Instance);
-        
-        foreach (var prop in props)
-        {
-            var attr = prop.GetCustomAttribute<JsonPropertyNameAttribute>();
-            if (attr == null) continue;
-            
-            var value = prop.GetValue(trigger);
-            var jsonName = attr.Name;
-            
-            if (prop.PropertyType == typeof(bool))
-            {
-                var chk = (bool)value ? "checked" : "";
-                sb.AppendLine($"<label class='field-checkbox'><input type='checkbox' data-field='{jsonName}' {chk} /> {jsonName}</label>");
-            }
-            else if (prop.PropertyType.IsEnum)
-            {
-                sb.AppendLine($"<div class='field'><label>{jsonName}</label><select data-field='{jsonName}'>");
-                foreach (var enumVal in Enum.GetValues(prop.PropertyType))
-                {
-                    var v = Convert.ToInt32(enumVal);
-                    var sel = v == Convert.ToInt32(value) ? "selected" : "";
-                    sb.AppendLine($"  <option value='{v}' {sel}>{enumVal}</option>");
-                }
-                sb.AppendLine("</select></div>");
-            }
-            else if (prop.PropertyType == typeof(string))
-            {
-                sb.AppendLine($"<div class='field'><label>{jsonName}</label><input type='text' data-field='{jsonName}' value='{value}' /></div>");
-            }
-            else // 数值类型
-            {
-                sb.AppendLine($"<div class='field'><label>{jsonName}</label><input type='number' data-field='{jsonName}' value='{value}' step='1' /></div>");
-            }
-        }
-        return sb.ToString();
-    }
-}
+public void AddFloatInput(string label, float defaultValue) =>
+    _controls.Add(new UiControlDef(Id(label), "floatInput", _currentGroup, label, defaultValue));
+
+public void AddTextInput(string label, string defaultValue) =>
+    _controls.Add(new UiControlDef(Id(label), "textInput", _currentGroup, label, defaultValue ?? ""));
 ```
+
+`UiControlDef.Value` 的类型已支持 `object?`，float 和 string 直接存入。
 
 ## 5. Catalog 扩展
 
-`TriggerInfo` 新增 `draw` 字段：
+`TriggerCatalogBuilder` 在扫描类型时调用 `Draw(builder)` 获取 UI 描述：
 
 ```csharp
-public sealed class TriggerInfo
+var builder = new UiBuilderImpl();
+if (instance is ITriggerCond cond) cond.Draw(builder);
+var controls = builder.GetControls(); // List<UiControlDef>
+
+// 存入 catalog
+var info = new TriggerInfo
 {
-    // 已有字段
-    public string typeName;
-    public string typeDiscriminator;
-    public string displayName;
-    public string description;
-    public string category;
-    public bool cloudSync;
-    public List<ParameterInfo> parameters;
-    
-    // 新增
-    public string draw;  // Draw() 返回的 HTML
+    ...,
+    controls: controls.Select(c => new { c.Label, c.Type, c.Value }).ToList()
+};
+```
+
+Catalog 新增 `controls` 字段：
+```json
+{
+    "typeDiscriminator": "TriggerCondActorDeath",
+    "displayName": "Actor死亡",
+    "controls": [
+        { "label": "DataId", "type": "intInput", "defaultValue": 0 }
+    ]
 }
 ```
 
-`TriggerCatalogBuilder` 构建时调用 `Draw()` 并缓存：
+## 6. Web 编辑器渲染
 
-```csharp
-var info = new TriggerInfo { ... };
-var instance = Activator.CreateInstance(type) as ITriggerBase;
-if (instance is ITriggerCond cond)
-    info.draw = cond.Draw();
-else if (instance is ITriggerAction action)
-    info.draw = action.Draw();
+editor.js 在渲染 trigger 条件/动作列表时：
+
+```
+for each cond in node.TriggerConds:
+  1. 根据 cond.$type 找到 catalog entry
+  2. 获取 entry.controls[]
+  3. 从 cond 实例 JSON 中读取对应字段值
+  4. 渲染输入控件并填充值
+  5. 用户修改时更新 cond 实例对象
+  6. 保存 Node 时整体序列化为 JSON
 ```
 
-## 6. JSON 反序列化（全部 STJ）
+渲染逻辑按 type 分配：
+
+| controls.type | HTML 控件 |
+|---------------|-----------|
+| `intInput` | `<input type='number' step='1' />` |
+| `floatInput` | `<input type='number' step='any' />` |
+| `textInput` | `<input type='text' />` |
+| `checkbox` | `<input type='checkbox' />` |
+| `dropdown` | `<select>` |
+| `slider` | `<input type='range' />` |
+
+值映射：`cond[control.label]` ←→ input value。例如 `DataId` 字段 → `cond["DataId"]`。
+
+## 7. JSON 反序列化
 
 ### 注册所有内置类型
 
-在 `ExecutionJsonLoader` 初始化时：
-
 ```csharp
-public static void RegisterBuiltInTypes()
+public static void RegisterAllTypes()
 {
-    // 扫描当前程序集所有 ITriggerCond / ITriggerAction
     var asm = typeof(TriggerCond_Actor死亡).Assembly;
-    foreach (var type in asm.GetTypes())
+    foreach (var type in asm.GetTypes().Where(t => !t.IsAbstract))
     {
-        if (typeof(ITriggerCond).IsAssignableFrom(type) && !type.IsAbstract)
-        {
-            RegisterType(type, _condTypes);
-        }
-        else if (typeof(ITriggerAction).IsAssignableFrom(type) && !type.IsAbstract)
-        {
-            RegisterType(type, _actionTypes);
-        }
+        if (typeof(ITriggerCond).IsAssignableFrom(t))
+            RegisterType(t, _condTypes);
+        else if (typeof(ITriggerAction).IsAssignableFrom(t))
+            RegisterType(t, _actionTypes);
     }
-}
-
-private static void RegisterType(Type type, Dictionary<string, Type> dict)
-{
-    dict[type.FullName!] = type;
-    dict[type.Name] = type;
-    var attr = type.GetCustomAttribute<TriggerTypeNameAttribute>();
-    if (attr != null)
-        dict[attr.TypeDiscriminator] = type;
 }
 ```
 
 ### 去掉 hardcoded switch
 
+`ConvertCondition/ConvertAction` 统一走 STJ：
+
 ```csharp
-// ConvertCondition 简化
 public static ITriggerCond? ConvertCondition(JsonElement elem)
 {
-    try
-    {
-        var typeName = elem.TryGetProperty("$type", out var tp) ? tp.GetString() ?? "" : "";
-        var fullType = typeName.Split(',')[0].Trim();
-        
-        if (ExecutionJsonLoader.TryDeserializeCond(fullType, elem, out var cond))
-            return cond;
-        
-        return null;
-    }
-    catch { return null; }
+    var typeName = elem.TryGetProperty("$type", out var tp) ? tp.GetString() ?? "" : "";
+    var fullType = typeName.Split(',')[0].Trim();
+    return ExecutionJsonLoader.TryDeserializeCond(fullType, elem, out var cond) ? cond : null;
 }
 ```
 
-## 7. Web 编辑器改动
+## 8. 改动清单
 
-### catalog 加载
-
-editor.js 在加载 catalog 后，`localTriggers.conditions[]` 和 `localTriggers.actions[]` 的每个条目里多了一个 `draw` 字符串。
-
-### renderProps() 改动
-
-当选中 `treeCondNode` 时，在 `TriggerConds` 列表区域：
-
-```
-For each cond in node.TriggerConds:
-  1. 根据 cond.$type 找 catalog entry
-  2. 获取 entry.draw HTML
-  3. 将 HTML 插入到属性面板
-  4. 对每个 [data-field] 元素：
-     - 从 cond 中读取对应字段值，设置到 input
-     - 添加 input/change 事件监听
-     - 变化时更新 cond 的对应字段
-```
-
-事件绑定示例（JS）：
-
-```javascript
-// 当 draw HTML 插入后
-container.querySelectorAll('[data-field]').forEach(function(input) {
-    var fieldName = input.dataset.field;
-    // 从实例 JSON 读取初始值
-    if (cond[fieldName] !== undefined) {
-        if (input.type === 'checkbox')
-            input.checked = cond[fieldName];
-        else
-            input.value = cond[fieldName];
-    }
-    // 变化时更新实例
-    input.addEventListener('change', function() {
-        if (input.type === 'checkbox')
-            cond[fieldName] = input.checked;
-        else if (input.type === 'number')
-            cond[fieldName] = parseFloat(input.value);
-        else
-            cond[fieldName] = input.value;
-    });
-});
-```
-
-### addTriggerCond / addTriggerAction
-
-添加时不再只塞默认值。从 catalog 获取参数信息，用参数名作为 JSON key：
-
-```javascript
-function addTriggerCond(nodePath, aeTypeName) {
-    var info = findCatalogEntry(aeTypeName);
-    var newCond = { '$type': aeTypeName };
-    if (info && info.parameters) {
-        info.parameters.forEach(function(p) {
-            if (p.defaultValue !== undefined && p.defaultValue !== null)
-                newCond[p.name] = p.defaultValue;
-            else if (p.type === 'number')
-                newCond[p.name] = 0;
-            else if (p.type === 'text')
-                newCond[p.name] = '';
-            else if (p.type === 'checkbox')
-                newCond[p.name] = false;
-        });
-    }
-    node.TriggerConds.push(newCond);
-}
-```
-
-## 8. 影响范围
-
-| 文件 | 改动类型 | 数量 |
-|------|---------|------|
-| `ACR/Interfaces/ITriggerCond.cs` | 修改接口 | 1 |
-| `ACR/Interfaces/ITriggerAction.cs` | 修改接口 | 1 |
-| `Infrastructure/TriggerDrawHelper.cs` | **新建** | 1 |
-| `Execution/ExecutionJson.cs` | 重写反序列化 | 1 |
-| `Execution/TriggerMetadata.cs` | 增加 draw 字段 | 1 |
-| `Execution/Triggers/Cond/*.cs` | 改造类型 | ~23 |
-| `Execution/Triggers/Action/*.cs` | 改造类型 | ~15 |
-| `UI/web/editor.js` | 渲染参数控件 | 1 |
-| `UI/web/editor.css` | 参数控件样式 | 1 |
-
-总计：~45 个文件改动，1 个新文件。
+| 文件 | 改动 |
+|------|------|
+| `ACR/Interfaces/IUiBuilder.cs` | 加 `AddFloatInput`, `AddTextInput` |
+| `ACR/Interfaces/ITriggerCond.cs` | 加 `Draw(IUiBuilder)`, `Remark` |
+| `ACR/Interfaces/ITriggerAction.cs` | 加 `Draw(IUiBuilder)`, `Remark` |
+| `UI/UiBuilderImpl.cs` | 实现新控件方法 |
+| `UI/web/app.js` | 渲染 floatInput, textInput 控件 |
+| `Execution/TriggerMetadata.cs` | 构建时调 Draw() 存 controls |
+| `Execution/ExecutionJson.cs` | 注内置类型，删 hardcoded switch |
+| `Execution/Triggers/Cond/*.cs` (×23) | 改造为 public 属性 + Draw() |
+| `Execution/Triggers/Action/*.cs` (×15) | 改造为 public 属性 + Draw() |
+| `UI/web/editor.js` | 用 catalog controls 渲染参数编辑 |
+| `UI/web/editor.css` | 参数控件样式 |
 
 ## 9. 实施顺序
 
 ```
-Step 1: 新建 TriggerDrawHelper + 修改接口 ITriggerCond/ITriggerAction
-Step 2: 改造 ExecutionJson（注册内置类型，去掉 switch）
-Step 3: 改造 TriggerMetadata（增加 draw 字段）
-Step 4-7: 分批改造 38 个 trigger 类型（先 cond，再 action）
-Step 8: 改造 Web 编辑器（editor.js 渲染参数控件）
-Step 9: 样式（editor.css）
+Step 1: IUiBuilder 加 AddFloatInput / AddTextInput + UiBuilderImpl 实现
+Step 2: Web 端 app.js 渲染新控件类型
+Step 3: 改造 ITriggerCond / ITriggerAction 接口（加 Draw + Remark）
+Step 4: 逐批改造 Trigger Cond 类型（约 23 个）
+Step 5: 逐批改造 Trigger Action 类型（约 15 个）
+Step 6: 重写 ExecutionJson 反序列化（注册内置类型，删 switch）
+Step 7: TriggerMetadata 构建时调 Draw() + catalog 存 controls
+Step 8: Web 编辑器 editor.js 用 catalog controls 渲染参数编辑
+Step 9: editor.css 样式
 ```
