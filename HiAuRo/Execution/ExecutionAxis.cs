@@ -50,6 +50,7 @@ public sealed class ExecutionAxis
     {
         if (Initialized) return;
         Initialized = true;
+        ExecutionJsonLoader.RegisterBuiltInTypes();
         Events.GameEventHook.Instance.OnEventFired += OnEventFired;
         AutoLoadTimeline();
     }

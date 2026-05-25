@@ -249,21 +249,17 @@ internal static class TriggerConverter
         try
         {
             var typeName = elem.TryGetProperty("$type", out var tp) ? tp.GetString() ?? "" : "";
-            var type = typeName.Split(',').FirstOrDefault()?.Split('.').Last() ?? "";
             var fullType = typeName.Split(',')[0].Trim();
-            var extra = ParseExtra(elem);
-
-            // 先查已知映射
-            var known = ConvertKnownCondition(type, extra, elem);
-            if (known != null) return known;
-
-            // 再查 ACR 注册的类型
-            if (ExecutionJsonLoader.TryDeserializeCond(fullType, elem, out var custom))
-                return custom;
-
+            if (ExecutionJsonLoader.TryDeserializeCond(fullType, elem, out var cond))
+                return cond;
+            DService.Instance().Log.Warning($"[ExecAxis] 未知条件类型: {fullType}");
             return null;
         }
-        catch { return null; }
+        catch (Exception ex)
+        {
+            DService.Instance().Log.Error($"[ExecAxis] 反序列化条件失败: {ex.Message}");
+            return null;
+        }
     }
 
     public static ITriggerAction? ConvertAction(JsonElement elem)
@@ -271,218 +267,16 @@ internal static class TriggerConverter
         try
         {
             var typeName = elem.TryGetProperty("$type", out var tp) ? tp.GetString() ?? "" : "";
-            var type = typeName.Split(',').FirstOrDefault()?.Split('.').Last() ?? "";
             var fullType = typeName.Split(',')[0].Trim();
-            var extra = ParseExtra(elem);
-
-            var known = ConvertKnownAction(type, extra, elem);
-            if (known != null) return known;
-
-            if (ExecutionJsonLoader.TryDeserializeAction(fullType, elem, out var custom))
-                return custom;
-
+            if (ExecutionJsonLoader.TryDeserializeAction(fullType, elem, out var action))
+                return action;
+            DService.Instance().Log.Warning($"[ExecAxis] 未知动作类型: {fullType}");
             return null;
         }
-        catch { return null; }
-    }
-
-    private static Dictionary<string, JsonElement> ParseExtra(JsonElement elem)
-    {
-        var dict = new Dictionary<string, JsonElement>();
-        foreach (var prop in elem.EnumerateObject())
+        catch (Exception ex)
         {
-            if (prop.Name != "$type" && prop.Name != "DisplayName" && prop.Name != "Remark")
-                dict[prop.Name] = prop.Value;
-        }
-        return dict;
-    }
-
-    private static uint TryGetSpellId(Dictionary<string, JsonElement> extra) =>
-        extra.TryGetValue("SpellId", out var e) ? e.GetUInt32() :
-        extra.TryGetValue("ActionId", out var a) ? a.GetUInt32() :
-        extra.TryGetValue("RegexNameOrId", out var r) && uint.TryParse(r.GetString()?.Split('|')[0], out var sid) ? sid : 0;
-
-    internal static ITriggerCond? ConvertKnownCondition(string type, Dictionary<string, JsonElement> extra, JsonElement raw)
-    {
-        switch (type)
-        {
-            case "TriggerCondEnemyCastSpell":
-                {
-                    var ids = extra.TryGetValue("RegexNameOrId", out var re) ? re.GetString() ?? "0" : "0";
-                    var sid = uint.TryParse(ids.Split('|')[0], out var id) ? id : 0;
-                    return new Triggers.Cond.TriggerCond_敌人读条(sid);
-                }
-            case "TriggerCondAfterSpell":
-            case "TriggerCondCheckLastSpell":
-                return new Triggers.Cond.TriggerCond_技能后(TryGetSpellId(extra));
-            case "TriggerCondCheckSpellCd":
-                {
-                    var spellId = extra.TryGetValue("SpellId", out var s) ? s.GetUInt32() : 0u;
-                    var cd = extra.TryGetValue("CoolDown", out var c) ? c.GetInt32() : 0;
-                    return new Triggers.Cond.TriggerCond_技能冷却(spellId, cd * 1000);
-                }
-            case "TriggerCondReceviceAbilityEffect":
-                return new Triggers.Cond.TriggerCond_收到技能效果(TryGetSpellId(extra));
-            case "TriggerCondVariable":
-                {
-                    var name = extra.TryGetValue("VariableName", out var vn) ? vn.GetString() ?? "" : "";
-                    var val = extra.TryGetValue("VariableVaule", out var vv) ? vv.GetInt32() : 1;
-                    return new TriggerCond_Variable(name, val);
-                }
-            case "TriggerCondOnWeatherIdChanged":
-                {
-                    var wid = extra.TryGetValue("WeatherId", out var w) ? w.GetByte() : (byte)0;
-                    return new Triggers.Cond.TriggerCond_天气变化(wid);
-                }
-            case "TriggerCondMapEffect":
-                return new Triggers.Cond.TriggerCond_地图特效(0);
-            case "TriggerCondAfterBattleStart":
-                return new Triggers.Cond.TriggerCond_经过时间(extra.TryGetValue("TimeMs", out var t) ? t.GetInt32() : 0);
-            case "TriggerCondWaitTarget":
-                {
-                    var dataId = extra.TryGetValue("DataId", out var d) ? d.GetUInt32() : 0u;
-                    return new Triggers.Cond.TriggerCond_等待目标(dataId);
-                }
-            case "TriggerCondCheckPartyRole":
-                {
-                    var role = extra.TryGetValue("PartyRole", out var p) ? p.GetString() ?? "" : "";
-                    var category = role switch
-                    {
-                        "Tank" => JobsCategory.Tank,
-                        "Healer" => JobsCategory.Healer,
-                        "DPS" or "Melee" => JobsCategory.Melee,
-                        "Ranged" => JobsCategory.Ranged,
-                        "Caster" => JobsCategory.Caster,
-                        _ => JobsCategory.Caster
-                    };
-                    return new Triggers.Cond.TriggerCond_检查职能(category);
-                }
-            case "TriggerCondActorDeath":
-                {
-                    var dataId = extra.TryGetValue("DataId", out var d) ? d.GetUInt32() : 0u;
-                    return new Triggers.Cond.TriggerCond_Actor死亡(dataId);
-                }
-            case "TriggerCond_CheckCharacterType":
-                {
-                    var role = extra.TryGetValue("CategoryType", out var ct) ? ct.GetString() ?? "" : "";
-                    var category = role switch
-                    {
-                        "Tank" => JobsCategory.Tank,
-                        "Healer" => JobsCategory.Healer,
-                        "DPS" or "Melee" => JobsCategory.Melee,
-                        "Ranged" => JobsCategory.Ranged,
-                        "Caster" => JobsCategory.Caster,
-                        _ => JobsCategory.Caster
-                    };
-                    return new Triggers.Cond.TriggerCond_角色类型(category);
-                }
-            case "TriggerCondCheckOmegaLoop":
-                {
-                    var auraId = extra.TryGetValue("AuraId", out var a) ? a.GetUInt32() : 0u;
-                    return new Triggers.Cond.TriggerCond_Omega循环(auraId);
-                }
-            case "TriggerCondCheckRecentlyTether":
-                {
-                    var tetherId = extra.TryGetValue("TetherId", out var ti) ? ti.GetUInt32() : 0u;
-                    var checkTime = extra.TryGetValue("CheckTime", out var ct2) ? ct2.GetSingle() : 3f;
-                    return new Triggers.Cond.TriggerCond_最近连线(tetherId, checkTime);
-                }
-            case "TriggerCondCheckAbilityEffect":
-                {
-                    var actionId = TryGetSpellId(extra);
-                    var checkTime = extra.TryGetValue("CheckTime", out var cta) ? cta.GetSingle() : 3f;
-                    return new Triggers.Cond.TriggerCond_收到技能效果自身(actionId, checkTime);
-                }
-            case "TriggerCondReceviceNoTargetAbilityEffect":
-                {
-                    var actionId = TryGetSpellId(extra);
-                    var checkTime = extra.TryGetValue("CheckTime", out var ctnt) ? ctnt.GetSingle() : 3f;
-                    return new Triggers.Cond.TriggerCond_无目标技能效果(actionId, checkTime);
-                }
-            default:
-                return null;
-        }
-    }
-
-    internal static ITriggerAction? ConvertKnownAction(string type, Dictionary<string, JsonElement> extra, JsonElement raw)
-    {
-        switch (type)
-        {
-            case "TriggerActionCastSpell":
-                {
-                    uint spellId = 0;
-                    if (extra.TryGetValue("SpellConfig", out var sc))
-                        spellId = sc.TryGetProperty("SpellId", out var si) ? si.GetUInt32() : 0;
-                    return spellId > 0 ? new Triggers.Action.TriggerAction_释放技能(spellId) : null;
-                }
-            case "TriggerActionUsePotion":
-                return new Triggers.Action.TriggerAction_吃药(39727);
-            case "TriggerActionSelectenemy":
-                return new Triggers.Action.TriggerAction_切换目标();
-            case "TriggerActionHighPrioritySlot":
-                {
-                    uint spellId = 0;
-                    if (extra.TryGetValue("SpellConfig", out var sc))
-                        spellId = sc.TryGetProperty("SpellId", out var si) ? si.GetUInt32() : 0;
-                    return spellId > 0 ? new Triggers.Action.TriggerAction_高优Slot(spellId) : null;
-                }
-            case "TriggerAction_SendCommand":
-                {
-                    var cmd = extra.TryGetValue("Command", out var c) ? c.GetString() ?? "" : "";
-                    return new Triggers.Action.TriggerAction_发送命令(cmd);
-                }
-            case "TriggerAction_SendKey":
-                {
-                    var key = extra.TryGetValue("Command", out var k) ? k.GetString() ?? "" : "";
-                    return new Triggers.Action.TriggerAction_发送按键(key);
-                }
-            case "TriggerActionAddVariable":
-                {
-                    var name = extra.TryGetValue("VariableName", out var vn) ? vn.GetString() ?? "" : "";
-                    var val = extra.TryGetValue("SetVariableVaule", out var vv) ? vv.GetInt32() : 0;
-                    return new TriggerAction_SetVariable(name, val);
-                }
-            case "TriggerActionSwitchStop":
-                return new Triggers.Action.TriggerAction_切换停手(true);
-            case "TriggerActionSpellQueue":
-                {
-                    uint spellId = 0;
-                    if (extra.TryGetValue("SpellConfig", out var sc))
-                        spellId = sc.TryGetProperty("SpellId", out var si) ? si.GetUInt32() : 0;
-                    return spellId > 0 ? new Triggers.Action.TriggerAction_技能队列(spellId) : null;
-                }
-            case "TriggerActionLockSpell":
-                {
-                    uint spellId = 0;
-                    if (extra.TryGetValue("SpellConfig", out var sc))
-                        spellId = sc.TryGetProperty("SpellId", out var si) ? si.GetUInt32() : 0;
-                    return spellId > 0 ? new Triggers.Action.TriggerAction_锁定技能(spellId, true) : null;
-                }
-            case "TriggerActionSetRotation":
-                return new Triggers.Action.TriggerAction_设置Rotation(0);
-            case "TriggerActionSwitchPull":
-                {
-                    var enable = extra.TryGetValue("Pull", out var p) ? p.GetBoolean() : true;
-                    return new Triggers.Action.TriggerAction_切换自动攻击(enable);
-                }
-            case "TriggerActionReplayOpener":
-                return new Triggers.Action.TriggerAction_重新起手();
-            case "TriggerAction_MoveTo":
-                {
-                    var x = extra.TryGetValue("X", out var ex) ? ex.GetSingle() : 0f;
-                    var y = extra.TryGetValue("Y", out var ey) ? ey.GetSingle() : 0f;
-                    var z = extra.TryGetValue("Z", out var ez) ? ez.GetSingle() : 0f;
-                    return new Triggers.Action.TriggerAction_移动到(x, y, z);
-                }
-            case "TriggerAction_SimpleTP":
-                return new Triggers.Action.TriggerAction_TP();
-            case "TriggerAction_OnCastingTP":
-                {
-                    var waitTill = extra.TryGetValue("WaitTillTime", out var wt) ? wt.GetInt32() : 0;
-                    return new Triggers.Action.TriggerAction_滑步TP(waitTill);
-                }
-            default:
-                return null;
+            DService.Instance().Log.Error($"[ExecAxis] 反序列化动作失败: {ex.Message}");
+            return null;
         }
     }
 }
@@ -493,34 +287,47 @@ internal static class TriggerConverter
 
 [TriggerDisplay("变量条件", "检查上下文变量值")]
 [TriggerTypeName("TriggerCondVariable")]
-
-internal sealed class TriggerCond_Variable : ITriggerCond
+public sealed class TriggerCond_Variable : ITriggerCond
 {
-    private readonly string _name;
-    private readonly int _expectedValue;
-    public TriggerCond_Variable(string name, int expectedValue) { _name = name; _expectedValue = expectedValue; }
+    public string VariableName { get; set; } = "";
+    public int VariableVaule { get; set; }
+    public string Remark { get; set; } = "";
+
     public bool Handle(ITriggerCondParams? condParams = null) =>
-        ExecutionAxis.Instance.Context.GetVariable(_name) == _expectedValue;
+        ExecutionAxis.Instance.Context.GetVariable(VariableName) == VariableVaule;
+
+    public void Draw(HiAuRo.ACR.IUiBuilder builder)
+    {
+        builder.AddTextInput("VariableName", VariableName);
+        builder.AddIntInput("VariableVaule", VariableVaule);
+    }
 }
 
 [TriggerDisplay("总是真", "始终返回true（调试用）")]
 [TriggerTypeName("TriggerCondAlwaysTrue")]
 [CloudSync(false)]
-
-internal sealed class TriggerCond_AlwaysTrue : ITriggerCond
+public sealed class TriggerCond_AlwaysTrue : ITriggerCond
 {
+    public string Remark { get; set; } = "";
     public bool Handle(ITriggerCondParams? condParams = null) => true;
+    public void Draw(HiAuRo.ACR.IUiBuilder builder) => builder.AddLabel("始终返回 true");
 }
 
 [TriggerDisplay("设置变量", "设置上下文变量值")]
 [TriggerTypeName("TriggerActionAddVariable")]
-
-internal sealed class TriggerAction_SetVariable : ITriggerAction
+public sealed class TriggerAction_SetVariable : ITriggerAction
 {
-    private readonly string _name;
-    private readonly int _value;
-    public TriggerAction_SetVariable(string name, int value) { _name = name; _value = value; }
-    public bool Handle() { ExecutionAxis.Instance.Context.SetVariable(_name, _value); return true; }
+    public string VariableName { get; set; } = "";
+    public int SetVariableVaule { get; set; }
+    public string Remark { get; set; } = "";
+
+    public bool Handle() { ExecutionAxis.Instance.Context.SetVariable(VariableName, SetVariableVaule); return true; }
+
+    public void Draw(HiAuRo.ACR.IUiBuilder builder)
+    {
+        builder.AddTextInput("VariableName", VariableName);
+        builder.AddIntInput("SetVariableVaule", SetVariableVaule);
+    }
 }
 
 #endregion
@@ -532,6 +339,34 @@ public static class ExecutionJsonLoader
 {
     private static readonly Dictionary<string, Type> _condTypes = [];
     private static readonly Dictionary<string, Type> _actionTypes = [];
+    private static bool _builtInRegistered;
+
+    /// <summary>注册所有内置触发条件/动作类型到 STJ 字典</summary>
+    public static void RegisterBuiltInTypes()
+    {
+        if (_builtInRegistered) return;
+        _builtInRegistered = true;
+
+        var asm = typeof(ExecutionJsonLoader).Assembly;
+        foreach (var type in asm.GetTypes())
+        {
+            if (type.IsAbstract) continue;
+            if (typeof(ITriggerCond).IsAssignableFrom(type))
+                RegisterType(type, _condTypes);
+            else if (typeof(ITriggerAction).IsAssignableFrom(type))
+                RegisterType(type, _actionTypes);
+        }
+        DService.Instance().Log.Information($"[ExecAxis] 内置类型注册: {_condTypes.Count} 条件, {_actionTypes.Count} 动作");
+    }
+
+    private static void RegisterType(Type type, Dictionary<string, Type> dict)
+    {
+        dict.TryAdd(type.FullName!, type);
+        dict.TryAdd(type.Name, type);
+        var attr = type.GetCustomAttribute<TriggerTypeNameAttribute>();
+        if (attr != null)
+            dict.TryAdd(attr.TypeDiscriminator, type);
+    }
 
     /// <summary>注册自定义条件类型</summary>
     public static void RegisterConditionType(string fullTypeName, Type type)
@@ -582,7 +417,8 @@ public static class ExecutionJsonLoader
     {
         if (_condTypes.TryGetValue(fullTypeName, out var type))
         {
-            result = JsonSerializer.Deserialize(raw.GetRawText(), type) as ITriggerCond;
+            var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            result = JsonSerializer.Deserialize(raw.GetRawText(), type, opts) as ITriggerCond;
             return result != null;
         }
         result = null;
@@ -593,7 +429,8 @@ public static class ExecutionJsonLoader
     {
         if (_actionTypes.TryGetValue(fullTypeName, out var type))
         {
-            result = JsonSerializer.Deserialize(raw.GetRawText(), type) as ITriggerAction;
+            var opts = new JsonSerializerOptions { PropertyNameCaseInsensitive = true };
+            result = JsonSerializer.Deserialize(raw.GetRawText(), type, opts) as ITriggerAction;
             return result != null;
         }
         result = null;
