@@ -820,31 +820,8 @@ function exportFile() { if (!timelineData) { setStatus('无内容','error'); ret
 function downloadJson(json, name) { var b=new Blob([json],{type:'application/json'}); var u=URL.createObjectURL(b); var a=document.createElement('a'); a.href=u; a.download=name; a.click(); URL.revokeObjectURL(u); }
 // ==================== 目录文件加载 ====================
 
-// 自动从 GitHub 拉取触发器目录（离线时静默失败，用户可用文件选择器）
-var CATALOG_URL = 'https://raw.githubusercontent.com/denghaoxuan991876906/CatalogData/main/trigger-catalog.json';
-(function autoFetchCatalog() {
-    fetch(CATALOG_URL)
-        .then(function(res) { if (!res.ok) throw new Error('HTTP ' + res.status); return res.json(); })
-        .then(function(catalog) {
-            var conds = (catalog.conditions || []).map(function(c) { c.category = 'github'; return c; });
-            var acts  = (catalog.actions || []).map(function(a) { a.category = 'github'; return a; });
-            var scripts = (catalog.scripts || []).map(function(s) { s.category = 'github'; return s; });
-
-            var existNames = {};
-            conds.concat(acts).concat(scripts).forEach(function(t) { existNames[t.typeName] = true; });
-
-            var localConds = (localTriggers.conditions || []).filter(function(c) { return !existNames[c.typeName]; });
-            var localActs  = (localTriggers.actions || []).filter(function(a) { return !existNames[a.typeName]; });
-
-            localTriggers.conditions = conds.concat(localConds);
-            localTriggers.actions    = acts.concat(localActs);
-            if (scripts.length) localTriggers.scripts = (localTriggers.scripts || []).concat(scripts);
-
-            localStorage.setItem('hiAutoLocalTriggers', JSON.stringify(localTriggers));
-            setStatus('已加载云端目录: ' + conds.length + 'C ' + acts.length + 'A', 'success');
-        })
-        .catch(function(err) { console.log('[HiAuRo] GitHub catalog fetch failed, using local triggers'); });
-})();
+// 目录由用户手动加载（点击"加载目录"选择 trigger-catalog.json 文件）
+// Web 编辑器与 C# 后端无网络连接
 
 function loadCatalogFile() {
     var input = document.createElement('input');
