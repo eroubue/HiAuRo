@@ -541,6 +541,54 @@ function moveSibling(path, delta) {
     markDirty();
 }
 
+// ==================== 触发器参数辅助 ====================
+
+function findCatalogEntry(typeName, isCond) {
+    var list = isCond ? getAllConditions() : getAllActions();
+    return list.find(function(e) { return (e.aeTypeName || e.typeName) === typeName; });
+}
+
+function getEntryControls(entry) {
+    if (!entry) return [];
+    if (entry.controls && entry.controls.length) return entry.controls;
+    if (entry.parameters && entry.parameters.length) {
+        return entry.parameters.map(function(p) {
+            return { label: p.name, type: p.type || 'textInput', defaultValue: p.defaultValue, options: p.options || null };
+        });
+    }
+    return [];
+}
+
+function renderTriggerField(ctrl, val, idx, kind) {
+    var idxAttr = kind === 'cond' ? 'data-cond-idx' : 'data-act-idx';
+    var valStr = val !== undefined && val !== null ? String(val) : '';
+    switch (ctrl.type) {
+        case 'intInput':
+            return '<div class="trigger-field"><label>' + esc(ctrl.label) + '</label>' +
+                '<input type="number" step="1" class="trigger-param-input" ' + idxAttr + '="' + idx + '" data-field="' + esc(ctrl.label) + '" value="' + esc(valStr) + '" /></div>';
+        case 'floatInput':
+            return '<div class="trigger-field"><label>' + esc(ctrl.label) + '</label>' +
+                '<input type="number" step="any" class="trigger-param-input" ' + idxAttr + '="' + idx + '" data-field="' + esc(ctrl.label) + '" value="' + esc(valStr) + '" /></div>';
+        case 'textInput':
+            return '<div class="trigger-field"><label>' + esc(ctrl.label) + '</label>' +
+                '<input type="text" class="trigger-param-input" ' + idxAttr + '="' + idx + '" data-field="' + esc(ctrl.label) + '" value="' + esc(valStr) + '" /></div>';
+        case 'checkbox':
+            return '<div class="trigger-field"><label><input type="checkbox" class="trigger-param-input" ' + idxAttr + '="' + idx + '" data-field="' + esc(ctrl.label) + '" ' + (val ? 'checked' : '') + ' /> ' + esc(ctrl.label) + '</label></div>';
+        case 'dropdown':
+            var opts = ctrl.options || [];
+            var html = '<div class="trigger-field"><label>' + esc(ctrl.label) + '</label>' +
+                '<select class="trigger-param-input" ' + idxAttr + '="' + idx + '" data-field="' + esc(ctrl.label) + '">';
+            opts.forEach(function(o) {
+                html += '<option value="' + esc(o) + '"' + (String(val) === String(o) ? ' selected' : '') + '>' + esc(o) + '</option>';
+            });
+            html += '</select></div>';
+            return html;
+        default:
+            return '<div class="trigger-field"><label>' + esc(ctrl.label) + '</label>' +
+                '<input type="text" class="trigger-param-input" ' + idxAttr + '="' + idx + '" data-field="' + esc(ctrl.label) + '" value="' + esc(valStr) + '" /></div>';
+    }
+}
+
 // ==================== 属性面板 ====================
 
 function renderProps() {
@@ -575,7 +623,17 @@ function renderProps() {
             }
             (node.TriggerConds||[]).forEach(function(cond, idx) {
                 var ct = cond['$type'] || cond.aeTypeName || '';
-                h += '<div class="prop-sub-item">' + esc(ct) + ' <button onclick="removeTriggerCond(\'' + selectedNodePath + '\',' + idx + ')" style="font-size:10px">✕</button></div>';
+                var entry = findCatalogEntry(ct, true);
+                var displayName = entry ? (entry.displayName || ct) : ct;
+                var ctrls = getEntryControls(entry);
+                h += '<div class="trigger-cond-item">';
+                h += '<div class="trigger-cond-header"><span>' + esc(displayName) + '</span>';
+                h += '<button class="ed-del-btn" onclick="removeTriggerCond(\'' + selectedNodePath + '\',' + idx + ')">✕</button></div>';
+                ctrls.forEach(function(ctrl) {
+                    var val = cond[ctrl.label] !== undefined ? cond[ctrl.label] : (ctrl.defaultValue !== undefined ? ctrl.defaultValue : '');
+                    h += renderTriggerField(ctrl, val, idx, 'cond');
+                });
+                h += '</div>';
             });
             h += '</div>';
             h += '</div>';
@@ -594,7 +652,17 @@ function renderProps() {
             }
             (node.TriggerActions||[]).forEach(function(act, idx) {
                 var at = act['$type'] || act.aeTypeName || '';
-                h += '<div class="prop-sub-item">' + esc(at) + ' <button onclick="removeTriggerAction(\'' + selectedNodePath + '\',' + idx + ')" style="font-size:10px">✕</button></div>';
+                var entry = findCatalogEntry(at, false);
+                var displayName = entry ? (entry.displayName || at) : at;
+                var ctrls = getEntryControls(entry);
+                h += '<div class="trigger-cond-item">';
+                h += '<div class="trigger-cond-header"><span>' + esc(displayName) + '</span>';
+                h += '<button class="ed-del-btn" onclick="removeTriggerAction(\'' + selectedNodePath + '\',' + idx + ')">✕</button></div>';
+                ctrls.forEach(function(ctrl) {
+                    var val = act[ctrl.label] !== undefined ? act[ctrl.label] : (ctrl.defaultValue !== undefined ? ctrl.defaultValue : '');
+                    h += renderTriggerField(ctrl, val, idx, 'act');
+                });
+                h += '</div>';
             });
             h += '</div>';
             h += '</div>';
@@ -604,6 +672,7 @@ function renderProps() {
         if (type === 'treeScriptNode') { h += '<div class="ed-prop-section"><div class="ed-prop-head">脚本</div>'; h += prop('事实轴节点 ID', 'text', node, 'FactNodeId'); h += '<textarea class="ed-prop-area" id="dfScript" style="width:100%;height:80px;font-size:11px;font-family:monospace">'+esc(node.Script||'')+'</textarea>'; h += '<button class="btn-sm" style="margin-top:4px" onclick="saveTreeScript()">保存脚本</button>'; h += '</div>'; }
         body.innerHTML = h;
         bindTreePropInputs();
+        bindTriggerParamInputs(node);
         return;
     }
 
@@ -626,6 +695,27 @@ function bindTreePropInputs() {
             if (!node) return;
             var key = this.dataset.key;
             node[key] = this.type==='checkbox' ? this.checked : (this.type==='number' ? Number(this.value) : this.value);
+            markDirty();
+        });
+    });
+}
+
+function bindTriggerParamInputs(node) {
+    document.querySelectorAll('.trigger-param-input').forEach(function(el) {
+        if (el.dataset.bound) return; el.dataset.bound = '1';
+        el.addEventListener('change', function() {
+            var field = this.dataset.field;
+            var isCond = this.hasAttribute('data-cond-idx');
+            var idx = parseInt(isCond ? this.dataset.condIdx : this.dataset.actIdx);
+            var list = isCond ? node.TriggerConds : node.TriggerActions;
+            if (!list || !list[idx]) return;
+            var inst = list[idx];
+            if (this.type === 'checkbox')
+                inst[field] = this.checked;
+            else if (this.type === 'number')
+                inst[field] = parseFloat(this.value);
+            else
+                inst[field] = this.value;
             markDirty();
         });
     });
@@ -792,13 +882,11 @@ function addTriggerCond(nodePath, aeTypeName) {
     if (!node.TriggerConds) node.TriggerConds = [];
     var info = getAllConditions().find(function(c) { return (c.aeTypeName || c.typeName) === aeTypeName; });
     var newCond = { '$type': aeTypeName };
-    if (info && info.parameters) {
-        info.parameters.forEach(function(p) {
-            if (p.defaultValue !== undefined && p.defaultValue !== null) {
-                newCond[p.name] = p.defaultValue;
-            }
-        });
-    }
+    getEntryControls(info).forEach(function(ctrl) {
+        if (ctrl.defaultValue !== undefined && ctrl.defaultValue !== null) {
+            newCond[ctrl.label] = ctrl.defaultValue;
+        }
+    });
     node.TriggerConds.push(newCond);
     markDirty();
 }
@@ -817,13 +905,11 @@ function addTriggerAction(nodePath, aeTypeName) {
     if (!node.TriggerActions) node.TriggerActions = [];
     var info = getAllActions().find(function(a) { return (a.aeTypeName || a.typeName) === aeTypeName; });
     var newAct = { '$type': aeTypeName };
-    if (info && info.parameters) {
-        info.parameters.forEach(function(p) {
-            if (p.defaultValue !== undefined && p.defaultValue !== null) {
-                newAct[p.name] = p.defaultValue;
-            }
-        });
-    }
+    getEntryControls(info).forEach(function(ctrl) {
+        if (ctrl.defaultValue !== undefined && ctrl.defaultValue !== null) {
+            newAct[ctrl.label] = ctrl.defaultValue;
+        }
+    });
     node.TriggerActions.push(newAct);
     markDirty();
 }

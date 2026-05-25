@@ -299,3 +299,53 @@ body.drag-active { user-select:none; -webkit-user-select:none; cursor:grabbing; 
 .ios-sel .ios-sel-opt:last-child { border-radius:0 0 6px 6px; }
 .ios-sel .ios-sel-opt.sel { color:var(--blue); font-weight:500; }
 .ios-sel .ios-sel-opt:not(:first-child):hover { background:rgba(10,132,255,0.12); }
+
+/* ---- 触发器参数控件 ---- */
+.trigger-cond-item {
+    border: 0.5px solid rgba(0,0,0,0.08);
+    border-radius: 8px;
+    padding: 8px;
+    margin: 6px 0;
+    background: var(--fill2);
+}
+.trigger-cond-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+    font-size: 11px;
+    color: var(--blue);
+    font-weight: 500;
+}
+.trigger-field {
+    margin: 4px 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.trigger-field label {
+    min-width: 70px;
+    font-size: 11px;
+    color: var(--tx1);
+}
+.trigger-field input[type="number"],
+.trigger-field input[type="text"],
+.trigger-field select {
+    flex: 1;
+    padding: 4px 8px;
+    border: 1px solid rgba(0,0,0,0.15);
+    background: var(--fill2);
+    color: var(--tx0);
+    border-radius: 5px;
+    font-family: var(--font);
+    font-size: 11px;
+    outline: 0;
+    box-shadow: 0px 0.5px 2.5px rgba(0,0,0,.3), 0px 0px 0px rgba(0,0,0,.1);
+    transition: border-color 200ms;
+}
+.trigger-field input[type="number"]:focus,
+.trigger-field input[type="text"]:focus,
+.trigger-field select:focus {
+    outline: 3px solid rgb(0 122 255 / 50%);
+    border-color: rgb(0 122 255);
+}
