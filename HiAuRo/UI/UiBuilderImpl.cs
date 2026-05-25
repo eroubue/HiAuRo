@@ -93,6 +93,14 @@ public sealed class UiBuilderImpl : HiAuRo.ACR.IUiBuilder
         _controls.Add(new UiControlDef(label + Guid.NewGuid().ToString("N")[0..8], "intInput", _currentGroup, label, defaultValue,
             Meta: new { step, stepFast }));
 
+    /// <summary>添加浮点数输入</summary>
+    public void AddFloatInput(string label, float defaultValue) =>
+        _controls.Add(new UiControlDef(label + Guid.NewGuid().ToString("N")[0..8], "floatInput", _currentGroup, label, defaultValue));
+
+    /// <summary>添加文本输入</summary>
+    public void AddTextInput(string label, string defaultValue) =>
+        _controls.Add(new UiControlDef(label + Guid.NewGuid().ToString("N")[0..8], "textInput", _currentGroup, label, defaultValue ?? ""));
+
     /// <summary>添加文本标签</summary>
     public void AddLabel(string text) =>
         _controls.Add(new UiControlDef(text + Guid.NewGuid().ToString("N")[0..8], "label", _currentGroup, text, null));

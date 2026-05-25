@@ -19,6 +19,8 @@ public interface IUiBuilder
     void AddSlider( string label, float min, float max, float defaultValue);
     void AddDropdown(string label, string[] options, string defaultValue);
     void AddIntInput(string label, int defaultValue, int step = 1, int stepFast = 10);
+    void AddFloatInput(string label, float defaultValue);
+    void AddTextInput(string label, string defaultValue);
     void AddLabel(string text);
     void AddQtToggle(string label, bool defaultValue, string? tooltip = null, string? color = null, bool defaultVisible = true);
 

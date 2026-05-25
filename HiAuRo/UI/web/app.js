@@ -337,6 +337,14 @@ function renderItems(items) {
                 h += `<div class="set-row"><span class="set-label">${esc(c.label)}</span>` +
                     `<input class="set-input" type="number" value="${c.value}" step="${c.meta?.step??1}" id="ctl-${esc(c.id)}" onchange="ctlChanged('intInput','${esc(c.id)}',this.value)"></div>`;
                 break;
+            case 'floatInput':
+                h += `<div class="set-row"><span class="set-label">${esc(c.label)}</span>` +
+                    `<input class="set-input" type="number" step="any" value="${c.value}" id="ctl-${esc(c.id)}" onchange="ctlChanged('floatInput','${esc(c.id)}',parseFloat(this.value))"></div>`;
+                break;
+            case 'textInput':
+                h += `<div class="set-row"><span class="set-label">${esc(c.label)}</span>` +
+                    `<input class="set-input" type="text" value="${esc(c.value)}" id="ctl-${esc(c.id)}" onchange="ctlChanged('textInput','${esc(c.id)}',this.value)"></div>`;
+                break;
             case 'label':
                 h += `<div class="set-label" style="padding:2px 0">${esc(c.value??c.label)}</div>`; break;
             case 'separator':
