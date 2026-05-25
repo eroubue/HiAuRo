@@ -62,8 +62,32 @@ internal class UIManager : IDisposable
             DService.Instance().Log.Information("[UIManager] WebUI 暂不可用，已强制切换到 ImGui 模式");
         }
 
-        CreateImGuiOverlays();
-        DService.Instance().Log.Information("[UIManager] ImGui Overlay 已创建");
+        try
+        {
+            _uiBridge = new WebUiBridge();
+            _uiServer = new WebUiServer(_webRoot, _uiBridge);
+            _uiServer.Start();
+            DService.Instance().Log.Information($"[UIManager] WebUiServer 启动完成 端口={_uiServer.Port}");
+
+            // 启动 Browsingway IPC（异步等待就绪后注册 overlay，按当前模式决定显隐）
+            _browsingwayIpc = new BrowsingwayIpc(_uiServer.Port, () => _config.UIMode);
+            var overlays = _config.Overlays ?? [];
+            _ = _browsingwayIpc.InitAsync(overlays).ContinueWith(_ =>
+            {
+                if (_config.UIMode != UIMode.WebUI)
+                    _browsingwayIpc.HideAll(overlays);
+            });
+        }
+        catch (Exception ex)
+        {
+            DService.Instance().Log.Error($"[UIManager] WebUiServer 初始化失败: {ex}");
+        }
+
+        if (_config.UIMode == UIMode.ImGui)
+        {
+            CreateImGuiOverlays();
+            DService.Instance().Log.Information("[UIManager] ImGui Overlay 已创建");
+        }
     }
 
     /// <summary>动态切换 UI 模式</summary>
