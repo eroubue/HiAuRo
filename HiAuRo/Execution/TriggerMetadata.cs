@@ -1,5 +1,6 @@
 using System.Reflection;
 using HiAuRo.ACR;
+using HiAuRo.UI;
 using System.Text.Json.Serialization;
 
 namespace HiAuRo.Execution;
@@ -105,6 +106,10 @@ public sealed class TriggerInfo
     /// <summary>参数列表</summary>
     [JsonPropertyName("parameters")]
     public List<ParameterInfo> Parameters { get; init; } = [];
+
+    /// <summary>UI 控件列表（来自 Draw() 的声明）</summary>
+    [JsonPropertyName("controls")]
+    public List<object>? Controls { get; init; }
 }
 
 /// <summary>
@@ -243,6 +248,39 @@ public static class TriggerCatalogBuilder
         // 反射构造函数参数
         var parameters = ExtractParameters(type);
 
+        // 通过 Draw() 收集 UI 控件声明
+        List<object>? controls = null;
+        try
+        {
+            var instance = Activator.CreateInstance(type);
+            if (instance is ITriggerCond condInstance)
+            {
+                var builder = new UiBuilderImpl();
+                condInstance.Draw(builder);
+                controls = builder.GetControls().Select(c => (object)new
+                {
+                    c.Id, c.Type, c.ParentId, c.Label,
+                    defaultValue = c.Value,
+                    c.Options, c.Meta
+                }).ToList();
+            }
+            else if (instance is ITriggerAction actionInstance)
+            {
+                var builder = new UiBuilderImpl();
+                actionInstance.Draw(builder);
+                controls = builder.GetControls().Select(c => (object)new
+                {
+                    c.Id, c.Type, c.ParentId, c.Label,
+                    defaultValue = c.Value,
+                    c.Options, c.Meta
+                }).ToList();
+            }
+        }
+        catch (Exception ex)
+        {
+            DService.Instance().Log.Warning($"[TriggerMetadata] Draw() 调用失败 ({type.Name}): {ex.Message}");
+        }
+
         return new TriggerInfo
         {
             TypeName = type.FullName ?? type.Name,
@@ -251,7 +289,8 @@ public static class TriggerCatalogBuilder
             Description = description,
             Category = category,
             CloudSync = cloudSync,
-            Parameters = parameters
+            Parameters = parameters,
+            Controls = controls
         };
     }
 
