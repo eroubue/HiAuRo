@@ -10,19 +10,19 @@ namespace HiAuRo.Execution.Triggers.Cond;
 [TriggerTypeName("TriggerCondCheckPartyRole")]
 public sealed class TriggerCond_检查职能 : ITriggerCond
 {
-    private readonly JobsCategory _categoryType;
-
-    /// <param name="categoryType">期望的职能分类</param>
-    public TriggerCond_检查职能(JobsCategory categoryType)
-    {
-        _categoryType = categoryType;
-    }
+    public JobsCategory CategoryType { get; set; }
+    public string Remark { get; set; } = "";
 
     /// <summary>检测自身是否属于指定队伍职能</summary>
     public bool Handle(ITriggerCondParams? condParams = null)
     {
         var jobId = Me.ClassJob;
         if (jobId == 0) return false;
-        return JobsCategoryHelper.GetCategory(jobId) == _categoryType;
+        return JobsCategoryHelper.GetCategory(jobId) == CategoryType;
+    }
+
+    public void Draw(ACR.IUiBuilder builder)
+    {
+        builder.AddDropdown("CategoryType", Enum.GetNames<JobsCategory>(), CategoryType.ToString());
     }
 }

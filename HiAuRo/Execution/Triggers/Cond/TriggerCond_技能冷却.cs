@@ -9,21 +9,20 @@ namespace HiAuRo.Execution.Triggers.Cond;
 [TriggerTypeName("TriggerCondCheckSpellCd")]
 public sealed class TriggerCond_技能冷却 : ITriggerCond
 {
-    private readonly uint _spellId;
-    private readonly int _remainingMs;
-
-    /// <param name="spellId">技能 ID</param>
-    /// <param name="remainingMs">冷却剩余毫秒阈值</param>
-    public TriggerCond_技能冷却(uint spellId, int remainingMs = 500)
-    {
-        _spellId = spellId;
-        _remainingMs = remainingMs;
-    }
+    public uint SpellId { get; set; }
+    public int RemainingMs { get; set; } = 500;
+    public string Remark { get; set; } = "";
 
     /// <summary>检测技能冷却剩余是否在阈值内</summary>
     public bool Handle(ITriggerCondParams? condParams = null)
     {
-        var cd = SpellHelper.GetCooldownRemaining(_spellId);
-        return cd >= 0 && cd <= _remainingMs;
+        var cd = SpellHelper.GetCooldownRemaining(SpellId);
+        return cd >= 0 && cd <= RemainingMs;
+    }
+
+    public void Draw(ACR.IUiBuilder builder)
+    {
+        builder.AddIntInput("SpellId", (int)SpellId);
+        builder.AddIntInput("RemainingMs", RemainingMs);
     }
 }

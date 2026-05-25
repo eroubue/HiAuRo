@@ -12,28 +12,21 @@ namespace HiAuRo.Execution.Triggers.Cond;
 [TriggerTypeName("TriggerCondEnemyCastSpell")]
 public sealed class TriggerCond_敌人读条 : ITriggerCond
 {
-    private readonly uint _spellId;
-    private readonly uint? _enemyDataId;
-
-    /// <param name="spellId">读条技能 ID</param>
-    /// <param name="enemyDataId">指定敌人 DataId（null = 任意敌人）</param>
-    public TriggerCond_敌人读条(uint spellId, uint? enemyDataId = null)
-    {
-        _spellId = spellId;
-        _enemyDataId = enemyDataId;
-    }
+    public uint SpellId { get; set; }
+    public uint EnemyDataId { get; set; }
+    public string Remark { get; set; } = "";
 
     /// <summary>检测敌人是否在读指定技能</summary>
     public bool Handle(ITriggerCondParams? condParams = null)
     {
         if (condParams is ActorCastParams cast)
         {
-            if (cast.ActionID != _spellId) return false;
+            if (cast.ActionID != SpellId) return false;
 
-            if (_enemyDataId.HasValue && cast.SourceID != 0)
+            if (EnemyDataId != 0 && cast.SourceID != 0)
             {
                 var obj = DService.Instance().ObjectTable?.SearchByID(cast.SourceID);
-                if (obj is not IBattleNPC npc || npc.DataID != _enemyDataId.Value)
+                if (obj is not IBattleNPC npc || npc.DataID != EnemyDataId)
                     return false;
             }
             return true;
@@ -44,11 +37,17 @@ public sealed class TriggerCond_敌人读条 : ITriggerCond
             if (enemy is not IBattleNPC battleNpc) continue;
             if (!battleNpc.IsCasting) continue;
 
-            if (_enemyDataId.HasValue && battleNpc.DataID != _enemyDataId.Value) continue;
-            if (battleNpc.CastActionID != _spellId) continue;
+            if (EnemyDataId != 0 && battleNpc.DataID != EnemyDataId) continue;
+            if (battleNpc.CastActionID != SpellId) continue;
 
             return true;
         }
         return false;
+    }
+
+    public void Draw(ACR.IUiBuilder builder)
+    {
+        builder.AddIntInput("SpellId", (int)SpellId);
+        builder.AddIntInput("EnemyDataId", (int)EnemyDataId);
     }
 }
