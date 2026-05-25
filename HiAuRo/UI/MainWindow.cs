@@ -640,19 +640,12 @@ public sealed class MainWindow : Window
 
     private void DrawStatus()
     {
-        // UI 渲染模式切换
+        // UI 渲染模式（WebUI 暂不可用，只显示 ImGui）
         ImGui.TextColored(Theme.Colors.AccentBlue, "UI 渲染模式:");
         ImGui.SameLine();
+        ImGui.TextColored(Theme.Colors.TextPrimary, "ImGui");
 
-        var isWebUI = _config.UIMode == Infrastructure.UIMode.WebUI;
-        if (ImGui.RadioButton("WebUI", isWebUI))
-            Plugin.Instance._uiManager?.SwitchTo(Infrastructure.UIMode.WebUI);
-        ImGui.SameLine();
-        if (ImGui.RadioButton("ImGui", !isWebUI))
-            Plugin.Instance._uiManager?.SwitchTo(Infrastructure.UIMode.ImGui);
-
-        // ImGui 主题模式（仅 ImGui 模式时显示）
-        if (!isWebUI)
+        // ImGui 主题模式（始终显示）
         {
             ImGui.Spacing();
             var isLight = _config.ImGuiThemeMode == ImGuiThemeMode.Light;

@@ -74,7 +74,7 @@ public sealed class PluginConfig : IPluginConfiguration
     public float AttackRange { get; set; } = 25f;
 
     /// <summary>UI 渲染模式</summary>
-    public UIMode UIMode { get; set; } = UIMode.WebUI;
+    public UIMode UIMode { get; set; } = UIMode.ImGui;
 
     /// <summary>ImGui 主题模式 (亮色/暗色)</summary>
     public ImGuiThemeMode ImGuiThemeMode { get; set; } = ImGuiThemeMode.Light;
