@@ -2,16 +2,16 @@ using HiAuRo.ACR;
 
 namespace HiAuRo.Execution.Triggers.Action;
 
-/// <summary>
-/// 简易传送 —— HiAuRo 不做传送功能，Handle() 为 no-op
-/// </summary>
 [TriggerDisplay("TP", "简易传送（HiAuRo 不做传送功能，此操作为占位）")]
 [TriggerTypeName("TriggerAction_SimpleTP")]
 public sealed class TriggerAction_TP : ITriggerAction
 {
-    /// <summary>执行简易传送（当前为 no-op）</summary>
+    public string Remark { get; set; } = "";
+
     public bool Handle()
     {
         return true;
     }
+
+    public void Draw(ACR.IUiBuilder builder) { }
 }
