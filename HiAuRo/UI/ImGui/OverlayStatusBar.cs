@@ -129,7 +129,8 @@ public sealed class OverlayStatusBar : OverlayBase
                 if (activeTab != tab.Id)
                     ImGuiOverlayState.ActiveTab = tab.Id;
 
-                ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, Theme.PaddingSM);
+                using var framePad = new ImRaii.StyleDisposable();
+                framePad.Push(ImGuiStyleVar.FramePadding, Theme.PaddingSM);
                 ImGui.Indent(ContentOffset.X);
 
                 if (tab.Id == "__qt_setup__")
@@ -140,7 +141,6 @@ public sealed class OverlayStatusBar : OverlayBase
                     ImGuiWidgetRenderer.Render(controls, tab.Id);
 
                 ImGui.Unindent(ContentOffset.X);
-                ImGui.PopStyleVar();
                 ImGui.EndTabItem();
             }
             ImGui.EndTabBar();
@@ -164,14 +164,14 @@ public sealed class OverlayStatusBar : OverlayBase
 
         ImGui.Spacing();
         ComponentLibrary.Label("可见性");
-        ImGui.PushStyleColor(ImGuiCol.Text, Theme.Colors.TextPrimary);
+        using var textColor = new ImRaii.ColorDisposable();
+        textColor.Push(ImGuiCol.Text, Theme.Colors.TextPrimary);
         foreach (var qt in ImGuiOverlayState.Qts)
         {
             var vis = settings.QtVisible.GetValueOrDefault(qt.Id, true);
             if (ImGui.Checkbox(qt.Label, ref vis))
                 settings.QtVisible[qt.Id] = vis;
         }
-        ImGui.PopStyleColor();
     }
 
     private static void DrawHotkeySetup()
@@ -189,14 +189,14 @@ public sealed class OverlayStatusBar : OverlayBase
 
         ImGui.Spacing();
         ComponentLibrary.Label("可见性");
-        ImGui.PushStyleColor(ImGuiCol.Text, Theme.Colors.TextPrimary);
+        using var textColor2 = new ImRaii.ColorDisposable();
+        textColor2.Push(ImGuiCol.Text, Theme.Colors.TextPrimary);
         foreach (var hk in ImGuiOverlayState.Hotkeys)
         {
             var vis = settings.HkVisible.GetValueOrDefault(hk.Id, true);
             if (ImGui.Checkbox(hk.Label, ref vis))
                 settings.HkVisible[hk.Id] = vis;
         }
-        ImGui.PopStyleColor();
     }
 
     private void DrawBar()

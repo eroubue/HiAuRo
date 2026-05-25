@@ -167,24 +167,26 @@ public sealed class MainWindow : Window
         }
 
         // ── 全局 ImGui 样式色（跟随主题）──
-        ImGui.PushStyleColor(ImGuiCol.WindowBg, Theme.Colors.BgLayout);
-        ImGui.PushStyleColor(ImGuiCol.ChildBg, Theme.Colors.BgContainer);
-        ImGui.PushStyleColor(ImGuiCol.Text, Theme.Colors.TextPrimary);
-        ImGui.PushStyleColor(ImGuiCol.TextDisabled, Theme.Colors.TextTertiary);
-        ImGui.PushStyleColor(ImGuiCol.FrameBg, Theme.Colors.FillSecondary);
-        ImGui.PushStyleColor(ImGuiCol.Border, Theme.Colors.BorderSecondary);
-        ImGui.PushStyleColor(ImGuiCol.Separator, Theme.Colors.BorderSecondary);
-        ImGui.PushStyleColor(ImGuiCol.Header, Theme.Colors.BgHover);
-        ImGui.PushStyleColor(ImGuiCol.HeaderHovered, Theme.Colors.FillSecondary);
-        ImGui.PushStyleColor(ImGuiCol.HeaderActive, Theme.Colors.FillPrimary);
-        ImGui.PushStyleColor(ImGuiCol.Tab, Theme.Colors.FillTertiary);
-        ImGui.PushStyleColor(ImGuiCol.TabHovered, Theme.Colors.BgHover);
-        ImGui.PushStyleColor(ImGuiCol.TabActive, Theme.Colors.SidebarActive);
-        ImGui.PushStyleColor(ImGuiCol.TabUnfocusedActive, Theme.Colors.SidebarActive);
+        using var gc = new ImRaii.ColorDisposable();
+        gc.Push(ImGuiCol.WindowBg, Theme.Colors.BgLayout);
+        gc.Push(ImGuiCol.ChildBg, Theme.Colors.BgContainer);
+        gc.Push(ImGuiCol.Text, Theme.Colors.TextPrimary);
+        gc.Push(ImGuiCol.TextDisabled, Theme.Colors.TextTertiary);
+        gc.Push(ImGuiCol.FrameBg, Theme.Colors.FillSecondary);
+        gc.Push(ImGuiCol.Border, Theme.Colors.BorderSecondary);
+        gc.Push(ImGuiCol.Separator, Theme.Colors.BorderSecondary);
+        gc.Push(ImGuiCol.Header, Theme.Colors.BgHover);
+        gc.Push(ImGuiCol.HeaderHovered, Theme.Colors.FillSecondary);
+        gc.Push(ImGuiCol.HeaderActive, Theme.Colors.FillPrimary);
+        gc.Push(ImGuiCol.Tab, Theme.Colors.FillTertiary);
+        gc.Push(ImGuiCol.TabHovered, Theme.Colors.BgHover);
+        gc.Push(ImGuiCol.TabActive, Theme.Colors.SidebarActive);
+        gc.Push(ImGuiCol.TabUnfocusedActive, Theme.Colors.SidebarActive);
 
         // ── 窗口内边距 ──
-        ImGui.PushStyleVar(ImGuiStyleVar.WindowPadding, new Vector2(12, 10));
-        ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(8, 6));
+        using var gv = new ImRaii.StyleDisposable();
+        gv.Push(ImGuiStyleVar.WindowPadding, new Vector2(12, 10));
+        gv.Push(ImGuiStyleVar.ItemSpacing, new Vector2(8, 6));
 
         // ── 计算布局区域 ──
         var avail = ImGui.GetContentRegionAvail();
@@ -213,20 +215,20 @@ public sealed class MainWindow : Window
         // ── 左侧栏 ──
         ImGui.BeginChild("##SidebarPanel", new Vector2(sidebarWidth, midHeight), false,
             ImGuiWindowFlags.NoScrollbar);
-        ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(3, 3));
+        using var sidebarSpacing = new ImRaii.StyleDisposable();
+        sidebarSpacing.Push(ImGuiStyleVar.ItemSpacing, new Vector2(3, 3));
         DrawSidebar(sidebarWidth, midHeight);
-        ImGui.PopStyleVar();
         ImGui.EndChild();
 
         ImGui.SameLine(0, 4);
 
         // ── 右侧内容区 ──
-        ImGui.PushStyleVar(ImGuiStyleVar.ChildRounding, Theme.RadiusMD);
+        using var contentRounding = new ImRaii.StyleDisposable();
+        contentRounding.Push(ImGuiStyleVar.ChildRounding, Theme.RadiusMD);
         ImGui.BeginChild("##ContentPanel", new Vector2(-1, midHeight), false,
             ImGuiWindowFlags.NoScrollbar | ImGuiWindowFlags.NoScrollWithMouse);
         DrawContent();
         ImGui.EndChild();
-        ImGui.PopStyleVar();
 
         // ── 底部状态栏 ──
         ImGui.Separator();
@@ -238,9 +240,6 @@ public sealed class MainWindow : Window
         var verText = ver?.InformationalVersion ?? "Dev";
         ImGui.SameLine(ImGui.GetWindowWidth() - ImGui.CalcTextSize(verText).X - 20);
         ImGui.TextColored(Theme.Colors.TextTertiary, verText);
-
-        ImGui.PopStyleVar(2);   // WindowPadding, ItemSpacing
-        ImGui.PopStyleColor(14); // 所有 ImGuiCol
 
         // ── 前景特效（ForegroundDrawList — 渲染在最顶层，覆盖所有子窗口）──
         var fg = ImGui.GetForegroundDrawList();
@@ -291,7 +290,7 @@ public sealed class MainWindow : Window
             "╚═╝  ╚═╝╚═╝╚═╝  ╚═╝ ╚═════╝ ╚═╝  ╚═╝ ╚═════╝",
         };
 
-        ImGui.PushFont(UiBuilder.MonoFont);
+        using var monoFont = ImRaii.PushFont(UiBuilder.MonoFont);
         var lineHeight = ImGui.GetTextLineHeight();
         var totalLogoH = lineHeight * logoLines.Length;
         var logoStartY = Math.Max(0, (logoRowHeight - totalLogoH) * 0.5f);
@@ -308,7 +307,6 @@ public sealed class MainWindow : Window
             ImGui.SetCursorPosX(offsetX);
             ImGui.TextColored(Theme.Colors.AccentBlue, line);
         }
-        ImGui.PopFont();
 
         ImGui.EndChild();
 
@@ -323,11 +321,13 @@ public sealed class MainWindow : Window
         var isDark = Theme.Mode == Theme.ThemeMode.Dark;
         var themeIcon = isDark ? IconHelper.Icons.DarkMode : IconHelper.Icons.LightMode;
 
-        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, Theme.RadiusMD);
-        ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(4, 2));
-        ImGui.PushStyleColor(ImGuiCol.Button, Vector4.Zero);
-        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, Theme.Colors.BgHover);
-        ImGui.PushStyleColor(ImGuiCol.ButtonActive, Theme.Colors.BgSpotlight);
+        using var vT = new ImRaii.StyleDisposable();
+        vT.Push(ImGuiStyleVar.FrameRounding, Theme.RadiusMD);
+        vT.Push(ImGuiStyleVar.FramePadding, new Vector2(4, 2));
+        using var cT = new ImRaii.ColorDisposable();
+        cT.Push(ImGuiCol.Button, Vector4.Zero);
+        cT.Push(ImGuiCol.ButtonHovered, Theme.Colors.BgHover);
+        cT.Push(ImGuiCol.ButtonActive, Theme.Colors.BgSpotlight);
 
         if (ImGui.Button("##ThemeToggle", new Vector2(28, 28)))
         {
@@ -340,8 +340,6 @@ public sealed class MainWindow : Window
         IconHelper.DrawIcon(ImGui.GetWindowDrawList(), btnCenter, themeIcon,
             ImGui.ColorConvertFloat4ToU32(Theme.Colors.AccentBlue), 18f);
 
-        ImGui.PopStyleColor(3);
-        ImGui.PopStyleVar(2);
         ImGui.EndChild();
     }
 
@@ -383,7 +381,8 @@ public sealed class MainWindow : Window
     {
         ImGui.BeginChild("##Sidebar", new Vector2(width, height), false,
             ImGuiWindowFlags.NoScrollbar);
-        ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(4, 4));
+        using var sidebarSp = new ImRaii.StyleDisposable();
+        sidebarSp.Push(ImGuiStyleVar.ItemSpacing, new Vector2(4, 4));
 
         // ── 固定模块卡片 ──
         for (var i = 0; i < _modules.Length; i++)
@@ -416,7 +415,6 @@ public sealed class MainWindow : Window
             }
         }
 
-        ImGui.PopStyleVar(); // ItemSpacing
         ImGui.EndChild();
     }
 
@@ -451,11 +449,13 @@ public sealed class MainWindow : Window
 
         // ── 可点击区域 ──
         ImGui.SetCursorPos(cursorStart);
-        ImGui.PushStyleColor(ImGuiCol.Button, Vector4.Zero);
-        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, Theme.Colors.BgHover);
-        ImGui.PushStyleColor(ImGuiCol.ButtonActive, Theme.Colors.BgSpotlight);
-        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, Theme.RadiusMD);
-        ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(12, 4));
+        using var cB = new ImRaii.ColorDisposable();
+        cB.Push(ImGuiCol.Button, Vector4.Zero);
+        cB.Push(ImGuiCol.ButtonHovered, Theme.Colors.BgHover);
+        cB.Push(ImGuiCol.ButtonActive, Theme.Colors.BgSpotlight);
+        using var vS = new ImRaii.StyleDisposable();
+        vS.Push(ImGuiStyleVar.FrameRounding, Theme.RadiusMD);
+        vS.Push(ImGuiStyleVar.FramePadding, new Vector2(12, 4));
 
         var clicked = ImGui.Button($"##card_{title}", new Vector2(cardWidth, cardHeight));
 
@@ -474,9 +474,6 @@ public sealed class MainWindow : Window
             dl.AddText(new Vector2(iconX + 24, textTop + lineHeight),
                 ImGui.ColorConvertFloat4ToU32(Theme.Colors.TextTertiary), subtitle);
         }
-
-        ImGui.PopStyleVar(2);
-        ImGui.PopStyleColor(3);
 
         // 悬停时在卡片上叠加白色半透明
         if (ImGui.IsItemHovered() && !isSelected)
@@ -1178,9 +1175,9 @@ public sealed class MainWindow : Window
             ImGui.TableNextColumn();
             if (info.BuiltSlot && info.BuiltSkills.Length > 0)
             {
-                ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0, 1, 0, 1));
+                using var greenText = new ImRaii.ColorDisposable();
+                greenText.Push(ImGuiCol.Text, new Vector4(0, 1, 0, 1));
                 ImGui.TextWrapped(info.BuiltSkills);
-                ImGui.PopStyleColor();
             }
             else if (info.CheckResult >= 0 && !info.PassedWindow)
             {
@@ -1519,7 +1516,8 @@ public sealed class MainWindow : Window
         }
         else
         {
-            ImGui.PushStyleVar(ImGuiStyleVar.ChildBorderSize, 1);
+            using var childBorder = new ImRaii.StyleDisposable();
+            childBorder.Push(ImGuiStyleVar.ChildBorderSize, 1);
             ImGui.BeginChild("##RecordingList",
                 new Vector2(-1, 80), true);
 
@@ -1531,7 +1529,6 @@ public sealed class MainWindow : Window
             }
 
             ImGui.EndChild();
-            ImGui.PopStyleVar();
         }
 
         ImGui.Spacing();

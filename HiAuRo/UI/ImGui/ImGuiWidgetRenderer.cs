@@ -33,9 +33,8 @@ public static class ImGuiWidgetRenderer
 
         foreach (var group in groups)
         {
-            ImGui.PushFont(UiBuilder.DefaultFont);
+            using var defaultFont = ImRaii.PushFont(UiBuilder.DefaultFont);
             ImGui.TextColored(Theme.Colors.TextPrimary, group.Label);
-            ImGui.PopFont();
             ImGui.Spacing();
             var items = controls.Where(c => c.ParentId == group.Id);
             RenderItems(items);
@@ -105,15 +104,15 @@ public static class ImGuiWidgetRenderer
 
             if (tex != default)
             {
-                ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 4);
-                ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(4, 4));
+                using var hkVar = new ImRaii.StyleDisposable();
+                hkVar.Push(ImGuiStyleVar.FrameRounding, 4);
+                hkVar.Push(ImGuiStyleVar.FramePadding, new Vector2(4, 4));
                 var clicked = ImGui.Button($"##hkbtn-{hk.Id}", new Vector2(36, 36));
                 var rectMin = ImGui.GetItemRectMin();
                 var rectMax = ImGui.GetItemRectMax();
                 var pad = 4f;
                 ImGui.GetWindowDrawList().AddImage(
                     tex, rectMin + new Vector2(pad), rectMax - new Vector2(pad));
-                ImGui.PopStyleVar(2);
                 if (clicked)
                     HiAuRo.ACR.HotkeyHelper.ExecuteById(hk.Id);
                 if (ImGui.IsItemHovered())
@@ -124,12 +123,13 @@ public static class ImGuiWidgetRenderer
             }
             else
             {
-                ImGui.PushStyleColor(ImGuiCol.Button, available
+                var hkColor = available
                     ? Theme.Colors.AccentBlue
-                    : new Vector4(0.3f, 0.3f, 0.3f, 1));
+                    : new Vector4(0.3f, 0.3f, 0.3f, 1);
+                using var hkCol = new ImRaii.ColorDisposable();
+                hkCol.Push(ImGuiCol.Button, hkColor);
                 if (ImGui.Button($"{hk.Label}###hkbtn-{hk.Id}"))
                     HiAuRo.ACR.HotkeyHelper.ExecuteById(hk.Id);
-                ImGui.PopStyleColor();
                 if (ImGui.IsItemHovered())
                 {
                     ImGui.BeginTooltip();

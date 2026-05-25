@@ -124,8 +124,9 @@ public static class ComponentLibrary
     public static bool IconButton(IconType icon, Vector4 color, Vector2 size,
         IconButtonStyle style = IconButtonStyle.Fill, float iconSizePx = 18f)
     {
-        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, Theme.RadiusMD);
-        ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(8, 6));
+        using var v = new ImRaii.StyleDisposable();
+        v.Push(ImGuiStyleVar.FrameRounding, Theme.RadiusMD);
+        v.Push(ImGuiStyleVar.FramePadding, new Vector2(8, 6));
 
         Vector4 bg, bgHover, bgActive, borderCol, iconCol;
 
@@ -154,11 +155,11 @@ public static class ComponentLibrary
             iconCol = color;
         }
 
-        ImGui.PushStyleColor(ImGuiCol.Button, bg);
-        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, bgHover);
-        ImGui.PushStyleColor(ImGuiCol.ButtonActive, bgActive);
-        if (style == IconButtonStyle.Outline)
-            ImGui.PushStyleColor(ImGuiCol.Border, borderCol);
+        using var c = new ImRaii.ColorDisposable();
+        c.Push(ImGuiCol.Button, bg);
+        c.Push(ImGuiCol.ButtonHovered, bgHover);
+        c.Push(ImGuiCol.ButtonActive, bgActive);
+        c.Push(ImGuiCol.Border, borderCol, style == IconButtonStyle.Outline);
 
         var clicked = ImGui.Button($"##icon_{icon}", size);
 
@@ -166,12 +167,6 @@ public static class ComponentLibrary
         var rectMax = ImGui.GetItemRectMax();
         var center = (rectMin + rectMax) / 2;
         DrawIcon(ImGui.GetWindowDrawList(), center, icon, ColorU32(iconCol), iconSizePx);
-
-        if (style == IconButtonStyle.Outline)
-            ImGui.PopStyleColor(4);
-        else
-            ImGui.PopStyleColor(3);
-        ImGui.PopStyleVar(2);
 
         return clicked;
     }
@@ -207,12 +202,14 @@ public static class ComponentLibrary
     /// <summary>链接按钮</summary>
     public static bool LinkButton(string label, Vector2? size = null)
     {
-        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, Theme.RadiusSM);
-        ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(4, 2));
-        ImGui.PushStyleColor(ImGuiCol.Button, Vector4.Zero);
-        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, Vector4.Zero);
-        ImGui.PushStyleColor(ImGuiCol.ButtonActive, Vector4.Zero);
-        ImGui.PushStyleColor(ImGuiCol.Text, Theme.Colors.AccentBlue);
+        using var v = new ImRaii.StyleDisposable();
+        v.Push(ImGuiStyleVar.FrameRounding, Theme.RadiusSM);
+        v.Push(ImGuiStyleVar.FramePadding, new Vector2(4, 2));
+        using var c = new ImRaii.ColorDisposable();
+        c.Push(ImGuiCol.Button, Vector4.Zero);
+        c.Push(ImGuiCol.ButtonHovered, Vector4.Zero);
+        c.Push(ImGuiCol.ButtonActive, Vector4.Zero);
+        c.Push(ImGuiCol.Text, Theme.Colors.AccentBlue);
 
         var clicked = ImGui.Button(label, size ?? Vector2.Zero);
 
@@ -225,61 +222,53 @@ public static class ComponentLibrary
                 ColorU32(Theme.Colors.AccentBlue), 1);
         }
 
-        ImGui.PopStyleColor(4);
-        ImGui.PopStyleVar(2);
         return clicked;
     }
 
     // ── 内部: 填充按钮 ──
     private static bool FillButton(string label, Vector4 color, Vector2? size)
     {
-        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, Theme.RadiusMD);
-        ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(15, 6));
-        ImGui.PushStyleColor(ImGuiCol.Button, color);
-        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, Lighten(color, 0.12f));
-        ImGui.PushStyleColor(ImGuiCol.ButtonActive, Darken(color, 0.12f));
-        ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(1, 1, 1, 1));
+        using var v = new ImRaii.StyleDisposable();
+        v.Push(ImGuiStyleVar.FrameRounding, Theme.RadiusMD);
+        v.Push(ImGuiStyleVar.FramePadding, new Vector2(15, 6));
+        using var c = new ImRaii.ColorDisposable();
+        c.Push(ImGuiCol.Button, color);
+        c.Push(ImGuiCol.ButtonHovered, Lighten(color, 0.12f));
+        c.Push(ImGuiCol.ButtonActive, Darken(color, 0.12f));
+        c.Push(ImGuiCol.Text, new Vector4(1, 1, 1, 1));
 
-        var clicked = ImGui.Button(label, size ?? Vector2.Zero);
-
-        ImGui.PopStyleColor(4);
-        ImGui.PopStyleVar(2);
-        return clicked;
+        return ImGui.Button(label, size ?? Vector2.Zero);
     }
 
     // ── 内部: 边框按钮 ──
     private static bool OutlineButton(string label, Vector4 borderColor, Vector4 textColor, Vector2? size)
     {
-        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, Theme.RadiusMD);
-        ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(15, 6));
-        ImGui.PushStyleColor(ImGuiCol.Button, Vector4.Zero);
-        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, Theme.Colors.BgHover);
-        ImGui.PushStyleColor(ImGuiCol.ButtonActive, Theme.Colors.FillSecondary);
-        ImGui.PushStyleColor(ImGuiCol.Border, borderColor);
-        ImGui.PushStyleColor(ImGuiCol.Text, textColor);
+        using var v = new ImRaii.StyleDisposable();
+        v.Push(ImGuiStyleVar.FrameRounding, Theme.RadiusMD);
+        v.Push(ImGuiStyleVar.FramePadding, new Vector2(15, 6));
+        using var c = new ImRaii.ColorDisposable();
+        c.Push(ImGuiCol.Button, Vector4.Zero);
+        c.Push(ImGuiCol.ButtonHovered, Theme.Colors.BgHover);
+        c.Push(ImGuiCol.ButtonActive, Theme.Colors.FillSecondary);
+        c.Push(ImGuiCol.Border, borderColor);
+        c.Push(ImGuiCol.Text, textColor);
 
-        var clicked = ImGui.Button(label, size ?? Vector2.Zero);
-
-        ImGui.PopStyleColor(5);
-        ImGui.PopStyleVar(2);
-        return clicked;
+        return ImGui.Button(label, size ?? Vector2.Zero);
     }
 
     // ── 内部: Ghost 幽灵按钮 ──
     private static bool GhostButton(string label, Vector4 textColor, Vector2? size)
     {
-        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, Theme.RadiusMD);
-        ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(15, 6));
-        ImGui.PushStyleColor(ImGuiCol.Button, Vector4.Zero);
-        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, Theme.Colors.BgHover);
-        ImGui.PushStyleColor(ImGuiCol.ButtonActive, Theme.Colors.FillPrimary);
-        ImGui.PushStyleColor(ImGuiCol.Text, textColor);
+        using var v = new ImRaii.StyleDisposable();
+        v.Push(ImGuiStyleVar.FrameRounding, Theme.RadiusMD);
+        v.Push(ImGuiStyleVar.FramePadding, new Vector2(15, 6));
+        using var c = new ImRaii.ColorDisposable();
+        c.Push(ImGuiCol.Button, Vector4.Zero);
+        c.Push(ImGuiCol.ButtonHovered, Theme.Colors.BgHover);
+        c.Push(ImGuiCol.ButtonActive, Theme.Colors.FillPrimary);
+        c.Push(ImGuiCol.Text, textColor);
 
-        var clicked = ImGui.Button(label, size ?? Vector2.Zero);
-
-        ImGui.PopStyleColor(4);
-        ImGui.PopStyleVar(2);
-        return clicked;
+        return ImGui.Button(label, size ?? Vector2.Zero);
     }
 
     /// <summary>旧版 Button（等同于 PrimaryButton）</summary>
@@ -302,9 +291,10 @@ public static class ComponentLibrary
     public static bool IconTextButton(IconType icon, string label, Vector4 color,
         Vector2? size = null, IconButtonStyle style = IconButtonStyle.Fill, float iconSizePx = 18f)
     {
-        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, Theme.RadiusMD);
-        ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(12, 6));
-        ImGui.PushStyleVar(ImGuiStyleVar.ItemInnerSpacing, new Vector2(6, 0));
+        using var v = new ImRaii.StyleDisposable();
+        v.Push(ImGuiStyleVar.FrameRounding, Theme.RadiusMD);
+        v.Push(ImGuiStyleVar.FramePadding, new Vector2(12, 6));
+        v.Push(ImGuiStyleVar.ItemInnerSpacing, new Vector2(6, 0));
 
         Vector4 bg, bgHover, bgActive, borderCol, iconCol, textCol;
 
@@ -336,12 +326,12 @@ public static class ComponentLibrary
             textCol = color;
         }
 
-        ImGui.PushStyleColor(ImGuiCol.Button, bg);
-        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, bgHover);
-        ImGui.PushStyleColor(ImGuiCol.ButtonActive, bgActive);
-        if (style == IconButtonStyle.Outline)
-            ImGui.PushStyleColor(ImGuiCol.Border, borderCol);
-        ImGui.PushStyleColor(ImGuiCol.Text, textCol);
+        using var c = new ImRaii.ColorDisposable();
+        c.Push(ImGuiCol.Button, bg);
+        c.Push(ImGuiCol.ButtonHovered, bgHover);
+        c.Push(ImGuiCol.ButtonActive, bgActive);
+        c.Push(ImGuiCol.Border, borderCol, style == IconButtonStyle.Outline);
+        c.Push(ImGuiCol.Text, textCol);
 
         var clicked = ImGui.Button($"##it_{icon}_{label}", size ?? Vector2.Zero);
 
@@ -361,12 +351,6 @@ public static class ComponentLibrary
             new Vector2(startX + 10, center.Y - textSize.Y / 2),
             ColorU32(textCol),
             label);
-
-        if (style == IconButtonStyle.Outline)
-            ImGui.PopStyleColor(5);
-        else
-            ImGui.PopStyleColor(4);
-        ImGui.PopStyleVar(3);
 
         return clicked;
     }
@@ -388,16 +372,14 @@ public static class ComponentLibrary
     /// <summary>开关控件</summary>
     public static bool Switch(string id, ref bool value)
     {
-        ImGui.PushStyleColor(ImGuiCol.FrameBg, value ? Theme.Colors.SwitchTrackOn : Theme.Colors.SwitchTrackOff);
-        ImGui.PushStyleColor(ImGuiCol.CheckMark, Theme.Colors.SwitchKnob);
-        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, 12f);
-        ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(2, 2));
+        using var c = new ImRaii.ColorDisposable();
+        c.Push(ImGuiCol.FrameBg, value ? Theme.Colors.SwitchTrackOn : Theme.Colors.SwitchTrackOff);
+        c.Push(ImGuiCol.CheckMark, Theme.Colors.SwitchKnob);
+        using var v = new ImRaii.StyleDisposable();
+        v.Push(ImGuiStyleVar.FrameRounding, 12f);
+        v.Push(ImGuiStyleVar.FramePadding, new Vector2(2, 2));
 
-        var changed = ImGui.Checkbox($"##{id}", ref value);
-
-        ImGui.PopStyleVar(2);
-        ImGui.PopStyleColor(2);
-        return changed;
+        return ImGui.Checkbox($"##{id}", ref value);
     }
 
     /// <summary>带标签的开关控件</summary>
@@ -417,13 +399,13 @@ public static class ComponentLibrary
     /// <summary>滑块控件</summary>
     public static bool Slider(string id, string label, ref float value, float min, float max, string format = "%.1f")
     {
-        ImGui.PushStyleColor(ImGuiCol.FrameBg, Theme.Colors.SliderRail);
-        ImGui.PushStyleColor(ImGuiCol.SliderGrab, Theme.Colors.SliderTrack);
-        ImGui.PushStyleColor(ImGuiCol.SliderGrabActive, Theme.Colors.SliderTrack);
-        ImGui.PushStyleColor(ImGuiCol.Text, Theme.Colors.TextPrimary);
+        using var c = new ImRaii.ColorDisposable();
+        c.Push(ImGuiCol.FrameBg, Theme.Colors.SliderRail);
+        c.Push(ImGuiCol.SliderGrab, Theme.Colors.SliderTrack);
+        c.Push(ImGuiCol.SliderGrabActive, Theme.Colors.SliderTrack);
+        c.Push(ImGuiCol.Text, Theme.Colors.TextPrimary);
         ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 60);
         var changed = ImGui.SliderFloat($"##{id}", ref value, min, max, format);
-        ImGui.PopStyleColor(4);
         ImGui.SameLine();
         ImGui.TextColored(Theme.Colors.TextSecondary, label);
         return changed;
@@ -432,13 +414,13 @@ public static class ComponentLibrary
     /// <summary>整数滑块控件</summary>
     public static bool SliderInt(string id, string label, ref int value, int min, int max)
     {
-        ImGui.PushStyleColor(ImGuiCol.FrameBg, Theme.Colors.SliderRail);
-        ImGui.PushStyleColor(ImGuiCol.SliderGrab, Theme.Colors.SliderTrack);
-        ImGui.PushStyleColor(ImGuiCol.SliderGrabActive, Theme.Colors.SliderTrack);
-        ImGui.PushStyleColor(ImGuiCol.Text, Theme.Colors.TextPrimary);
+        using var c = new ImRaii.ColorDisposable();
+        c.Push(ImGuiCol.FrameBg, Theme.Colors.SliderRail);
+        c.Push(ImGuiCol.SliderGrab, Theme.Colors.SliderTrack);
+        c.Push(ImGuiCol.SliderGrabActive, Theme.Colors.SliderTrack);
+        c.Push(ImGuiCol.Text, Theme.Colors.TextPrimary);
         ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 60);
         var changed = ImGui.SliderInt($"##{id}", ref value, min, max);
-        ImGui.PopStyleColor(4);
         ImGui.SameLine();
         ImGui.TextColored(Theme.Colors.TextSecondary, label);
         return changed;
@@ -451,14 +433,14 @@ public static class ComponentLibrary
     /// <summary>下拉选择器</summary>
     public static bool Select(string id, string label, ref int selectedIndex, string[] options)
     {
-        ImGui.PushStyleColor(ImGuiCol.FrameBg, Theme.Colors.FillSecondary);
-        ImGui.PushStyleColor(ImGuiCol.Header, Theme.Colors.AccentBlue);
-        ImGui.PushStyleColor(ImGuiCol.HeaderHovered, Theme.Colors.BgHover);
-        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, Theme.RadiusSM);
+        using var c = new ImRaii.ColorDisposable();
+        c.Push(ImGuiCol.FrameBg, Theme.Colors.FillSecondary);
+        c.Push(ImGuiCol.Header, Theme.Colors.AccentBlue);
+        c.Push(ImGuiCol.HeaderHovered, Theme.Colors.BgHover);
+        using var v = new ImRaii.StyleDisposable();
+        v.Push(ImGuiStyleVar.FrameRounding, Theme.RadiusSM);
         ImGui.SetNextItemWidth(ImGui.GetContentRegionAvail().X - 80);
         var changed = ImGui.Combo($"##{id}", ref selectedIndex, options, options.Length);
-        ImGui.PopStyleVar();
-        ImGui.PopStyleColor(3);
         ImGui.SameLine();
         ImGui.TextColored(Theme.Colors.TextSecondary, label);
         return changed;
@@ -505,9 +487,8 @@ public static class ComponentLibrary
         ImGui.BeginChild($"##card_{cardId}", new Vector2(-1, 0), true);
         if (title != null)
         {
-            ImGui.PushFont(UiBuilder.DefaultFont);
+            using var font = ImRaii.PushFont(UiBuilder.DefaultFont);
             ImGui.TextColored(Theme.Colors.TextPrimary, title);
-            ImGui.PopFont();
             ImGui.Spacing();
         }
     }
@@ -529,15 +510,15 @@ public static class ComponentLibrary
     {
         var color = active ? (activeColor ?? Theme.Colors.AccentGreen) : (inactiveColor ?? Theme.Colors.FillSecondary);
         var textColor = active ? Theme.Colors.TagActiveText : Theme.Colors.TextSecondary;
-        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, Theme.RadiusSM);
-        ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(10, 4));
-        ImGui.PushStyleColor(ImGuiCol.Button, color);
-        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, color);
-        ImGui.PushStyleColor(ImGuiCol.ButtonActive, color);
-        ImGui.PushStyleColor(ImGuiCol.Text, textColor);
+        using var v = new ImRaii.StyleDisposable();
+        v.Push(ImGuiStyleVar.FrameRounding, Theme.RadiusSM);
+        v.Push(ImGuiStyleVar.FramePadding, new Vector2(10, 4));
+        using var c = new ImRaii.ColorDisposable();
+        c.Push(ImGuiCol.Button, color);
+        c.Push(ImGuiCol.ButtonHovered, color);
+        c.Push(ImGuiCol.ButtonActive, color);
+        c.Push(ImGuiCol.Text, textColor);
         ImGui.Button(label, Vector2.Zero);
-        ImGui.PopStyleColor(4);
-        ImGui.PopStyleVar(2);
     }
 
     // ═══════════════════════════════════════════════════
@@ -548,9 +529,9 @@ public static class ComponentLibrary
     public static void Divider()
     {
         ImGui.Spacing();
-        ImGui.PushStyleColor(ImGuiCol.Separator, Theme.Colors.BorderSecondary);
+        using var c = new ImRaii.ColorDisposable();
+        c.Push(ImGuiCol.Separator, Theme.Colors.BorderSecondary);
         ImGui.Separator();
-        ImGui.PopStyleColor();
         ImGui.Spacing();
     }
 
@@ -577,12 +558,12 @@ public static class ComponentLibrary
     /// <summary>数字输入框</summary>
     public static bool InputNumber(string id, string label, ref int value, int step = 1, int stepFast = 10)
     {
-        ImGui.PushStyleColor(ImGuiCol.FrameBg, Theme.Colors.FillSecondary);
-        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, Theme.RadiusSM);
+        using var c = new ImRaii.ColorDisposable();
+        c.Push(ImGuiCol.FrameBg, Theme.Colors.FillSecondary);
+        using var v = new ImRaii.StyleDisposable();
+        v.Push(ImGuiStyleVar.FrameRounding, Theme.RadiusSM);
         ImGui.SetNextItemWidth(80);
         var changed = ImGui.InputInt($"##{id}", ref value, step, stepFast);
-        ImGui.PopStyleVar();
-        ImGui.PopStyleColor();
         ImGui.SameLine();
         ImGui.TextColored(Theme.Colors.TextPrimary, label);
         return changed;

@@ -96,12 +96,10 @@ public abstract class OverlayBase : Window
         // 绘制铺满整个窗口的圆角半透明背景
         DrawWindowBackground();
 
-        // 内容区域间距
-        ImGui.PushStyleVar(ImGuiStyleVar.ItemSpacing, new Vector2(6, 4));
+        using var itemSp = new ImRaii.StyleDisposable();
+        itemSp.Push(ImGuiStyleVar.ItemSpacing, new Vector2(6, 4));
 
         DrawContent();
-
-        ImGui.PopStyleVar(1);
 
         // 右下角 resize 指示器（仅可缩放窗口）
         if (AllowResize && !_isDragging && !_isResizing)

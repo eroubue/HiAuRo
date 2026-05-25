@@ -75,13 +75,15 @@ public sealed class OverlayQtPanel : OverlayBase
         var btnSize = new Vector2(67, 46);
 
         // 公共样式：圆角、内边距
-        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, Theme.RadiusSM);
-        ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(10, 4));
+        using var outerV = new ImRaii.StyleDisposable();
+        outerV.Push(ImGuiStyleVar.FrameRounding, Theme.RadiusSM);
+        outerV.Push(ImGuiStyleVar.FramePadding, new Vector2(10, 4));
         // 默认（非激活）颜色
-        ImGui.PushStyleColor(ImGuiCol.Button, Theme.Colors.FillSecondary);
-        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, Theme.Colors.FillSecondary);
-        ImGui.PushStyleColor(ImGuiCol.ButtonActive, Theme.Colors.FillSecondary);
-        ImGui.PushStyleColor(ImGuiCol.Text, Theme.Colors.TextSecondary);
+        using var outerC = new ImRaii.ColorDisposable();
+        outerC.Push(ImGuiCol.Button, Theme.Colors.FillSecondary);
+        outerC.Push(ImGuiCol.ButtonHovered, Theme.Colors.FillSecondary);
+        outerC.Push(ImGuiCol.ButtonActive, Theme.Colors.FillSecondary);
+        outerC.Push(ImGuiCol.Text, Theme.Colors.TextSecondary);
 
         foreach (var qt in qts)
         {
@@ -93,19 +95,25 @@ public sealed class OverlayQtPanel : OverlayBase
             if (qt.Value)
             {
                 var activeColor = ResolveActiveColor(qt.Color);
-                ImGui.PushStyleColor(ImGuiCol.Button, activeColor);
-                ImGui.PushStyleColor(ImGuiCol.ButtonHovered, activeColor);
-                ImGui.PushStyleColor(ImGuiCol.ButtonActive, activeColor);
-                ImGui.PushStyleColor(ImGuiCol.Text, Theme.Colors.TagActiveText);
+                using var innerC = new ImRaii.ColorDisposable();
+                innerC.Push(ImGuiCol.Button, activeColor);
+                innerC.Push(ImGuiCol.ButtonHovered, activeColor);
+                innerC.Push(ImGuiCol.ButtonActive, activeColor);
+                innerC.Push(ImGuiCol.Text, Theme.Colors.TagActiveText);
+
+                var clicked = ImGui.Button(qt.Label, btnSize);
+
+                if (clicked)
+                    HiAuRo.ACR.QTHelper.Toggle(qt.Id);
+            }
+            else
+            {
+                var clicked = ImGui.Button(qt.Label, btnSize);
+
+                if (clicked)
+                    HiAuRo.ACR.QTHelper.Toggle(qt.Id);
             }
 
-            var clicked = ImGui.Button(qt.Label, btnSize);
-
-            if (qt.Value)
-                ImGui.PopStyleColor(4);
-
-            if (clicked)
-                HiAuRo.ACR.QTHelper.Toggle(qt.Id);
             if (!string.IsNullOrEmpty(qt.Tooltip) && ImGui.IsItemHovered())
                 ImGui.SetTooltip(qt.Tooltip);
 
@@ -113,8 +121,6 @@ public sealed class OverlayQtPanel : OverlayBase
             SameLineOrWrap(ref col, cols);
         }
 
-        ImGui.PopStyleColor(4);
-        ImGui.PopStyleVar(2);
 #if DEBUG
         PerfMonitor.Record("UI.QtPanel", _uiTick);
 #endif

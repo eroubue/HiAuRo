@@ -77,12 +77,14 @@ public sealed class OverlayHotkeyPanel : OverlayBase
         var col = 0;
 
         // 公共样式：圆角、内边距、颜色（所有按钮相同）
-        ImGui.PushStyleVar(ImGuiStyleVar.FrameRounding, Theme.RadiusMD);
-        ImGui.PushStyleVar(ImGuiStyleVar.FramePadding, new Vector2(4, 4));
-        ImGui.PushStyleColor(ImGuiCol.Button, Theme.Colors.BgContainer);
-        ImGui.PushStyleColor(ImGuiCol.ButtonHovered, Theme.Colors.BgHover);
-        ImGui.PushStyleColor(ImGuiCol.ButtonActive, Theme.Colors.FillPrimary);
-        ImGui.PushStyleColor(ImGuiCol.Border, Theme.Colors.BorderSecondary);
+        using var outerV = new ImRaii.StyleDisposable();
+        outerV.Push(ImGuiStyleVar.FrameRounding, Theme.RadiusMD);
+        outerV.Push(ImGuiStyleVar.FramePadding, new Vector2(4, 4));
+        using var outerC = new ImRaii.ColorDisposable();
+        outerC.Push(ImGuiCol.Button, Theme.Colors.BgContainer);
+        outerC.Push(ImGuiCol.ButtonHovered, Theme.Colors.BgHover);
+        outerC.Push(ImGuiCol.ButtonActive, Theme.Colors.FillPrimary);
+        outerC.Push(ImGuiCol.Border, Theme.Colors.BorderSecondary);
 
         for (var i = 0; i < hotkeys.Count; i++)
         {
@@ -114,8 +116,6 @@ public sealed class OverlayHotkeyPanel : OverlayBase
             SameLineOrWrap(ref col, cols);
         }
 
-        ImGui.PopStyleColor(4);
-        ImGui.PopStyleVar(2);
 #if DEBUG
         PerfMonitor.Record("UI.Hotkey", _uiTick);
 #endif
