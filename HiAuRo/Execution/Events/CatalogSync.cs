@@ -34,18 +34,21 @@ public static class CatalogSync
             var filePath = "trigger-catalog.json";
 
             var sha = await GetExistingShaAsync(repo, filePath, branch, token);
-            var body = new
+
+            // GitHub Contents API：新建文件不传 sha，更新文件必须传当前 sha
+            var bodyDict = new Dictionary<string, object?>
             {
-                message = $"Update trigger catalog ({DateTime.UtcNow:yyyy-MM-dd HH:mm} UTC)",
-                content,
-                branch,
-                sha
+                ["message"] = $"Update trigger catalog ({DateTime.UtcNow:yyyy-MM-dd HH:mm} UTC)",
+                ["content"] = content,
+                ["branch"] = branch
             };
+            if (sha != null)
+                bodyDict["sha"] = sha;
 
             var url = $"https://api.github.com/repos/{repo}/contents/{filePath}";
             using var req = new HttpRequestMessage(HttpMethod.Put, url);
             req.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", token);
-            req.Content = new StringContent(JsonSerializer.Serialize(body), Encoding.UTF8, "application/json");
+            req.Content = new StringContent(JsonSerializer.Serialize(bodyDict), Encoding.UTF8, "application/json");
 
             using var resp = await _http.SendAsync(req);
             var respBody = await resp.Content.ReadAsStringAsync();
