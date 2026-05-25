@@ -3,30 +3,26 @@ using static HiAuRo.Data;
 
 namespace HiAuRo.Execution.Triggers.Cond;
 
-/// <summary>
-/// 检测指定 DataId 的敌人是否已从对象表中移除（消失或死亡）
-/// </summary>
 [TriggerDisplay("单位移除", "检测指定DataId的单位是否移除")]
 [TriggerTypeName("HiAuRo.Execution.Triggers.Cond.TriggerCond_单位移除, HiAuRo")]
 
 public sealed class TriggerCond_单位移除 : ITriggerCond
 {
-    private readonly uint _dataId;
+    public uint DataId { get; set; }
+    public string Remark { get; set; } = "";
 
-    /// <param name="dataId">单位 DataId</param>
-    public TriggerCond_单位移除(uint dataId)
-    {
-        _dataId = dataId;
-    }
-
-    /// <summary>检测指定 DataId 的单位是否已移除</summary>
     public bool Handle(ITriggerCondParams? condParams = null)
     {
         foreach (var obj in Objects.All)
         {
-            if (obj is IBattleNPC npc && npc.DataID == _dataId)
-                return false; // 还在
+            if (obj is IBattleNPC npc && npc.DataID == DataId)
+                return false;
         }
-        return true; // 已移除
+        return true;
+    }
+
+    public void Draw(ACR.IUiBuilder builder)
+    {
+        builder.AddIntInput("DataId", (int)DataId);
     }
 }

@@ -2,24 +2,20 @@ using HiAuRo.ACR;
 
 namespace HiAuRo.Execution.Triggers.Cond;
 
-/// <summary>
-/// 检测当前天气是否与指定 ID 匹配
-/// </summary>
 [TriggerDisplay("天气变化", "检测天气是否变为指定ID")]
 [TriggerTypeName("TriggerCondOnWeatherIdChanged")]
 public sealed class TriggerCond_天气变化 : ITriggerCond
 {
-    private readonly byte _weatherId;
+    public byte WeatherId { get; set; }
+    public string Remark { get; set; } = "";
 
-    /// <param name="weatherId">天气 ID</param>
-    public TriggerCond_天气变化(byte weatherId)
-    {
-        _weatherId = weatherId;
-    }
-
-    /// <summary>检测当前天气是否匹配</summary>
     public bool Handle(ITriggerCondParams? condParams = null)
     {
-        return OmenTools.OmenService.GameState.Weather == _weatherId;
+        return OmenTools.OmenService.GameState.Weather == WeatherId;
+    }
+
+    public void Draw(ACR.IUiBuilder builder)
+    {
+        builder.AddIntInput("WeatherId", WeatherId);
     }
 }

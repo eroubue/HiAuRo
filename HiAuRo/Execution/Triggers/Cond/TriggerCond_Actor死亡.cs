@@ -3,35 +3,28 @@ using static HiAuRo.Data;
 
 namespace HiAuRo.Execution.Triggers.Cond;
 
-/// <summary>
-/// 检测指定 DataId 的敌人是否已死亡（从对象表中消失或标记为死）
-/// </summary>
 [TriggerDisplay("Actor死亡", "检测指定DataId的Actor死亡")]
 [TriggerTypeName("TriggerCondActorDeath")]
 public sealed class TriggerCond_Actor死亡 : ITriggerCond
 {
-    private readonly uint _dataId;
+    public uint DataId { get; set; }
+    public string Remark { get; set; } = "";
 
-    /// <param name="dataId">Actor DataId</param>
-    public TriggerCond_Actor死亡(uint dataId)
-    {
-        _dataId = dataId;
-    }
-
-    /// <summary>检测指定 DataId 的敌人是否已死亡</summary>
     public bool Handle(ITriggerCondParams? condParams = null)
     {
-        // 检查所有对象中是否存在此 DataId 且存活
         foreach (var obj in Objects.All)
         {
-            if (obj is IBattleNPC npc && npc.DataID == _dataId)
+            if (obj is IBattleNPC npc && npc.DataID == DataId)
             {
-                // 存在且未死亡 → 不满足
                 if (npc.IsDead != true)
                     return false;
             }
         }
-        // 不存在或已死亡 → 满足
         return true;
+    }
+
+    public void Draw(ACR.IUiBuilder builder)
+    {
+        builder.AddIntInput("DataId", (int)DataId);
     }
 }
