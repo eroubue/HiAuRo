@@ -1,8 +1,8 @@
 namespace HiAuRo.ACR;
 
 /// <summary>
-/// 描述性 UI 控件注册接口 —— C# 描述 UI，HiAuRo 转为 JSON → Web 前端渲染
-/// 每个方法提供两个重载：带 id 参数（旧兼容）和不带 id（label 自动作为 id）
+/// 描述性 UI 控件注册接口 —— C# 描述 UI，HiAuRo 转为 UiControlDef 供 Web / ImGui 双模式渲染
+/// label 自动作为控件 id，无需手动指定
 /// </summary>
 public interface IUiBuilder
 {
