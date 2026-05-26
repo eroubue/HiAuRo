@@ -57,6 +57,14 @@ public sealed class FactTimelineData
     [JsonPropertyName("author")]
     public string Author { get; set; } = "";
 
+    /// <summary>备注说明</summary>
+    [JsonPropertyName("note")]
+    public string Note { get; set; } = "";
+
+    /// <summary>唯一标识（新建时自动生成）</summary>
+    [JsonPropertyName("guid")]
+    public string Guid { get; set; } = System.Guid.NewGuid().ToString();
+
     /// <summary>阶段列表</summary>
     [JsonPropertyName("phases")]
     public List<FactPhase> Phases { get; set; } = [];
