@@ -960,6 +960,11 @@ function renderProps() {
     if (def.type === 'treeCondNode') {
         h += '<div class="prop-section"><div class="prop-head">条件</div>';
         h += propRow('检查一次', 'checkbox', 'CheckOnce', node.CheckOnce);
+        h += '<div class="prop-row"><span class="prop-label">条件逻辑</span>';
+        h += '<select class="prop-input" id="prop_CondLogicType" data-key="CondLogicType">';
+        h += '<option value="0" ' + (node.CondLogicType === 1 ? '' : 'selected') + '>And (全部满足)</option>';
+        h += '<option value="1" ' + (node.CondLogicType === 1 ? 'selected' : '') + '>Or (任一满足)</option>';
+        h += '</select></div>';
         h += propRow('结果取反', 'checkbox', 'ReverseResult', node.ReverseResult);
         h += '<div class="prop-group">';
         h += '<label style="font-size:11px;color:var(--tx2)">条件列表 (' + (node.TriggerConds||[]).length + ' 项)</label>';
@@ -1037,6 +1042,8 @@ function renderProps() {
     }
     if (def.type === 'treeScriptNode') {
         h += '<div class="prop-section"><div class="prop-head">脚本</div>';
+        h += propRow('仅检查(不等待)', 'checkbox', 'OnlyCheck', node.OnlyCheck);
+        h += propRow('事实轴节点', 'text', 'FactNodeId', node.FactNodeId || '');
         h += '<textarea class="prop-area" id="propScript" style="height:80px">' + esc(node.Script || '') + '</textarea>';
         h += '<button class="btn" style="margin-top:4px;font-size:11px" id="btnSaveScript">保存脚本</button>';
         h += '</div>';

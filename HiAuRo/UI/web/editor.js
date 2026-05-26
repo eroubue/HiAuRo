@@ -610,6 +610,11 @@ function renderProps() {
         if (type === 'treeCondNode') {
             h += '<div class="ed-prop-section"><div class="ed-prop-head">条件</div>';
             h += prop('检查一次', 'checkbox', node, 'CheckOnce');
+            h += '<div class="ed-prop-row"><span class="ed-prop-label">条件逻辑</span>';
+            h += '<select class="ed-prop-input" id="prop_CondLogicType" data-key="CondLogicType">';
+            h += '<option value="0" ' + (node.CondLogicType === 1 ? '' : 'selected') + '>And (全部满足)</option>';
+            h += '<option value="1" ' + (node.CondLogicType === 1 ? 'selected' : '') + '>Or (任一满足)</option>';
+            h += '</select></div>';
             h += prop('结果取反', 'checkbox', node, 'ReverseResult');
             h += '<div class="prop-group">';
             h += '<label>条件列表 (' + (node.TriggerConds||[]).length + ' 项)</label>';
@@ -669,7 +674,7 @@ function renderProps() {
         }
         if (type === 'treeDelayNode') { h += '<div class="ed-prop-section"><div class="ed-prop-head">延迟</div>'; h += prop('秒数', 'number', node, 'Delay'); h += '</div>'; }
         if (type === 'treeLoop') { h += '<div class="ed-prop-section"><div class="ed-prop-head">循环</div>'; h += prop('次数', 'number', node, 'Times'); h += '</div>'; }
-        if (type === 'treeScriptNode') { h += '<div class="ed-prop-section"><div class="ed-prop-head">脚本</div>'; h += prop('事实轴节点 ID', 'text', node, 'FactNodeId'); h += '<textarea class="ed-prop-area" id="dfScript" style="width:100%;height:80px;font-size:11px;font-family:monospace">'+esc(node.Script||'')+'</textarea>'; h += '<button class="btn-sm" style="margin-top:4px" onclick="saveTreeScript()">保存脚本</button>'; h += '</div>'; }
+        if (type === 'treeScriptNode') { h += '<div class="ed-prop-section"><div class="ed-prop-head">脚本</div>'; h += prop('仅检查(不等待)', 'checkbox', node, 'OnlyCheck'); h += prop('事实轴节点 ID', 'text', node, 'FactNodeId'); h += '<textarea class="ed-prop-area" id="dfScript" style="width:100%;height:80px;font-size:11px;font-family:monospace">'+esc(node.Script||'')+'</textarea>'; h += '<button class="btn-sm" style="margin-top:4px" onclick="saveTreeScript()">保存脚本</button>'; h += '</div>'; }
         body.innerHTML = h;
         bindTreePropInputs();
         bindTriggerParamInputs(node);
