@@ -36,6 +36,9 @@ function getAllActions() { return localTriggers.actions || []; }
 var dirHandle = null;
 var fileEntries = [];
 
+var factAxisData = null;
+var factNodeTree = [];
+
 // ==================== 初始化 ====================
 
 document.addEventListener('DOMContentLoaded', function() {
@@ -60,6 +63,12 @@ document.addEventListener('DOMContentLoaded', function() {
         var f = this.files[0]; if (f) { readFileObj(f); this.value = ''; }
     });
     document.getElementById('btnPickDir').addEventListener('click', pickDirectory);
+    document.getElementById('factFileInput').addEventListener('change', function(e) {
+        handleFactAxisLoaded(this.files[0]);
+    });
+    document.addEventListener('click', function(e) {
+        if (e.target && e.target.id === 'btnLoadFactAxis') loadFactAxisFile();
+    });
     // 快捷添加按钮
     document.querySelectorAll('.qbtn').forEach(function(btn) {
         btn.addEventListener('click', function() {
@@ -674,7 +683,20 @@ function renderProps() {
         }
         if (type === 'treeDelayNode') { h += '<div class="ed-prop-section"><div class="ed-prop-head">延迟</div>'; h += prop('秒数', 'number', node, 'Delay'); h += '</div>'; }
         if (type === 'treeLoop') { h += '<div class="ed-prop-section"><div class="ed-prop-head">循环</div>'; h += prop('次数', 'number', node, 'Times'); h += '</div>'; }
-        if (type === 'treeScriptNode') { h += '<div class="ed-prop-section"><div class="ed-prop-head">脚本</div>'; h += prop('仅检查(不等待)', 'checkbox', node, 'OnlyCheck'); h += prop('事实轴节点 ID', 'text', node, 'FactNodeId'); h += '<textarea class="ed-prop-area" id="dfScript" style="width:100%;height:80px;font-size:11px;font-family:monospace">'+esc(node.Script||'')+'</textarea>'; h += '<button class="btn-sm" style="margin-top:4px" onclick="saveTreeScript()">保存脚本</button>'; h += '</div>'; }
+        if (type === 'treeScriptNode') { h += '<div class="ed-prop-section"><div class="ed-prop-head">脚本</div>'; h += prop('仅检查(不等待)', 'checkbox', node, 'OnlyCheck');
+            if (factNodeTree.length > 0) {
+                h += '<div class="ed-prop-row"><span class="ed-prop-label">事实轴节点</span>';
+                h += '<select class="ed-prop-input" id="prop_FactNodeId" data-key="FactNodeId">';
+                h += '<option value="">\u2014 \u672a\u7ed1\u5b9a \u2014</option>';
+                factNodeTree.forEach(function(n) {
+                    h += '<option value="' + esc(n.id) + '"' + (node.FactNodeId === n.id ? ' selected' : '') + '>' + esc(n.label) + '</option>';
+                });
+                h += '</select></div>';
+            } else {
+                h += prop('\u4e8b\u5b9e\u8f74\u8282\u70b9 ID', 'text', node, 'FactNodeId');
+            }
+            h += '<div class="ed-prop-row"><button class="btn-sm" style="margin-top:2px" id="btnLoadFactAxis" type="button">\ud83d\udcc2 \u52a0\u8f7d\u4e8b\u5b9e\u8f74</button></div>';
+            h += '<textarea class="ed-prop-area" id="dfScript" style="width:100%;height:80px;font-size:11px;font-family:monospace">'+esc(node.Script||'')+'</textarea>'; h += '<button class="btn-sm" style="margin-top:4px" onclick="saveTreeScript()">保存脚本</button>'; h += '</div>'; }
         body.innerHTML = h;
         bindTreePropInputs();
         bindTriggerParamInputs(node);
@@ -730,6 +752,44 @@ function saveTreeScript() {
     var node = getNodeByPath(selectedNodePath);
     var ta = document.getElementById('dfScript');
     if (node && ta) { node.Script = ta.value; markDirty(); setStatus('脚本已保存'); }
+}
+
+// ==================== 事实轴加载 ====================
+
+function loadFactAxisFile() {
+    var input = document.getElementById('factFileInput');
+    if (input) input.click();
+}
+
+function handleFactAxisLoaded(file) {
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function() {
+        try {
+            factAxisData = JSON.parse(reader.result);
+            buildFactNodeTree();
+            renderProps();
+        } catch(e) {
+            console.log('Fact axis parse error:', e);
+        }
+    };
+    reader.readAsText(file);
+}
+
+function buildFactNodeTree() {
+    factNodeTree = [];
+    if (!factAxisData || !factAxisData.phases) return;
+    factAxisData.phases.forEach(function(phase) {
+        factNodeTree.push({ id: phase.id, label: '\u25b8 ' + esc(phase.name || phase.id), type: 'phase' });
+        (phase.events || []).forEach(function(ev) {
+            factNodeTree.push({ id: ev.id, label: '  \u25ce ' + esc(ev.name || ev.id) + ' (' + (ev.time||0) + 's)', type: 'event' });
+        });
+        if (phase.switch && phase.switch.branches) {
+            phase.switch.branches.forEach(function(br, i) {
+                factNodeTree.push({ id: phase.id + '#branch' + i, label: '  \u25c7 ' + esc(br.name || ('Branch' + i)), type: 'branch' });
+            });
+        }
+    });
 }
 
 // ==================== 文件浏览器 ====================

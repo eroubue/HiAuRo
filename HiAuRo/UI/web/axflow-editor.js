@@ -48,6 +48,9 @@ var fileEntries = [];
 var autoIdCounter = 100;
 var localTriggers = JSON.parse(localStorage.getItem('hiAutoLocalTriggers') || '{"conditions":[],"actions":[]}');
 
+var factAxisData = null;
+var factNodeTree = [];
+
 
 
 // ====== Part 3: Init ======
@@ -88,6 +91,12 @@ function initToolbar() {
         if (!AXIS_DATA[currentAxis]) return;
         AXIS_DATA[currentAxis].Name = this.value;
         markDirty();
+    });
+    document.getElementById('factFileInput').addEventListener('change', function(e) {
+        handleFactAxisLoaded(this.files[0]);
+    });
+    document.addEventListener('click', function(e) {
+        if (e.target && e.target.id === 'btnLoadFactAxis') loadFactAxisFile();
     });
 }
 
@@ -644,6 +653,44 @@ function buildEmptyAxis() {
     };
 }
 
+// ====== Part 8: Fact Axis Loading ======
+
+function loadFactAxisFile() {
+    var input = document.getElementById('factFileInput');
+    if (input) input.click();
+}
+
+function handleFactAxisLoaded(file) {
+    if (!file) return;
+    var reader = new FileReader();
+    reader.onload = function() {
+        try {
+            factAxisData = JSON.parse(reader.result);
+            buildFactNodeTree();
+            renderProps();
+        } catch(e) {
+            console.log('Fact axis parse error:', e);
+        }
+    };
+    reader.readAsText(file);
+}
+
+function buildFactNodeTree() {
+    factNodeTree = [];
+    if (!factAxisData || !factAxisData.phases) return;
+    factAxisData.phases.forEach(function(phase) {
+        factNodeTree.push({ id: phase.id, label: '\u25b8 ' + esc(phase.name || phase.id), type: 'phase' });
+        (phase.events || []).forEach(function(ev) {
+            factNodeTree.push({ id: ev.id, label: '  \u25ce ' + esc(ev.name || ev.id) + ' (' + (ev.time||0) + 's)', type: 'event' });
+        });
+        if (phase.switch && phase.switch.branches) {
+            phase.switch.branches.forEach(function(br, i) {
+                factNodeTree.push({ id: phase.id + '#branch' + i, label: '  \u25c7 ' + esc(br.name || ('Branch' + i)), type: 'branch' });
+            });
+        }
+    });
+}
+
 // ====== Part 8: File Operations ======
 
 function newFile() {
@@ -1043,7 +1090,18 @@ function renderProps() {
     if (def.type === 'treeScriptNode') {
         h += '<div class="prop-section"><div class="prop-head">脚本</div>';
         h += propRow('仅检查(不等待)', 'checkbox', 'OnlyCheck', node.OnlyCheck);
-        h += propRow('事实轴节点', 'text', 'FactNodeId', node.FactNodeId || '');
+        if (factNodeTree.length > 0) {
+            h += '<div class="prop-row"><span class="prop-label">事实轴节点</span>';
+            h += '<select class="prop-input" id="prop_FactNodeId" data-key="FactNodeId">';
+            h += '<option value="">\u2014 \u672a\u7ed1\u5b9a \u2014</option>';
+            factNodeTree.forEach(function(n) {
+                h += '<option value="' + esc(n.id) + '"' + (node.FactNodeId === n.id ? ' selected' : '') + '>' + esc(n.label) + '</option>';
+            });
+            h += '</select></div>';
+        } else {
+            h += propRow('\u4e8b\u5b9e\u8f74\u8282\u70b9', 'text', 'FactNodeId', node.FactNodeId || '');
+        }
+        h += '<div class="prop-row"><button class="btn" style="margin-top:4px;font-size:11px" id="btnLoadFactAxis" type="button">\u52a0\u8f7d\u4e8b\u5b9e\u8f74</button></div>';
         h += '<textarea class="prop-area" id="propScript" style="height:80px">' + esc(node.Script || '') + '</textarea>';
         h += '<button class="btn" style="margin-top:4px;font-size:11px" id="btnSaveScript">保存脚本</button>';
         h += '</div>';
