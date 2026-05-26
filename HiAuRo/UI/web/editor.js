@@ -549,6 +549,26 @@ function showQuickPopup(e, path, type, isComp) {
                 });
                 pop.appendChild(row);
             });
+            // 添加条件按钮
+            var addRow = document.createElement('div');
+            addRow.style.cssText = 'margin-top:6px;display:flex;gap:4px';
+            var allConds = getAllConditions();
+            if (allConds.length) {
+                var sel = document.createElement('select');
+                sel.style.cssText = 'flex:1;height:24px;font-size:11px;border:1px solid var(--bd);background:var(--bg1);color:var(--tx1);border-radius:3px';
+                sel.innerHTML = '<option value="">+ 添加条件</option>';
+                allConds.forEach(function(c) { sel.innerHTML += '<option value="' + esc(c.typeDiscriminator || c.typeName) + '">' + esc(c.displayName || c.typeName) + '</option>'; });
+                var addBtn = document.createElement('button');
+                addBtn.textContent = '+'; addBtn.className = 'ed-add-btn';
+                addBtn.addEventListener('click', function() {
+                    if (!sel.value) return;
+                    addTriggerCond(path, sel.value);
+                    hideQuickPopup();
+                    showQuickPopup({clientX: parseInt(pop.style.left), clientY: parseInt(pop.style.top)}, path, type, isComp);
+                });
+                addRow.appendChild(sel); addRow.appendChild(addBtn);
+                pop.appendChild(addRow);
+            }
         } else if (type === 'treeActionNode') {
             var acts = node.TriggerActions || [];
             pop.innerHTML += '<div style="font-size:11px;color:var(--tx2);margin:4px 0">动作 (' + acts.length + ')</div>';
@@ -573,6 +593,26 @@ function showQuickPopup(e, path, type, isComp) {
                 });
                 pop.appendChild(row);
             });
+            // 添加动作按钮
+            var addRowA = document.createElement('div');
+            addRowA.style.cssText = 'margin-top:6px;display:flex;gap:4px';
+            var allActs = getAllActions();
+            if (allActs.length) {
+                var selA = document.createElement('select');
+                selA.style.cssText = 'flex:1;height:24px;font-size:11px;border:1px solid var(--bd);background:var(--bg1);color:var(--tx1);border-radius:3px';
+                selA.innerHTML = '<option value="">+ 添加动作</option>';
+                allActs.forEach(function(a) { selA.innerHTML += '<option value="' + esc(a.typeDiscriminator || a.typeName) + '">' + esc(a.displayName || a.typeName) + '</option>'; });
+                var addBtnA = document.createElement('button');
+                addBtnA.textContent = '+'; addBtnA.className = 'ed-add-btn';
+                addBtnA.addEventListener('click', function() {
+                    if (!selA.value) return;
+                    addTriggerAction(path, selA.value);
+                    hideQuickPopup();
+                    showQuickPopup({clientX: parseInt(pop.style.left), clientY: parseInt(pop.style.top)}, path, type, isComp);
+                });
+                addRowA.appendChild(selA); addRowA.appendChild(addBtnA);
+                pop.appendChild(addRowA);
+            }
         } else if (type === 'treeDelayNode') {
             var dRow = document.createElement('div');
             dRow.style.cssText = 'display:flex;align-items:center;gap:6px;margin:4px 0';
