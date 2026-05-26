@@ -51,6 +51,20 @@ var localTriggers = JSON.parse(localStorage.getItem('hiAutoLocalTriggers') || '{
 var factAxisData = null;
 var factNodeTree = [];
 
+var paletteVisible = true;
+function togglePalette() {
+    var panel = document.getElementById('palettePanel');
+    var btn = document.getElementById('paletteToggle');
+    paletteVisible = !paletteVisible;
+    if (paletteVisible) {
+        panel.classList.remove('palette-collapsed');
+        if (btn) btn.textContent = '◀ 收起';
+    } else {
+        panel.classList.add('palette-collapsed');
+        if (btn) btn.textContent = '▶';
+    }
+}
+
 
 
 // ====== Part 3: Init ======
@@ -1559,6 +1573,9 @@ function syncMeta() {
     document.getElementById('metaVarDesc').value = data.ExposedVarDesc || '';
     document.getElementById('metaJob').value = data.TargetJob || 0;
     renderVarList();
+    var el = document.getElementById('ftAuthor'); if (el) el.textContent = data.Author || '—';
+    el = document.getElementById('ftGuid'); if (el) el.textContent = (data.Guid || '').substring(0, 13) + '...';
+    el = document.getElementById('ftJob'); if (el) el.textContent = (data.TargetJob && data.TargetJob !== 0) ? data.TargetJob : '—';
 }
 
 function renderVarList() {

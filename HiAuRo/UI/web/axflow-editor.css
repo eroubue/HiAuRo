@@ -2,6 +2,45 @@
    HiAuRo 执行轴/辅助轴编辑器 — Drawflow 风格
    ============================================================ */
 
+/* === UX 尺寸优化 === */
+button, .btn {
+    min-height: 30px;
+    padding: 4px 12px;
+    font-size: 13px;
+}
+.btn-primary { min-height: 30px; }
+.prop-input, input[type="text"], input[type="number"], select {
+    height: 28px;
+    font-size: 13px;
+    padding: 2px 6px;
+}
+.prop-row { margin: 4px 0; display: flex; align-items: center; gap: 6px; }
+.prop-label { font-size: 12px; font-weight: 600; }
+.ed-add-btn, .ed-del-btn { min-width: 22px; min-height: 22px; font-size: 12px; }
+.sidebar-label { font-size: 13px; padding: 6px 0; cursor: pointer; user-select: none; }
+.sidebar-label:hover { color: var(--blue, #4dabf7); }
+.sidebar-section { margin: 6px 0; }
+
+/* 画布按钮加大 */
+.canvas-btn { width: 36px; height: 36px; font-size: 16px; line-height: 36px; }
+.canvas-btns { gap: 8px; }
+
+/* 折叠面板 */
+.palette-collapsed { width: 24px !important; }
+.palette-collapsed .palette-list { display: none; }
+.palette-collapsed .palette-head { writing-mode: vertical-rl; padding: 8px 2px; font-size: 11px; }
+
+/* 侧栏只在有选中时显示 */
+.props-hint { color: var(--tx2, #888); font-size: 12px; padding: 12px; text-align: center; }
+
+/* 底部状态栏 */
+.footer { display: flex; gap: 16px; padding: 4px 12px; font-size: 12px; align-items: center; }
+.meta-item { color: var(--tx2, #888); font-size: 11px; }
+
+/* 触发编辑 */
+.trigger-field { margin: 5px 0; }
+.trigger-cond-item { padding: 8px; margin: 6px 0; }
+
 /* ---- Reset ---- */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 

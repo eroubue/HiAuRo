@@ -28,7 +28,6 @@
         <button class="btn" id="btnExport">导出</button>
         <button class="btn" id="btnImport">导入</button>
       </div>
-      <span class="status-text" id="edStatus"></span>
     </div>
   </header>
 
@@ -37,7 +36,7 @@
 
     <!-- Left: Node Palette 节点面板 -->
     <aside class="palette" id="palettePanel">
-      <div class="palette-head">节点类型</div>
+      <div class="palette-head" id="paletteToggle" onclick="togglePalette()" title="收起/展开面板">◀ 收起</div>
       <div class="palette-list" id="paletteList">
         <!-- JS 动态填充 -->
       </div>
@@ -119,7 +118,13 @@
   </div>
 
   <!-- Footer 底部 -->
-  <footer class="footer"><span id="edFooter">就绪</span></footer>
+  <footer class="footer" id="edFooter">
+    <span class="meta-item">作者: <span id="ftAuthor">—</span></span>
+    <span class="meta-item" style="font-size:10px">GUID: <span id="ftGuid" style="font-size:10px">—</span></span>
+    <span class="meta-item">职业: <span id="ftJob">—</span></span>
+    <span style="flex:1"></span>
+    <span id="edStatus">就绪</span>
+  </footer>
 
   <!-- Hidden file input -->
   <input type="file" id="edFileInput" accept=".json,.txt" style="display:none">
