@@ -975,7 +975,7 @@ function loadCatalogFile() {
                 localTriggers.conditions = conds.concat(localTriggers.conditions || []);
                 localTriggers.actions = acts.concat(localTriggers.actions || []);
                 localStorage.setItem('hiAutoLocalTriggers', JSON.stringify(localTriggers));
-                setStatus('已加载目录: ' + conds.length + ' 条件, ' + acts.length + ' 动作', 'ok');
+                setStatus('已加载触发器库: ' + conds.length + ' 条件, ' + acts.length + ' 动作', 'ok');
                 renderProps();
             } catch(e) { setStatus('JSON解析失败: ' + e.message, 'err'); }
         };
