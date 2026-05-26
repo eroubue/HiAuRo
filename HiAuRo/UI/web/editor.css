@@ -1,3 +1,68 @@
+/* === UX 尺寸优化 === */
+button, .p-btn, .btn {
+    min-height: 30px !important;
+    padding: 4px 12px !important;
+    font-size: 13px !important;
+}
+.btn-sm {
+    min-height: 24px;
+    padding: 2px 8px;
+    font-size: 12px;
+}
+.prop-input, input[type="text"], input[type="number"], select, .ed-prop-input {
+    height: 28px;
+    font-size: 13px;
+    padding: 2px 6px;
+}
+textarea.prop-input {
+    font-size: 13px;
+}
+.ed-prop-row, .prop-row {
+    margin: 4px 0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.ed-prop-label, .prop-label {
+    font-size: 12px;
+    font-weight: 600;
+}
+.ed-add-btn, .ed-del-btn {
+    min-width: 22px;
+    min-height: 22px;
+    font-size: 12px;
+    line-height: 1;
+}
+.qbtn {
+    min-height: 26px;
+    padding: 4px 8px;
+    font-size: 12px;
+}
+.sidebar-label {
+    font-size: 13px;
+    padding: 6px 0;
+    cursor: pointer;
+    user-select: none;
+    letter-spacing: 0.3px;
+}
+.sidebar-label:hover { color: var(--blue, #4dabf7); }
+.sidebar-section {
+    margin: 6px 0;
+    border-bottom: 1px solid var(--bd, #444);
+    padding-bottom: 6px;
+}
+/* 折叠动画 */
+.sidebar-collapse { overflow: hidden; transition: max-height 0.2s ease; }
+.sidebar-collapse.hidden { max-height: 0 !important; padding: 0 !important; margin: 0 !important; }
+
+.toolbar .actions { gap: 6px; }
+.trigger-field { margin: 5px 0; }
+.trigger-field label { font-size: 12px; }
+.trigger-cond-item { padding: 8px; margin: 6px 0; }
+
+/* 侧栏固定宽度 */
+aside.sidebar { width: 280px; min-width: 240px; }
+
 /* ============================================================
    HiAuRo 时间轴编辑器 — Apple 风格
    ============================================================ */

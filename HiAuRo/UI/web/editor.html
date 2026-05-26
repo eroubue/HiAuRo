@@ -70,7 +70,8 @@
       </div>
       <!-- 元数据 -->
       <div class="sidebar-section">
-        <div class="sidebar-label">元数据</div>
+        <div class="sidebar-label" onclick="toggleSection('secMeta')" id="hdrMeta">▼ 元数据</div>
+        <div id="secMeta">
         <div class="props-scroll">
           <div style="margin:2px 0"><span style="font-size:11px;color:var(--tx2)">作者</span>
             <input class="prop-input" type="text" id="metaAuthor" placeholder="作者" style="width:100%">
@@ -95,9 +96,11 @@
       </div>
       <!-- 暴露变量 -->
       <div class="sidebar-section">
-        <div class="sidebar-label">暴露变量</div>
+        <div class="sidebar-label" onclick="toggleSection('secVars')" id="hdrVars">▼ 暴露变量</div>
+        <div id="secVars">
         <div id="varList" style="max-height:120px;overflow-y:auto"></div>
         <button class="btn-sm" id="btnAddVar" style="margin-top:4px;font-size:11px">+ 添加变量</button>
+        </div>
       </div>
       <div class="sidebar-section" id="treeTools" style="display:none">
         <div class="sidebar-label">快捷添加</div>

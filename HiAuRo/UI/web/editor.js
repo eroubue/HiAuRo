@@ -1048,6 +1048,19 @@ function removeVar(i) {
 
 // ==================== 工具 ====================
 
+function toggleSection(id) {
+    var el = document.getElementById(id);
+    var hdr = document.getElementById('hdr' + id.substring(3));
+    if (!el) return;
+    if (el.style.display === 'none') {
+        el.style.display = '';
+        if (hdr) hdr.textContent = '▼ ' + hdr.textContent.substring(2);
+    } else {
+        el.style.display = 'none';
+        if (hdr) hdr.textContent = '▶ ' + hdr.textContent.substring(2);
+    }
+}
+
 function markDirty() { isDirty = true; renderTree(); renderProps(); updateFooter(); }
 function updateFooter() {
     var labels = { execution:'执行轴', assist:'辅助轴' };
