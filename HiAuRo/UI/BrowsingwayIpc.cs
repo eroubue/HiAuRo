@@ -2,7 +2,6 @@ using System.Linq;
 using System.Text.Json;
 using Browsingway;
 using HiAuRo.Infrastructure;
-using OmenTools.Dalamud.Helpers;
 
 namespace HiAuRo.UI;
 
@@ -83,22 +82,6 @@ internal sealed class BrowsingwayIpc : IDisposable
     {
         var pi = DService.Instance().PI;
 
-        // 延迟 15s 一次性检测是否需要安装
-        _ = Task.Run(async () =>
-        {
-            await Task.Delay(15000, _cts.Token);
-            if (_cts.IsCancellationRequested) return;
-            if (!IsBrowsingwayInstalled())
-            {
-                DService.Instance().Chat.Print("[HiAuRo] 未检测到 Browsingway，正在自动安装...");
-                var installed = await TryInstallBrowsingwayAsync();
-                if (installed)
-                    DService.Instance().Chat.Print("[HiAuRo] Browsingway 安装成功，等待加载...");
-                else
-                    DService.Instance().Chat.Print("[HiAuRo] Browsingway 自动安装失败，请手动添加库:\nhttps://raw.githubusercontent.com/denghaoxuan991876906/Browsingway/main/pluginmaster.json\n然后搜索安装 Browsingway");
-            }
-        }, _cts.Token);
-
         while (!_cts.IsCancellationRequested)
         {
             try
@@ -112,45 +95,6 @@ internal sealed class BrowsingwayIpc : IDisposable
             catch { }
 
             await Task.Delay(1000, _cts.Token);
-        }
-    }
-
-    /// <summary>检查 Browsingway 是否已安装</summary>
-    private static bool IsBrowsingwayInstalled()
-    {
-        try
-        {
-            return DService.Instance().PI.InstalledPlugins.Any(x => x.InternalName == "Browsingway");
-        }
-        catch { return false; }
-    }
-
-    /// <summary>自动添加库并安装 Browsingway</summary>
-    private static async Task<bool> TryInstallBrowsingwayAsync()
-    {
-        try
-        {
-            const string repoUrl = "https://raw.githubusercontent.com/denghaoxuan991876906/Browsingway/main/pluginmaster.json";
-            const string internalName = "Browsingway";
-
-            // 标记主线程（反射调用 Dalamud 内部 API 需要）
-            DalamudReflector.MarkCurrentThreadAsMainThread();
-
-            var result = await DalamudReflector.AddPlugin(repoUrl, internalName);
-            if (result)
-            {
-                DService.Instance().Log.Information("[BrowsingwayIpc] 安装成功");
-            }
-            else
-            {
-                DService.Instance().Log.Warning("[BrowsingwayIpc] 安装失败");
-            }
-            return result;
-        }
-        catch (Exception ex)
-        {
-            DService.Instance().Log.Warning($"[BrowsingwayIpc] 安装异常: {ex.Message}");
-            return false;
         }
     }
 
