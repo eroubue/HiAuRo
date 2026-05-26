@@ -4,11 +4,11 @@
 
 `HiAuRo` 是一个面向 FFXIV 的 Dalamud 战斗辅助插件。它**不是一个职业循环实现**，而是一个**框架/平台**——提供运行时、数据层、ACR 接口和执行控制系统，让 ACR 作者在上面开发各职业的战斗逻辑。
 
-默认提供接近 AEAssist 风格的开发体验，长期扩展为以"战斗事实轴 + 智能决策层 + 可视化编辑器"为核心的高级战斗辅助平台。
+默认提供接近 AEAssist 风格的开发体验，以"战斗事实轴 + 智能决策层 + 可视化编辑器"为核心。
 
 ## Core Value
 
-先以最平直、最接近 AE 习惯的方式做出一个独立可用的 HiAuRo，让 ACR 作者能快速上手；再在不推翻已有 ACR 开发体验的前提下，逐步长出事实轴等高级能力。
+以最平直、最接近 AE 习惯的方式做出一个独立可用的 HiAuRo，让 ACR 作者能快速上手；事实轴等高级能力已内置，ACR 开发体验不受影响。
 
 ## Product Boundaries
 
@@ -16,13 +16,13 @@
 
 | 层 | 职责 |
 |---|------|
-| **框架运行时** | 每帧 Tick 循环、战斗上下文状态、ACR 生命周期、模式切换（预埋） |
+| **框架运行时** | 每帧 Tick 循环、战斗上下文状态、ACR 生命周期、模式切换 |
 | **数据层** | `HiAuRo.Data` 统一入口（Self/Target/Party/Objects/Combat）+ XXHelp.cs 职业快捷入口 |
 | **ACR 抽象** | ACR 作者接口（Rotation、SlotResolver、Opener、Sequence、TriggerAction/Cond、Hotkey/QT、命令、设置、CEF Web 悬浮窗） |
 | **执行轴** | 条件驱动的执行控制层，时间/事件触发节点推进，控制 ACR 行为 |
-| **事实轴** ✅ | Boss 技能时间线的结构化建模（JSON），事件同步校准与分支 |
-| **智能决策层** ✅ | 消费事实轴 + 运行时状态 → 策略输出 + 减伤/治疗明确指定 |
-| **创作工具** ⚠️ | 可视化事实轴编辑器、调试复盘界面、调优建议 |
+| **事实轴** | Boss 技能时间线的结构化建模（JSON），事件同步校准与分支 |
+| **智能决策层** | 消费事实轴 + 运行时状态 → 策略输出 + 减伤/治疗明确指定 |
+| **创作工具** | 可视化事实轴编辑器、调试复盘界面、调优建议 |
 
 ### 不做什么
 
@@ -31,11 +31,12 @@
 - **不做自动走位/跑位方案** — 空间信息只提供点位，策略由人工定义
 - **不让执行轴和事实轴同时接管运行** — 两种模式边界互斥
 - **不自动改写攻略方案** — 系统输出以建议优先
-- **不在终极目标里优先追求"偏离预案后的自适应兜底"** — 先做稳定、可理解、可调试的主链路
+- **不追求"偏离预案后的自适应兜底"** — 先做稳定、可理解、可调试的主链路
 
 ## 双模式设计
 
-### 默认模式：执行轴 → ACR（Phase 6 已实现）
+### 默认模式：执行轴 → ACR
+
 ```
 执行轴（条件驱动） ──→ ACR（职业逻辑） ──→ 技能输出
 ```
@@ -44,7 +45,8 @@
 - TriggerLine 支持时间/事件驱动 + 顺序/循环 + 延迟
 - 通过 ModeSwitch.None ↔ ExecutionAxis 切换
 
-### 高级模式：事实轴 → 智能层 → ACR（Phase 7-8 已实现，部分可用）
+### 高级模式：事实轴 → 智能层 → ACR
+
 ```
 事实轴（Boss 时间线） ──→ 智能决策层 ──→ ACR ──→ 技能输出
 ```
@@ -57,34 +59,19 @@
 
 | 约束 | 说明 |
 |------|------|
-| **宿主形态** | 独立 Dalamud 插件，单项目（`.csproj`）起步 |
+| **宿主形态** | 独立 Dalamud 插件，单项目（`.csproj`） |
 | **架构风格** | 平直、轻量、少包装、少跳转 |
 | **注释语言** | 中文优先 |
-| **推进顺序** | 严格自下而上，9 个 Phase |
-| **AE 兼容** | 进入事实轴阶段前，ACR 开发体验尽量贴近 AE；ACR 作者主接口尽量不变；新能力做 additive 扩展 |
+| **AE 兼容** | ACR 开发体验尽量贴近 AE；ACR 作者主接口尽量不变；新能力做 additive 扩展 |
 | **事实轴产物** | 结构化 JSON（非手写 DSL） |
 | **新增能力** | additive 方式叠加，不做推翻式重构 |
 | **不能变重框架** | 不提前为未来扩层加多余抽象；不演化成笨重的中间仓库层 |
 
-## MVP 定义
+## 当前交付物
 
-**MVP 范围 = Phase 1 ~ Phase 9 全部完成**
-
-| Phase | 内容 | 状态 |
-|-------|------|------|
-| Phase 1 | 宿主层（Plugin 生命周期、csproj、OmenTools 接入） | ✅ 已完成 |
-| Phase 2 | 基础设施层（配置、调试开关、分类日志） | ✅ 已完成 |
-| Phase 3 | 数据层（HiAuRo.Data：Self/Target/Party/Objects/Combat + BRDHelp.cs） | ✅ 已完成 |
-| Phase 4 | 运行时核心（Tick 循环、战斗上下文、ACR 生命周期、模式切换预埋） | ✅ 已完成 |
-| Phase 5 | ACR 抽象（SlotResolver/Opener/Sequence/Trigger/Hotkey/Command/Setting/UI）+ BRD 打样 | ✅ 已完成 |
-| Phase 6 | 执行轴（ExecutionAxis + TriggerCond ×5 + TriggerAction ×4 + 节点推进 + 调试） | ✅ 已完成 |
-| Phase 7 | 事实轴（FactAxis：BossTimeline.json 建模、Sync 同步校准、Phase 分支切换） | ✅ 已完成 |
-| Phase 8 | 决策层（DecisionEngine：贪心分配算法、SkillRegistry、BRD/MNK/WHM 内置） | ✅ 已完成 |
-| Phase 9 | 创作工具（Authoring：可视化编辑器、调优面板、复盘界面） | ✅ 已完成 |
-
-**MVP 交付物 ✅**: 一个独立可加载的 Dalamud 插件，ACR 作者可以基于 HiAuRo 框架开发职业循环。包含完整的 Rotation/SlotResolver/Opener/Sequence/Trigger/Hotkey/QT/命令/设置/UI/执行轴体系，附带 BRD 实例验证全部链路。
-
-**扩展交付物（Phase 7-9）**：
+- 一个独立可加载的 Dalamud 插件，ACR 作者可以基于 HiAuRo 框架开发职业循环
+- 完整的 Rotation/SlotResolver/Opener/Sequence/Trigger/Hotkey/QT/命令/设置/UI/执行轴体系
+- BRD 打样实例验证全部链路
 - **FactAxis** 数据模型 + 时间线引擎（JSON 定义、同步校准、分支切换）
 - **DecisionEngine** 智能决策层 + 内置技能注册表（贪心分配、冷却升序、3 职业预注册）
 - **Authoring** 创作前端编辑器（纯前端 File System Access API，三轴可视化编辑器）
@@ -94,21 +81,19 @@
 
 | 决策 | 理由 |
 |------|------|
-| 独立 Dalamud 插件起步 | 先验证宿主可行性，不依赖 AE 运行时 |
-| 单项目结构（不建 .sln） | 保持宿主层最小复杂度，避免提前进入多项目组织 |
+| 独立 Dalamud 插件 | 验证宿主可行性，不依赖 AE 运行时 |
+| 单项目结构 | 保持最小复杂度 |
 | .NET 10 + Dalamud.NET.Sdk 15.0 | 当前 Dalamud 标准栈 |
-| OmenTools 作为工具库接入 | DService 统一管理 Dalamud 服务；ImGuiOm 提供 UI 组件；不包额外壳层 |
+| OmenTools 作为工具库接入 | DService 统一管理 Dalamud 服务；ImGuiOm 提供 UI 组件 |
 | HiAuRo.Data 做公开入口，DService 允许直接使用 | 项目入口清晰 + AE 开发者手感熟悉双重要求 |
-| MVP 不含执行轴 → 已于 Phase 6 实现 | 先把框架和数据链路全部跑通 |
 | ACR 接口走 AE 风格 | Rotation + SlotResolverData + SlotMode 等概念一致，降低迁移成本 |
 | BRD 打样 | 诗人 1 GCD + 1 oGCD + Opener，最小验证框架能力 |
 | 执行轴用 NodeProgressor + TriggerLine | 扁平条目列表（Cond + Action），按序推进，支持 Loop 和 Delay |
 | ModeSwitch 双模式（None/ExecutionAxis） | 无轴模式保持向后兼容，执行轴做 additive 扩展 |
-| 先手写 JSON 验证事实轴可行性 | 编辑器是远期产物 → Phase 9 已实现可视化编辑器 |
-| HiAuRo.json 使用真实元信息 | Author=嗨呀www、中文描述，RepoUrl 暂省略 |
-| FactAxis 设计：JSON 定义时间线、Phase 内纯时间推进 + Sync 校准、分支切换 | Boss 技能时间线结构化建模，支持多 Phase 与条件分支 |
-| DecisionEngine：冷却升序贪心分配、内置技能注册表、BRD/MNK/WHM 预注册 | 消费事实轴事件 + 运行时状态 → 策略输出，3 个职业内置技能集 |
+| HiAuRo.json 使用真实元信息 | Author=嗨呀www、中文描述 |
+| FactAxis 设计：JSON 定义时间线、阶段内纯时间推进 + Sync 校准、分支切换 | Boss 技能时间线结构化建模，支持多阶段与条件分支 |
+| DecisionEngine：冷却升序贪心分配、内置技能注册表 | 消费事实轴事件 + 运行时状态 → 策略输出 |
 
 ---
 
-*Last updated: 2026-05-08*
+*Last updated: 2026-05-27*

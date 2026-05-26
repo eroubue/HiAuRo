@@ -13,7 +13,7 @@ dotnet build HiAuRo.slnx -c Debug -nologo
 
 ## Architecture Rules
 
-**These are non-negotiable across all phases:**
+**These are non-negotiable:**
 
 1. Keep code flat and direct. Prefer existing APIs over wrapper layers.
 2. No premature abstraction — don't build for hypothetical future needs.
@@ -29,10 +29,9 @@ dotnet build HiAuRo.slnx -c Debug -nologo
 ├── doc/                ← all planning docs (READ BEFORE CODING)
 │   ├── PROJECT.md      ← charter, constraints, key decisions
 │   ├── REQUIREMENTS.md ← 46 requirement IDs with traceability
-│   ├── ROADMAP.md      ← 9-phase roadmap with plan details
+│   ├── ROADMAP.md      ← current capabilities and future directions
 │   ├── ARCHITECTURE.md ← layered design, data flow, interfaces
 │   ├── STACK.md        ← tech stack & dependency versions
-│   ├── dev-tasks/      ← per-phase task breakdowns (PHASE1~PHASE9)
 │   ├── OMEN_TOOLS_USAGE.md  ← what OmenTools provides vs what we build
 │   └── AEASSIST_STUDY.md    ← AEAssist architecture reference
 ├── HiAuRo/             ← plugin source
@@ -58,20 +57,6 @@ dotnet build HiAuRo.slnx -c Debug -nologo
 |------|------|
 | `OmenTools/` | OmenTools source (DService, OmenService managers) |
 | `Browsingway/` | CEF rendering reference (D3D11 texture sharing) |
-
-## Phase Development Order
-
-Development follows strict bottom-up order. Start at Phase 1, complete all tasks, then move to the next.
-
-```
-Phase 1 → Phase 2 → Phase 3 → Phase 4 → Phase 5.1 → (5.2 ∥ 5.3) → Phase 5.4  ← MVP
-                                                                              │
-                                                                        Phase 6 → 7 → 8 → 9
-```
-
-All 9 phases are **completed** (46/46 v1 requirements).
-
-**Before starting any phase**, read the corresponding `doc/dev-tasks/PHASE*_*.md` which contains the exact file manifest, tasks, and verification steps.
 
 ## Key Conventions
 

@@ -7,24 +7,23 @@
 │                     Dalamud Plugin Host              │
 │                  (HiAuRo.csproj / Plugin.cs)         │
 ├─────────────────────────────────────────────────────┤
-│  Phase 9  │  Authoring Layer   │  编辑器 / 调试 / 复盘  │ ✓                      │
-│           │                     │  (复用 5.3 CEF + Web) │
+│  Authoring Layer   │  编辑器 / 调试 / 复盘 (CEF + Web)  │
 ├─────────────────────────────────────────────────────┤
-│  Phase 8  │  Decision Layer    │  策略输出 / 减伤控制   │ ✓
+│  Decision Layer    │  策略输出 / 减伤控制               │
 ├─────────────────────────────────────────────────────┤
-│  Phase 7  │  Fact Axis         │  Boss 时间线 JSON     │ ✓
+│  Fact Axis         │  Boss 时间线 JSON                  │
 ├─────────────────────────────────────────────────────┤
-│  Phase 6  │  Execution Axis    │  条件驱动执行控制  ✓   │
+│  Execution Axis    │  条件驱动执行控制                   │
 ├─────────────────────────────────────────────────────┤
-│  Phase 5  │  ACR Abstraction   │  职业执行器接口  ✓     │
+│  ACR Abstraction   │  职业执行器接口                     │
 ├─────────────────────────────────────────────────────┤
-│  Phase 4  │  Runtime Core      │  Tick / 状态 / 生命周期 ✓│
+│  Runtime Core      │  Tick / 状态 / 生命周期             │
 ├─────────────────────────────────────────────────────┤
-│  Phase 3  │  Data Layer        │  HiAuRo.Data 统一入口 ✓ │
+│  Data Layer        │  HiAuRo.Data 统一入口              │
 ├─────────────────────────────────────────────────────┤
-│  Phase 2  │  Infrastructure    │  配置 / 日志 / 调试  ✓  │
+│  Infrastructure    │  配置 / 日志 / 调试                 │
 ├─────────────────────────────────────────────────────┤
-│  Phase 1  │  Host Layer        │  插件生命周期  ✓       │
+│  Host Layer        │  插件生命周期                       │
 └─────────────────────────────────────────────────────┘
 ```
 
@@ -83,7 +82,7 @@
 - ACR 执行具体技能选择（个人）
 - 模式互斥，不同时运行
 
-### MVP 阶段（Phase 5）：无轴模式（默认，向后兼容）
+### 无轴模式（默认，向后兼容）
 
 ```
 ┌──────────────┐     ┌──────────────┐
@@ -108,7 +107,7 @@
 
 ## 模块设计
 
-### Phase 3: Data Layer
+### Data Layer
 
 ```
 HiAuRo.Data/
@@ -128,7 +127,7 @@ HiAuRo.Data/
 - 就绪判断 → 直接用 `GameState.IsLoggedIn`（OmenTools 已提供）
 - 不存在长期缓存或快照树
 
-### Phase 4: Runtime Core
+### Runtime Core
 
 ```
 HiAuRo.Runtime/
@@ -137,7 +136,7 @@ HiAuRo.Runtime/
 ├── Coroutine.cs             # 轻量协程调度器（不引入 Task/async）
 ├── CombatContext.cs         # 战斗上下文状态机（进战斗/脱战/切图）
 ├── ACRLifecycle.cs          # ACR 的 Init / Update / Dispose 管理
-└── ModeSwitch.cs            # 模式切换骨架（预埋，MVP 不接入）
+└── ModeSwitch.cs            # 模式切换
 ```
 
 **主循环逻辑**（每帧）:
@@ -148,7 +147,7 @@ HiAuRo.Runtime/
 5. 若在战斗中 → 驱动当前 ACR 的 Update
 6. 若脱战/切图 → 暂停 ACR
 
-### Phase 5: ACR Abstraction
+### ACR Abstraction
 
 ```
 HiAuRo.ACR/
@@ -214,7 +213,7 @@ HiAuRo.UI/
     └── style.css                 # 样式
 ```
 
-HiAuRo.Runtime/                   # 以下文件创建于 Phase 5.x~6
+HiAuRo.Runtime/
 ├── IAILoop.cs / AILoop_Normal.cs  # AI 循环接口与实现
 ├── SpellQueue.cs                  # Slot 调度队列
 ├── AIRunner.cs                    # AI 主引擎（加载/调度/执行/执行轴协调）
@@ -263,8 +262,8 @@ public class Rotation
     public List<ISlotSequence> SlotSequences;      // 技能序列
     public IOpener? Opener;                        // 起手爆发
     public IRotationEventHandler? EventHandler;     // 战斗事件回调
-    public List<ITriggerAction> TriggerActions;     // 触发动作（Phase 6+ 补齐）
-    public List<ITriggerCond> TriggerConditions; // 触发条件（Phase 6+ 补齐）
+    public List<ITriggerAction> TriggerActions;     // 触发动作
+    public List<ITriggerCond> TriggerConditions; // 触发条件
 
     public Jobs TargetJob;            // 适配职业（MVP 必需）
     public AcrType AcrType;           // ACR 类型：Both / PvE / PvP（MVP 必需）
@@ -278,7 +277,7 @@ public class Rotation
     // === 可选字段 ===
     public Func<int>? CanPauseACRCheck;  // 暂停 ACR 的条件检查
 
-    // === Phase 6+ 预埋字段 ===
+    // === 扩展字段 ===
     public Func<int>? CanUseHighPrioritySlotCheck; // 高优先级技能插入合法性检查
 
     // === 链式调用方法 ===
@@ -344,7 +343,7 @@ public class HotkeyConfig
     public string Label { get; init; }
     public string Key { get; set; }
     public bool Enabled { get; set; }
-    // Phase 6+ 扩展
+    // 扩展
     public uint SpellId { get; init; }
     public string Description { get; init; }
 }
@@ -355,7 +354,7 @@ public class HotkeyConfig
 - 1 个 oGCD: 在冷却好时使用 `失血箭`（Bloodletter, ID 110）
 - 不做完整循环、不做 DOT 管理、不做歌曲
 
-### Phase 6: Execution Axis
+### Execution Axis
 
 ```
 HiAuRo.Execution/
@@ -441,7 +440,7 @@ FactTimeline (事件+需求) → DecisionEngine (分配减伤/治疗) → AIRunn
 
 ---
 
-## 项目结构（MVP 完成后）
+## 项目结构
 
 ```
 HiAuRo/
@@ -518,7 +517,7 @@ HiAuRo/
 │   ├── HotkeyResolvers/             # 热键技能解析器
 │   ├── Extension/                   # 游戏对象扩展方法
 │   └── Data/                        # ACR 数据类型定义
-├── Execution/                        # 执行轴（Phase 6）
+├── Execution/                        # 执行轴
 │   ├── ExecutionAxis.cs              # 执行轴主逻辑（TriggerLine 管理）
 │   ├── ExecutionNode.cs              # AST 节点定义 + ExecutionEntry
 │   ├── ExecutionJson.cs              # JSON 反序列化 + 类型注册
@@ -528,14 +527,14 @@ HiAuRo/
 │   └── Triggers/
 │       ├── Cond/                     # 触发条件（18 种）
 │       └── Action/                   # 触发动作（10 种）
-├── FactAxis/                         # 事实轴（Phase 7）
+├── FactAxis/                         # 事实轴
 │   ├── FactNode.cs                   # 数据模型 (Phase → Event → PhaseSwitch → nested Branch)
 │   ├── FactTimeline.cs               # 时间线运行时 (双时钟, Sync校准, 分支切换)
 │   └── sample_timeline.json          # 示例时间线文件
-├── Decision/                         # 决策层（Phase 8）
+├── Decision/                         # 决策层
 │   ├── DecisionTypes.cs              # 技能数据类 + 注册表 + 输出模型
 │   └── DecisionEngine.cs             # 贪心分配引擎 + 内置技能 (BRD/MNK/WHM)
-├── Authoring/                        # 编辑器后端（Phase 9）
+├── Authoring/                        # 编辑器后端
 │   └── AuthoringServer.cs            # WebSocket trigger catalog 注册（纯前端编辑器无需 CRUD 后端）
 ├── Command/
 │   └── CommandMgr.cs                # /hi 命令系统
@@ -570,4 +569,4 @@ Execution ──→ Runtime ──→ Data ──→ Infrastructure ──→ Pl
 
 ---
 
-*Last updated: 2026-05-08*
+*Last updated: 2026-05-27*
