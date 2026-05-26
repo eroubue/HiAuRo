@@ -67,8 +67,11 @@ document.addEventListener('DOMContentLoaded', function() {
         handleFactAxisLoaded(this.files[0]);
     });
     document.addEventListener('click', function(e) {
-        if (e.target && e.target.id === 'btnLoadFactAxis') loadFactAxisFile();
+        if (e.target && e.target.closest('#btnLoadFactAxis')) loadFactAxisFile();
     });
+    // 工具栏事实轴按钮
+    var btnFactBar = document.getElementById('btnLoadFactAxisBar');
+    if (btnFactBar) btnFactBar.addEventListener('click', loadFactAxisFile);
     // 快捷添加按钮
     document.querySelectorAll('.qbtn').forEach(function(btn) {
         btn.addEventListener('click', function() {

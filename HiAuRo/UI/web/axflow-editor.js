@@ -96,8 +96,10 @@ function initToolbar() {
         handleFactAxisLoaded(this.files[0]);
     });
     document.addEventListener('click', function(e) {
-        if (e.target && e.target.id === 'btnLoadFactAxis') loadFactAxisFile();
+        if (e.target && e.target.closest('#btnLoadFactAxis')) loadFactAxisFile();
     });
+    var btnFactBar = document.getElementById('btnLoadFactAxisBar');
+    if (btnFactBar) btnFactBar.addEventListener('click', loadFactAxisFile);
 }
 
 function switchAxis() {
