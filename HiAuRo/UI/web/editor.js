@@ -617,7 +617,7 @@ function renderProps() {
             if (conds.length > 0) {
                 var condOpts = conds.map(function(c) { return { value: c.aeTypeName || c.typeName, label: (c.displayName || c.aeTypeName) + ' [' + (c.category||'') + ']' }; });
                 h += iosSelect([{value:'',label:'+ 添加条件...'}].concat(condOpts), '',
-                    'addTriggerCond(\'' + selectedNodePath + '\', this.options[this.selectedIndex].value)');
+                    'addTriggerCond(\'' + selectedNodePath + '\', this.dataset.val)');
             } else {
                 h += '<div class="prop-hint">无可用条件（请导入或连接插件）</div>';
             }
@@ -646,7 +646,7 @@ function renderProps() {
             if (actions.length > 0) {
                 var actOpts = actions.map(function(a) { return { value: a.aeTypeName || a.typeName, label: (a.displayName || a.aeTypeName) + ' [' + (a.category||'') + ']' }; });
                 h += iosSelect([{value:'',label:'+ 添加动作...'}].concat(actOpts), '',
-                    'addTriggerAction(\'' + selectedNodePath + '\', this.options[this.selectedIndex].value)');
+                    'addTriggerAction(\'' + selectedNodePath + '\', this.dataset.val)');
             } else {
                 h += '<div class="prop-hint">无可用动作</div>';
             }
