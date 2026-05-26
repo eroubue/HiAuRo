@@ -423,3 +423,11 @@ html, body {
   font-family: var(--font); font-size: 10px; padding: 2px 6px;
   color: #ff453a; background: none; border: none; cursor: pointer;
 }
+
+/* 轴信息面板 */
+.axis-panel { border-bottom: 1px solid var(--border, #444); }
+.axis-panel-bar { padding: 5px 8px; cursor: pointer; user-select: none; font-size: 12px; color: var(--tx2); background: var(--bg1); display: flex; align-items: center; }
+.axis-panel-bar:hover { background: var(--bg2); }
+.axis-panel-body { padding: 6px 8px; overflow-y: auto; }
+.axis-panel-body.hidden { display: none; }
+#propsBody { overflow-y: auto; }

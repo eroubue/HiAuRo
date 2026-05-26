@@ -65,6 +65,21 @@ function togglePalette() {
     }
 }
 
+// 轴信息面板折叠（默认收起）
+var axisPanelOpen = false;
+function toggleAxisPanel() {
+    var body = document.getElementById('axisPanelBody');
+    var lbl = document.getElementById('axisPanelLabel');
+    axisPanelOpen = !axisPanelOpen;
+    if (axisPanelOpen) {
+        body.classList.remove('hidden');
+        if (lbl) lbl.textContent = '▼ ' + lbl.textContent.substring(2);
+    } else {
+        body.classList.add('hidden');
+        if (lbl) lbl.textContent = '▶ ' + lbl.textContent.substring(2);
+    }
+}
+
 
 
 // ====== Part 3: Init ======
@@ -1593,6 +1608,10 @@ function syncMeta() {
     var el = document.getElementById('ftAuthor'); if (el) el.textContent = data.Author || '—';
     el = document.getElementById('ftGuid'); if (el) el.textContent = (data.Guid || '').substring(0, 13) + '...';
     el = document.getElementById('ftJob'); if (el) el.textContent = (data.TargetJob && data.TargetJob !== 0) ? data.TargetJob : '—';
+    // 轴信息面板摘要
+    var summary = (data.Name || '未命名') + (data.TerritoryTypeId ? ' · ' + data.TerritoryTypeId : '') + (data.Author ? ' · ' + data.Author : '');
+    var lbl = document.getElementById('axisPanelLabel');
+    if (lbl) lbl.textContent = (axisPanelOpen ? '▼' : '▶') + ' ' + summary;
 }
 
 function renderVarList() {
