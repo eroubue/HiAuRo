@@ -92,6 +92,12 @@ function initToolbar() {
         AXIS_DATA[currentAxis].Name = this.value;
         markDirty();
     });
+    var tidEl2 = document.getElementById('territoryId');
+    if (tidEl2) tidEl2.addEventListener('change', function() {
+        if (!AXIS_DATA[currentAxis]) return;
+        AXIS_DATA[currentAxis].TerritoryTypeId = parseInt(this.value) || 0;
+        markDirty();
+    });
     document.getElementById('factFileInput').addEventListener('change', function(e) {
         handleFactAxisLoaded(this.files[0]);
     });
@@ -100,6 +106,31 @@ function initToolbar() {
     });
     var btnFactBar = document.getElementById('btnLoadFactAxisBar');
     if (btnFactBar) btnFactBar.addEventListener('click', loadFactAxisFile);
+    ['metaAuthor', 'metaVarDesc'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('change', function() {
+            var d = AXIS_DATA[currentAxis];
+            if (!d) return;
+            if (id === 'metaAuthor') d.Author = this.value;
+            if (id === 'metaVarDesc') d.ExposedVarDesc = this.value;
+            markDirty();
+        });
+    });
+    var jobEl2 = document.getElementById('metaJob');
+    if (jobEl2) jobEl2.addEventListener('change', function() {
+        var d = AXIS_DATA[currentAxis];
+        if (d) { d.TargetJob = parseInt(this.value); markDirty(); }
+    });
+    document.getElementById('btnAddVar').addEventListener('click', function() {
+        var d = AXIS_DATA[currentAxis];
+        if (!d) return;
+        var vlist = d.ExposedVars || d.ExposedVarNames;
+        if (!vlist) { vlist = []; d.ExposedVars = vlist; }
+        vlist.push('新变量');
+        renderVarList();
+        markDirty();
+    });
 }
 
 function switchAxis() {
@@ -107,6 +138,8 @@ function switchAxis() {
     if (data && data.TreeRoot) {
         importTreeToDrawflow(data);
         document.getElementById('axisName').value = data.Name || '';
+        var tEl = document.getElementById('territoryId');
+        if (tEl) tEl.value = data.TerritoryTypeId || 0;
     } else {
         editor.clear();
         dfIdToData = {};
@@ -117,6 +150,7 @@ function switchAxis() {
     renderProps();
     updateInfo();
     updateFooter();
+    syncMeta();
 }
 
 // ====== Part 4: Drawflow Setup ======
@@ -418,9 +452,15 @@ function importTreeToDrawflow(data) {
         Name: data.Name || '新执行轴',
         TerritoryTypeId: data.TerritoryTypeId || 0,
         Note: data.Note || '',
-        ExposedVars: data.ExposedVars || []
+        Guid: data.Guid || '',
+        Author: data.Author || '',
+        TargetJob: data.TargetJob || 0,
+        ExposedVars: data.ExposedVars || [],
+        ExposedVarDesc: data.ExposedVarDesc || ''
     };
     document.getElementById('axisName').value = AXIS_DATA[currentAxis].Name;
+    var tidEl = document.getElementById('territoryId');
+    if (tidEl) tidEl.value = AXIS_DATA[currentAxis].TerritoryTypeId || 0;
 
     if (!data.TreeRoot) return;
 
@@ -479,6 +519,7 @@ function importTreeToDrawflow(data) {
     isDirty = false;
     updateInfo();
     updateFooter();
+    syncMeta();
 }
 
 function autoLayout(rootData) {
@@ -638,7 +679,11 @@ function exportTreeFromDrawflow() {
         Name: wrapper.Name || '新执行轴',
         TerritoryTypeId: wrapper.TerritoryTypeId || 0,
         Note: wrapper.Note || '',
+        Guid: wrapper.Guid || '',
+        Author: wrapper.Author || '',
+        TargetJob: wrapper.TargetJob || 0,
         ExposedVars: wrapper.ExposedVars || [],
+        ExposedVarDesc: wrapper.ExposedVarDesc || '',
         TreeRoot: rootNode,
         _drawflow: {
             positions: positions,
@@ -651,6 +696,8 @@ function buildEmptyAxis() {
     return {
         Name: AXIS_DATA[currentAxis] ? AXIS_DATA[currentAxis].Name : '新执行轴',
         TerritoryTypeId: 0, Note: '', ExposedVars: [],
+        Guid: AXIS_DATA[currentAxis] ? AXIS_DATA[currentAxis].Guid : '',
+        Author: '', TargetJob: 0, ExposedVarDesc: '',
         TreeRoot: newNodeDefaults('treeRoot')
     };
 }
@@ -700,9 +747,10 @@ function newFile() {
     var rootData = newNodeDefaults('treeRoot');
     var treeData = {
         Name: '新执行轴', TerritoryTypeId: 0, Note: '', ExposedVars: [],
+        Guid: generateUUID(), Author: '', TargetJob: 0, ExposedVarDesc: '',
         TreeRoot: rootData
     };
-    AXIS_DATA[currentAxis] = { Name: '新执行轴', TerritoryTypeId: 0, Note: '', ExposedVars: [] };
+    AXIS_DATA[currentAxis] = { Name: '新执行轴', TerritoryTypeId: 0, Note: '', ExposedVars: [], Guid: generateUUID(), Author: '', TargetJob: 0, ExposedVarDesc: '' };
     currentFile = ''; fileHandle = null;
     importTreeToDrawflow(treeData);
     isDirty = true;
@@ -1493,6 +1541,55 @@ function setStatus(msg, type) {
 
 function esc(s) {
     return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+function generateUUID() {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        var r = Math.random() * 16 | 0;
+        return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+    });
+}
+
+function syncMeta() {
+    var data = AXIS_DATA[currentAxis];
+    if (!data) return;
+    document.getElementById('metaAuthor').value = data.Author || '';
+    document.getElementById('metaGuid').value = data.Guid || '';
+    document.getElementById('metaVarDesc').value = data.ExposedVarDesc || '';
+    document.getElementById('metaJob').value = data.TargetJob || 0;
+    renderVarList();
+}
+
+function renderVarList() {
+    var list = document.getElementById('varList');
+    var data = AXIS_DATA[currentAxis];
+    if (!list || !data) return;
+    var vars = data.ExposedVars || data.ExposedVarNames || [];
+    var html = '';
+    vars.forEach(function(v, i) {
+        html += '<div style="display:flex;align-items:center;gap:4px;margin:2px 0">';
+        html += '<input value="' + esc(v || '') + '" data-var-idx="' + i + '" style="flex:1;padding:2px 4px;font-size:11px;border:1px solid var(--bd);background:var(--bg1);color:var(--tx1);border-radius:3px">';
+        html += '<button class="ed-del-btn" onclick="removeVar(' + i + ')" style="font-size:10px;padding:1px 4px">✕</button>';
+        html += '</div>';
+    });
+    list.innerHTML = html;
+    list.querySelectorAll('[data-var-idx]').forEach(function(el) {
+        el.addEventListener('change', function() {
+            var idx = parseInt(this.dataset.varIdx);
+            var d = AXIS_DATA[currentAxis];
+            if (!d) return;
+            var vlist = d.ExposedVars || d.ExposedVarNames;
+            if (vlist) { vlist[idx] = this.value; markDirty(); }
+        });
+    });
+}
+
+function removeVar(i) {
+    var d = AXIS_DATA[currentAxis];
+    if (!d) return;
+    var vlist = d.ExposedVars || d.ExposedVarNames;
+    if (vlist) { vlist.splice(i, 1); renderVarList(); markDirty(); }
 }
 
 function deepClone(obj) {
