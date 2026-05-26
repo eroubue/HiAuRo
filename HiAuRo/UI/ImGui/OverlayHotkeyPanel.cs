@@ -141,20 +141,18 @@ public sealed class OverlayHotkeyPanel : OverlayBase
         return clicked;
     }
 
-    /// <summary>图标纹理缓存</summary>
-    private static readonly Dictionary<uint, ImTextureID> _iconTextureCache = new();
+    /// <summary>图标共享纹理缓存（持有 ISharedImmediateTexture 以保持 GPU 资源存活）</summary>
+    private static readonly Dictionary<uint, ISharedImmediateTexture> _iconTextureCache = new();
 
-    /// <summary>加载游戏技能图标纹理（带缓存，失败不缓存以允许后续帧重试）</summary>
+    /// <summary>加载游戏技能图标纹理（缓存共享纹理引用，每帧获取新鲜句柄防野指针）</summary>
     private static ImTextureID LoadIconTexture(uint iconId)
     {
-        if (_iconTextureCache.TryGetValue(iconId, out var cached))
-            return cached;
-
-        var wrap = DService.Instance().Texture.GetFromGameIcon(new GameIconLookup(iconId)).GetWrapOrDefault();
-        var handle = wrap?.Handle ?? 0;
-        if (handle != 0) // 只在加载成功时缓存，失败时允许后续帧重试
-            _iconTextureCache[iconId] = handle;
-        return handle;
+        if (!_iconTextureCache.TryGetValue(iconId, out var sharedTex))
+        {
+            sharedTex = DService.Instance().Texture.GetFromGameIcon(new GameIconLookup(iconId));
+            _iconTextureCache[iconId] = sharedTex;
+        }
+        return sharedTex.GetWrapOrDefault()?.Handle ?? 0;
     }
 
     /// <summary>保存窗口位置</summary>

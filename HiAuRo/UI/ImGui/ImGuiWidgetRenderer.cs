@@ -13,8 +13,8 @@ namespace HiAuRo.ImGuiLib;
 /// </summary>
 public static class ImGuiWidgetRenderer
 {
-    /// <summary>图标纹理缓存</summary>
-    private static readonly Dictionary<uint, ImTextureID> _iconCache = [];
+    /// <summary>图标共享纹理缓存（持有 ISharedImmediateTexture 以保持 GPU 资源存活）</summary>
+    private static readonly Dictionary<uint, ISharedImmediateTexture> _iconCache = [];
     /// <summary>渲染指定 Tab 下的所有控件</summary>
     public static void Render(List<UiControlDef> controls, string activeTab)
     {
@@ -206,16 +206,12 @@ public static class ImGuiWidgetRenderer
 
     private static ImTextureID LoadCachedIcon(uint iconId)
     {
-        if (_iconCache.TryGetValue(iconId, out var cached))
-            return cached;
-
-        var wrap = DService.Instance().Texture
-            .GetFromGameIcon(new GameIconLookup(iconId))
-            .GetWrapOrDefault();
-        var handle = wrap?.Handle ?? default;
-        if (handle != default) // 只在加载成功时缓存，失败时允许后续帧重试
-            _iconCache[iconId] = handle;
-        return handle;
+        if (!_iconCache.TryGetValue(iconId, out var sharedTex))
+        {
+            sharedTex = DService.Instance().Texture.GetFromGameIcon(new GameIconLookup(iconId));
+            _iconCache[iconId] = sharedTex;
+        }
+        return sharedTex.GetWrapOrDefault()?.Handle ?? default;
     }
 
     private static void SaveSettings()
