@@ -467,7 +467,39 @@ function hideContextMenu() {
     contextMenuPath = null;
 }
 
-// 双击快捷弹窗
+// 快捷编辑字段渲染
+function renderQuickField(ctrl, val) {
+    var valStr = val !== undefined && val !== null ? String(val) : '';
+    var div = document.createElement('div');
+    div.style.cssText = 'display:flex;align-items:center;gap:4px;margin:2px 0';
+    div.innerHTML = '<span style="font-size:10px;color:var(--tx2);min-width:60px">' + esc(ctrl.label) + '</span>';
+    var input;
+    if (ctrl.type === 'checkbox') {
+        input = document.createElement('input');
+        input.type = 'checkbox'; input.checked = !!val;
+        input.style.cssText = 'margin:0';
+    } else if (ctrl.type === 'dropdown') {
+        input = document.createElement('select');
+        input.style.cssText = 'flex:1;height:24px;font-size:11px;padding:1px 4px;border:1px solid var(--bd);background:var(--bg1);color:var(--tx1);border-radius:3px';
+        (ctrl.options || []).forEach(function(o) {
+            var opt = document.createElement('option');
+            opt.value = o; opt.textContent = o;
+            if (String(val) === String(o)) opt.selected = true;
+            input.appendChild(opt);
+        });
+    } else {
+        input = document.createElement('input');
+        input.type = (ctrl.type === 'floatInput') ? 'number' : (ctrl.type === 'textInput' ? 'text' : 'number');
+        if (ctrl.type === 'floatInput') input.step = 'any';
+        if (ctrl.type === 'intInput') input.step = '1';
+        input.value = valStr;
+        input.style.cssText = 'flex:1;height:24px;font-size:11px;padding:1px 4px;border:1px solid var(--bd);background:var(--bg1);color:var(--tx1);border-radius:3px';
+    }
+    div.appendChild(input);
+    return div;
+}
+
+// 双击弹窗
 function showQuickPopup(e, path, type, isComp) {
     hideQuickPopup();
     var node = getNodeByPath(path);
@@ -489,61 +521,90 @@ function showQuickPopup(e, path, type, isComp) {
             pop.appendChild(btn);
         });
     } else {
-        // 叶子节点 → 快捷编辑
+        // 叶子节点 → 快捷编辑（只显示节点核心数据，不显示名称/备注等通用属性）
         pop.innerHTML = '<div class="quick-title">快捷编辑</div>';
-        var fields = [
-            { label: '名称', key: 'DisplayName', type: 'text' },
-            { label: '启用', key: 'Enable', type: 'checkbox' },
-            { label: '备注', key: 'Remark', type: 'text' },
-            { label: '标签', key: 'Tag', type: 'text' }
-        ];
-        fields.forEach(function(f) {
-            var row = document.createElement('div');
-            row.style.cssText = 'display:flex;align-items:center;gap:6px;margin:4px 0';
-            var lbl = document.createElement('span');
-            lbl.style.cssText = 'font-size:12px;color:var(--tx2);min-width:36px';
-            lbl.textContent = f.label;
-            row.appendChild(lbl);
-            var input = document.createElement('input');
-            input.type = f.type;
-            input.style.cssText = 'flex:1;height:26px;font-size:12px;padding:2px 6px;border:1px solid var(--bd);background:var(--bg1);color:var(--tx1);border-radius:3px';
-            if (f.type === 'checkbox') {
-                input.style.cssText = 'width:auto;flex:none';
-                input.checked = node[f.key] || false;
-            } else {
-                input.value = node[f.key] || '';
-            }
-            input.addEventListener('change', function() {
-                if (f.type === 'checkbox') node[f.key] = this.checked;
-                else node[f.key] = this.value;
-                markDirty();
+        
+        if (type === 'treeCondNode') {
+            // 渲染条件列表
+            var conds = node.TriggerConds || [];
+            pop.innerHTML += '<div style="font-size:11px;color:var(--tx2);margin:4px 0">条件 (' + conds.length + ')</div>';
+            conds.forEach(function(cond, i) {
+                var ct = cond['$type'] || '';
+                var entry = findCatalogEntry(ct, true);
+                var name = entry ? entry.displayName : ct;
+                var row = document.createElement('div');
+                row.style.cssText = 'margin:3px 0;padding:4px;background:var(--bg1);border-radius:4px;font-size:11px';
+                row.innerHTML = '<div style="color:#7af;margin-bottom:3px">' + esc(name) + '</div>';
+                var ctrls = getEntryControls(entry);
+                ctrls.forEach(function(ctrl) {
+                    var val = cond[ctrl.label] !== undefined ? cond[ctrl.label] : ctrl.defaultValue;
+                    var inp = renderQuickField(ctrl, val);
+                    inp.addEventListener('change', function() {
+                        if (this.type === 'checkbox') cond[ctrl.label] = this.checked;
+                        else if (this.type === 'number') cond[ctrl.label] = parseFloat(this.value);
+                        else cond[ctrl.label] = this.value;
+                        markDirty();
+                    });
+                    row.appendChild(inp);
+                });
+                pop.appendChild(row);
             });
-            row.appendChild(input);
-            pop.appendChild(row);
-        });
-        // 特殊: 延迟节点的秒数
-        if (type === 'treeDelayNode') {
+        } else if (type === 'treeActionNode') {
+            var acts = node.TriggerActions || [];
+            pop.innerHTML += '<div style="font-size:11px;color:var(--tx2);margin:4px 0">动作 (' + acts.length + ')</div>';
+            acts.forEach(function(act, i) {
+                var at = act['$type'] || '';
+                var entry = findCatalogEntry(at, false);
+                var name = entry ? entry.displayName : at;
+                var row = document.createElement('div');
+                row.style.cssText = 'margin:3px 0;padding:4px;background:var(--bg1);border-radius:4px;font-size:11px';
+                row.innerHTML = '<div style="color:#f06595;margin-bottom:3px">' + esc(name) + '</div>';
+                var ctrls = getEntryControls(entry);
+                ctrls.forEach(function(ctrl) {
+                    var val = act[ctrl.label] !== undefined ? act[ctrl.label] : ctrl.defaultValue;
+                    var inp = renderQuickField(ctrl, val);
+                    inp.addEventListener('change', function() {
+                        if (this.type === 'checkbox') act[ctrl.label] = this.checked;
+                        else if (this.type === 'number') act[ctrl.label] = parseFloat(this.value);
+                        else act[ctrl.label] = this.value;
+                        markDirty();
+                    });
+                    row.appendChild(inp);
+                });
+                pop.appendChild(row);
+            });
+        } else if (type === 'treeDelayNode') {
             var dRow = document.createElement('div');
             dRow.style.cssText = 'display:flex;align-items:center;gap:6px;margin:4px 0';
             dRow.innerHTML = '<span style="font-size:12px;color:var(--tx2);min-width:36px">秒数</span>';
             var dIn = document.createElement('input');
-            dIn.type = 'number'; dIn.step = 'any';
+            dIn.type = 'number'; dIn.step = 'any'; dIn.value = node.Delay || 0;
             dIn.style.cssText = 'flex:1;height:26px;font-size:12px;padding:2px 6px;border:1px solid var(--bd);background:var(--bg1);color:var(--tx1);border-radius:3px';
-            dIn.value = node.Delay || 0;
             dIn.addEventListener('change', function() { node.Delay = parseFloat(this.value) || 0; markDirty(); });
             dRow.appendChild(dIn); pop.appendChild(dRow);
-        }
-        // 特殊: 循环次數
-        if (type === 'treeLoop') {
-            var lRow = document.createElement('div');
-            lRow.style.cssText = 'display:flex;align-items:center;gap:6px;margin:4px 0';
-            lRow.innerHTML = '<span style="font-size:12px;color:var(--tx2);min-width:36px">次数</span>';
-            var lIn = document.createElement('input');
-            lIn.type = 'number'; lIn.step = '1';
-            lIn.style.cssText = 'flex:1;height:26px;font-size:12px;padding:2px 6px;border:1px solid var(--bd);background:var(--bg1);color:var(--tx1);border-radius:3px';
-            lIn.value = node.Times || 1;
-            lIn.addEventListener('change', function() { node.Times = parseInt(this.value) || 1; markDirty(); });
-            lRow.appendChild(lIn); pop.appendChild(lRow);
+        } else if (type === 'treeScriptNode') {
+            var scriptIn = document.createElement('textarea');
+            scriptIn.style.cssText = 'width:100%;height:80px;font-size:11px;font-family:monospace;padding:4px;border:1px solid var(--bd);background:var(--bg1);color:var(--tx1);border-radius:3px;resize:vertical';
+            scriptIn.value = node.Script || '';
+            scriptIn.addEventListener('change', function() { node.Script = this.value; markDirty(); });
+            pop.appendChild(scriptIn);
+            var factRow = document.createElement('div');
+            factRow.style.cssText = 'margin:4px 0';
+            factRow.innerHTML = '<span style="font-size:11px;color:var(--tx2)">FactNodeId: </span>';
+            var factIn = document.createElement('input');
+            factIn.type = 'text'; factIn.value = node.FactNodeId || '';
+            factIn.style.cssText = 'width:100%;height:26px;font-size:12px;padding:2px 6px;border:1px solid var(--bd);background:var(--bg1);color:var(--tx1);border-radius:3px';
+            factIn.addEventListener('change', function() { node.FactNodeId = this.value; markDirty(); });
+            factRow.appendChild(factIn); pop.appendChild(factRow);
+        } else if (type === 'treePrintNode') {
+            var infoRow = document.createElement('div');
+            infoRow.style.cssText = 'margin:4px 0';
+            var infoIn = document.createElement('input');
+            infoIn.type = 'text'; infoIn.value = node.Info || '';
+            infoIn.placeholder = '调试信息';
+            infoIn.style.cssText = 'width:100%;height:26px;font-size:12px;padding:2px 6px;border:1px solid var(--bd);background:var(--bg1);color:var(--tx1);border-radius:3px';
+            infoIn.addEventListener('change', function() { node.Info = this.value; markDirty(); });
+            infoRow.appendChild(infoIn); pop.appendChild(infoRow);
         }
     }
 
