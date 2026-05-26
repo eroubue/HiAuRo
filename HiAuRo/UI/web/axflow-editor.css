@@ -310,3 +310,75 @@ html, body {
   .sidebar { width: 50px; }
   .sidebar-label, .info-row, .props-scroll { display: none; }
 }
+
+/* ---- Trigger cond/action editing ---- */
+.trigger-cond-item {
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 6px;
+  margin: 4px 0;
+  background: var(--bg2);
+}
+.trigger-cond-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 4px;
+  font-size: 11px;
+  color: var(--blue);
+  font-weight: 500;
+}
+.trigger-field {
+  margin: 4px 0;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.trigger-field label {
+  min-width: 70px;
+  font-size: 11px;
+  color: var(--tx1);
+}
+.trigger-field input[type="number"],
+.trigger-field input[type="text"],
+.trigger-field select {
+  flex: 1;
+  padding: 3px 6px;
+  border: 1px solid var(--border);
+  background: var(--bg0);
+  color: var(--tx0);
+  border-radius: var(--radius);
+  font-family: var(--font);
+  font-size: 11px;
+  outline: none;
+}
+.trigger-field input[type="number"]:focus,
+.trigger-field input[type="text"]:focus,
+.trigger-field select:focus {
+  border-color: var(--blue);
+}
+.trigger-add-row {
+  display: flex;
+  gap: 4px;
+  margin-top: 6px;
+  align-items: center;
+}
+.trigger-add-row select {
+  flex: 1;
+  padding: 3px 6px;
+  border: 1px solid var(--border);
+  background: var(--bg0);
+  color: var(--tx0);
+  border-radius: var(--radius);
+  font-family: var(--font);
+  font-size: 11px;
+}
+.ed-add-btn {
+  font-family: var(--font); font-size: 11px; padding: 2px 8px;
+  color: #30d158; background: none; border: 1px solid #30d158; border-radius: var(--radius);
+  cursor: pointer;
+}
+.ed-del-btn {
+  font-family: var(--font); font-size: 10px; padding: 2px 6px;
+  color: #ff453a; background: none; border: none; cursor: pointer;
+}

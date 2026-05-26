@@ -42,6 +42,7 @@ var selectedDfId = null;
 var dirHandle = null;
 var fileEntries = [];
 var autoIdCounter = 100;
+var localTriggers = JSON.parse(localStorage.getItem('hiAutoLocalTriggers') || '{"conditions":[],"actions":[]}');
 
 
 
@@ -78,6 +79,7 @@ function initToolbar() {
     document.getElementById('edFileInput').addEventListener('change', function() {
         var f = this.files[0]; if (f) { readFileObj(f); this.value = ''; }
     });
+    document.getElementById('btnLoadCatalog').addEventListener('click', loadCatalogFile);
     document.getElementById('axisName').addEventListener('change', function() {
         if (!AXIS_DATA[currentAxis]) return;
         AXIS_DATA[currentAxis].Name = this.value;
@@ -778,7 +780,156 @@ async function openFromDir(fileName) {
     } catch(e) { setStatus('打开失败: ' + e.message, 'err'); }
 }
 
-// ====== Part 9: Property Panel ======
+// ====== Part 9: Trigger Helpers ======
+
+function getAllConditions() {
+    return localTriggers.conditions || [];
+}
+
+function getAllActions() {
+    return localTriggers.actions || [];
+}
+
+function findCatalogEntry(typeName, isCond) {
+    var list = isCond ? getAllConditions() : getAllActions();
+    for (var i = 0; i < list.length; i++) {
+        if (list[i].typeName === typeName || list[i].aeTypeName === typeName || list[i].typeDiscriminator === typeName)
+            return list[i];
+    }
+    return null;
+}
+
+function getEntryControls(entry) {
+    if (!entry) return [];
+    if (entry.controls && entry.controls.length) return entry.controls;
+    if (entry.parameters && entry.parameters.length) {
+        return entry.parameters.map(function(p) {
+            return { label: p.name, type: p.type || 'textInput', defaultValue: p.defaultValue, options: p.options || null };
+        });
+    }
+    return [];
+}
+
+function renderTriggerField(ctrl, val, idx, kind) {
+    var idxAttr = kind === 'cond' ? 'data-cond-idx' : 'data-act-idx';
+    var valStr = val !== undefined && val !== null ? String(val) : '';
+    switch (ctrl.type) {
+        case 'intInput':
+            return '<div class="trigger-field"><label>' + esc(ctrl.label) + '</label>' +
+                '<input type="number" step="1" class="trigger-param-input" ' + idxAttr + '="' + idx + '" data-field="' + esc(ctrl.label) + '" value="' + esc(valStr) + '" /></div>';
+        case 'floatInput':
+            return '<div class="trigger-field"><label>' + esc(ctrl.label) + '</label>' +
+                '<input type="number" step="any" class="trigger-param-input" ' + idxAttr + '="' + idx + '" data-field="' + esc(ctrl.label) + '" value="' + esc(valStr) + '" /></div>';
+        case 'textInput':
+            return '<div class="trigger-field"><label>' + esc(ctrl.label) + '</label>' +
+                '<input type="text" class="trigger-param-input" ' + idxAttr + '="' + idx + '" data-field="' + esc(ctrl.label) + '" value="' + esc(valStr) + '" /></div>';
+        case 'checkbox':
+            return '<div class="trigger-field"><label><input type="checkbox" class="trigger-param-input" ' + idxAttr + '="' + idx + '" data-field="' + esc(ctrl.label) + '" ' + (val ? 'checked' : '') + ' /> ' + esc(ctrl.label) + '</label></div>';
+        case 'dropdown':
+            var opts = ctrl.options || [];
+            var html = '<div class="trigger-field"><label>' + esc(ctrl.label) + '</label>' +
+                '<select class="trigger-param-input" ' + idxAttr + '="' + idx + '" data-field="' + esc(ctrl.label) + '">';
+            opts.forEach(function(o) {
+                html += '<option value="' + esc(o) + '"' + (String(val) === String(o) ? ' selected' : '') + '>' + esc(o) + '</option>';
+            });
+            html += '</select></div>';
+            return html;
+        default:
+            return '<div class="trigger-field"><label>' + esc(ctrl.label) + '</label>' +
+                '<input type="text" class="trigger-param-input" ' + idxAttr + '="' + idx + '" data-field="' + esc(ctrl.label) + '" value="' + esc(valStr) + '" /></div>';
+    }
+}
+
+function loadCatalogFile() {
+    var input = document.createElement('input');
+    input.type = 'file';
+    input.accept = '.json';
+    input.onchange = function() {
+        var file = this.files[0];
+        if (!file) return;
+        var reader = new FileReader();
+        reader.onload = function() {
+            try {
+                var catalog = JSON.parse(reader.result);
+                var conds = catalog.conditions || [];
+                var acts = catalog.actions || [];
+                conds.forEach(function(c) { c.category = 'catalog'; });
+                acts.forEach(function(a) { a.category = 'catalog'; });
+                localTriggers.conditions = conds.concat(localTriggers.conditions || []);
+                localTriggers.actions = acts.concat(localTriggers.actions || []);
+                localStorage.setItem('hiAutoLocalTriggers', JSON.stringify(localTriggers));
+                setStatus('已加载目录: ' + conds.length + ' 条件, ' + acts.length + ' 动作', 'ok');
+                renderProps();
+            } catch(e) { setStatus('JSON解析失败: ' + e.message, 'err'); }
+        };
+        reader.readAsText(file);
+    };
+    input.click();
+}
+
+function addTriggerCond() {
+    var sel = document.getElementById('condTypeSelect');
+    if (!sel || !sel.value) return;
+    var entry = findCatalogEntry(sel.value, true);
+    var node = dfIdToData[selectedDfId];
+    if (!node) return;
+    if (!node.TriggerConds) node.TriggerConds = [];
+    var newCond = { '$type': sel.value };
+    getEntryControls(entry).forEach(function(ctrl) {
+        if (ctrl.defaultValue !== undefined && ctrl.defaultValue !== null)
+            newCond[ctrl.label] = ctrl.defaultValue;
+        else if (ctrl.type === 'intInput' || ctrl.type === 'floatInput')
+            newCond[ctrl.label] = 0;
+        else if (ctrl.type === 'checkbox')
+            newCond[ctrl.label] = false;
+        else if (ctrl.type === 'textInput')
+            newCond[ctrl.label] = '';
+    });
+    node.TriggerConds.push(newCond);
+    isDirty = true;
+    renderProps();
+}
+
+function addTriggerAction() {
+    var sel = document.getElementById('actTypeSelect');
+    if (!sel || !sel.value) return;
+    var entry = findCatalogEntry(sel.value, false);
+    var node = dfIdToData[selectedDfId];
+    if (!node) return;
+    if (!node.TriggerActions) node.TriggerActions = [];
+    var newAct = { '$type': sel.value };
+    getEntryControls(entry).forEach(function(ctrl) {
+        if (ctrl.defaultValue !== undefined && ctrl.defaultValue !== null)
+            newAct[ctrl.label] = ctrl.defaultValue;
+        else if (ctrl.type === 'intInput' || ctrl.type === 'floatInput')
+            newAct[ctrl.label] = 0;
+        else if (ctrl.type === 'checkbox')
+            newAct[ctrl.label] = false;
+        else if (ctrl.type === 'textInput')
+            newAct[ctrl.label] = '';
+    });
+    node.TriggerActions.push(newAct);
+    isDirty = true;
+    renderProps();
+}
+
+function removeTriggerCond(idx) {
+    var node = dfIdToData[selectedDfId];
+    if (!node || !node.TriggerConds) return;
+    node.TriggerConds.splice(idx, 1);
+    isDirty = true;
+    renderProps();
+}
+
+function removeTriggerAction(idx) {
+    var node = dfIdToData[selectedDfId];
+    if (!node || !node.TriggerActions) return;
+    node.TriggerActions.splice(idx, 1);
+    isDirty = true;
+    renderProps();
+}
+
+// ====== Part 10: Property Panel ======
 
 function renderProps() {
     var body = document.getElementById('propsBody');
@@ -806,13 +957,69 @@ function renderProps() {
         h += '<div class="prop-section"><div class="prop-head">条件</div>';
         h += propRow('检查一次', 'checkbox', 'CheckOnce', node.CheckOnce);
         h += propRow('结果取反', 'checkbox', 'ReverseResult', node.ReverseResult);
-        h += '<div style="font-size:11px;color:var(--tx2);padding:4px 0">条件列表: ' + ((node.TriggerConds || []).length) + ' 项</div>';
-        h += '</div>';
+        h += '<div class="prop-group">';
+        h += '<label style="font-size:11px;color:var(--tx2)">条件列表 (' + (node.TriggerConds||[]).length + ' 项)</label>';
+        var allConds = getAllConditions();
+        if (allConds.length > 0) {
+            h += '<div class="trigger-add-row">';
+            h += '<select id="condTypeSelect" style="flex:1">';
+            h += '<option value="">— 添加条件 —</option>';
+            allConds.forEach(function(c) {
+                var val = c.aeTypeName || c.typeName;
+                h += '<option value="' + esc(val) + '">' + esc(c.displayName || val) + ' [' + (c.category||'') + ']</option>';
+            });
+            h += '</select>';
+            h += '<button class="ed-add-btn" onclick="addTriggerCond()">+</button>';
+            h += '</div>';
+        }
+        (node.TriggerConds||[]).forEach(function(cond, idx) {
+            var ct = cond['$type'] || '';
+            var entry = findCatalogEntry(ct, true);
+            var displayName = entry ? (entry.displayName || ct) : ct;
+            var ctrls = getEntryControls(entry);
+            h += '<div class="trigger-cond-item">';
+            h += '<div class="trigger-cond-header"><span>' + esc(displayName) + '</span>';
+            h += '<button class="ed-del-btn" onclick="removeTriggerCond(' + idx + ')">✕</button></div>';
+            ctrls.forEach(function(ctrl) {
+                var val = cond[ctrl.label] !== undefined ? cond[ctrl.label] : (ctrl.defaultValue !== undefined ? ctrl.defaultValue : '');
+                h += renderTriggerField(ctrl, val, idx, 'cond');
+            });
+            h += '</div>';
+        });
+        h += '</div></div>';
     }
     if (def.type === 'treeActionNode') {
         h += '<div class="prop-section"><div class="prop-head">动作</div>';
-        h += '<div style="font-size:11px;color:var(--tx2);padding:4px 0">动作列表: ' + ((node.TriggerActions || []).length) + ' 项</div>';
-        h += '</div>';
+        h += '<div class="prop-group">';
+        h += '<label style="font-size:11px;color:var(--tx2)">动作列表 (' + (node.TriggerActions||[]).length + ' 项)</label>';
+        var allActs = getAllActions();
+        if (allActs.length > 0) {
+            h += '<div class="trigger-add-row">';
+            h += '<select id="actTypeSelect" style="flex:1">';
+            h += '<option value="">— 添加动作 —</option>';
+            allActs.forEach(function(a) {
+                var val = a.aeTypeName || a.typeName;
+                h += '<option value="' + esc(val) + '">' + esc(a.displayName || val) + ' [' + (a.category||'') + ']</option>';
+            });
+            h += '</select>';
+            h += '<button class="ed-add-btn" onclick="addTriggerAction()">+</button>';
+            h += '</div>';
+        }
+        (node.TriggerActions||[]).forEach(function(act, idx) {
+            var at = act['$type'] || '';
+            var entry = findCatalogEntry(at, false);
+            var displayName = entry ? (entry.displayName || at) : at;
+            var ctrls = getEntryControls(entry);
+            h += '<div class="trigger-cond-item">';
+            h += '<div class="trigger-cond-header"><span>' + esc(displayName) + '</span>';
+            h += '<button class="ed-del-btn" onclick="removeTriggerAction(' + idx + ')">✕</button></div>';
+            ctrls.forEach(function(ctrl) {
+                var val = act[ctrl.label] !== undefined ? act[ctrl.label] : (ctrl.defaultValue !== undefined ? ctrl.defaultValue : '');
+                h += renderTriggerField(ctrl, val, idx, 'act');
+            });
+            h += '</div>';
+        });
+        h += '</div></div>';
     }
     if (def.type === 'treeDelayNode') {
         h += '<div class="prop-section"><div class="prop-head">延迟</div>';
@@ -882,6 +1089,28 @@ function bindPropInputs() {
             if (ta) { dfIdToData[selectedDfId].Script = ta.value; markDirty(); setStatus('脚本已保存', 'ok'); }
         });
     }
+
+    // Trigger cond/action param binding
+    document.querySelectorAll('.trigger-param-input').forEach(function(el) {
+        if (el.dataset.bound) return;
+        el.dataset.bound = '1';
+        el.addEventListener('change', function() {
+            if (!selectedDfId || !dfIdToData[selectedDfId]) return;
+            var node = dfIdToData[selectedDfId];
+            var field = this.dataset.field;
+            var isCond = this.hasAttribute('data-cond-idx');
+            var idx = parseInt(isCond ? this.dataset.condIdx : this.dataset.actIdx);
+            var list = isCond ? node.TriggerConds : node.TriggerActions;
+            if (!list || !list[idx]) return;
+            if (this.type === 'checkbox')
+                list[idx][field] = this.checked;
+            else if (this.type === 'number')
+                list[idx][field] = parseFloat(this.value);
+            else
+                list[idx][field] = this.value;
+            markDirty();
+        });
+    });
 }
 
 // ====== Part 10: Context Menu & Keyboard ======
