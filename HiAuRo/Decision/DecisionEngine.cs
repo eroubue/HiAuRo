@@ -117,13 +117,13 @@ public sealed class DecisionEngine
                 bool found = false;
                 foreach (var member in Party.All)
                 {
-                    if (member.Player is IBattleChara bc && AuraHelper.HasAura(bc, skill.状态ID))
+                    if (member.Player is IBattleChara bc && bc.StatusList.HasStatus(skill.状态ID))
                     { found = true; break; }
                 }
 
-                // 也检查当前目标（敌方减益 debuff，如雪仇）
+                // 也检查当前目标（敌方减益 debuff，如雪仇/牵制/昏乱）
                 if (!found && Target.Current is IBattleChara tgt)
-                    found = AuraHelper.HasAura(tgt, skill.状态ID);
+                    found = tgt.StatusList.HasStatus(skill.状态ID);
 
                 if (found) total += skill.减伤百分比;
             }
@@ -222,7 +222,7 @@ public sealed class DecisionEngine
         DecisionSkillRegistry.注册(Jobs.PLD,
             teamMit:
             [
-                new() { 技能ID = 7535, 名称 = "雪仇", 职业 = Jobs.PLD, 减伤百分比 = 10, 持续秒 = 10, 冷却秒 = 60, 减伤类型 = 减伤类型.全能, 状态ID = 1191 },
+                new() { 技能ID = 7535, 名称 = "雪仇", 职业 = Jobs.PLD, 减伤百分比 = 10, 持续秒 = 10, 冷却秒 = 60, 减伤类型 = 减伤类型.全能, 状态ID = 1193 },
                 new() { 技能ID = 7385, 名称 = "武装战阵", 职业 = Jobs.PLD, 减伤百分比 = 15, 持续秒 = 18, 冷却秒 = 120, 减伤类型 = 减伤类型.全能, 状态ID = 1175 },
                 new() { 技能ID = 3540, 名称 = "圣光幕帘", 职业 = Jobs.PLD, 减伤百分比 = 10, 持续秒 = 30, 冷却秒 = 90, 减伤类型 = 减伤类型.全能, 状态ID = 727 },
             ],
@@ -236,7 +236,7 @@ public sealed class DecisionEngine
         DecisionSkillRegistry.注册(Jobs.WAR,
             teamMit:
             [
-                new() { 技能ID = 7535, 名称 = "雪仇", 职业 = Jobs.WAR, 减伤百分比 = 10, 持续秒 = 10, 冷却秒 = 60, 减伤类型 = 减伤类型.全能, 状态ID = 1191 },
+                new() { 技能ID = 7535, 名称 = "雪仇", 职业 = Jobs.WAR, 减伤百分比 = 10, 持续秒 = 10, 冷却秒 = 60, 减伤类型 = 减伤类型.全能, 状态ID = 1193 },
                 new() { 技能ID = 7388, 名称 = "聚集之心", 职业 = Jobs.WAR, 减伤百分比 = 15, 持续秒 = 15, 冷却秒 = 90, 减伤类型 = 减伤类型.全能, 状态ID = 1457 },
             ],
             personalMit:
@@ -249,7 +249,7 @@ public sealed class DecisionEngine
         DecisionSkillRegistry.注册(Jobs.DRK,
             teamMit:
             [
-                new() { 技能ID = 7535, 名称 = "雪仇", 职业 = Jobs.DRK, 减伤百分比 = 10, 持续秒 = 10, 冷却秒 = 60, 减伤类型 = 减伤类型.全能, 状态ID = 1191 },
+                new() { 技能ID = 7535, 名称 = "雪仇", 职业 = Jobs.DRK, 减伤百分比 = 10, 持续秒 = 10, 冷却秒 = 60, 减伤类型 = 减伤类型.全能, 状态ID = 1193 },
                 new() { 技能ID = 16470, 名称 = "暗黑布教", 职业 = Jobs.DRK, 减伤百分比 = 10, 持续秒 = 15, 冷却秒 = 90, 减伤类型 = 减伤类型.魔法, 状态ID = 1894 },
             ],
             personalMit:
@@ -262,7 +262,7 @@ public sealed class DecisionEngine
         DecisionSkillRegistry.注册(Jobs.GNB,
             teamMit:
             [
-                new() { 技能ID = 7535, 名称 = "雪仇", 职业 = Jobs.GNB, 减伤百分比 = 10, 持续秒 = 10, 冷却秒 = 60, 减伤类型 = 减伤类型.全能, 状态ID = 1191 },
+                new() { 技能ID = 7535, 名称 = "雪仇", 职业 = Jobs.GNB, 减伤百分比 = 10, 持续秒 = 10, 冷却秒 = 60, 减伤类型 = 减伤类型.全能, 状态ID = 1193 },
                 new() { 技能ID = 16160, 名称 = "光之心", 职业 = Jobs.GNB, 减伤百分比 = 10, 持续秒 = 15, 冷却秒 = 90, 减伤类型 = 减伤类型.魔法, 状态ID = 1838 },
             ],
             personalMit:
@@ -313,6 +313,61 @@ public sealed class DecisionEngine
             teamMit:
             [
                 new() { 技能ID = 16012, 名称 = "盾桑巴", 职业 = Jobs.DNC, 减伤百分比 = 10, 持续秒 = 15, 冷却秒 = 90, 减伤类型 = 减伤类型.全能, 状态ID = 1826 },
+            ]);
+
+        // ============================================================
+        //  DPS 近战/魔法 团队减伤
+        // ============================================================
+
+        // NIN 忍者 — 攻杀必中 (敌方 5% 受伤增加) + 牵制
+        DecisionSkillRegistry.注册(Jobs.NIN,
+            teamMit:
+            [
+                new() { 技能ID = 36957, 名称 = "攻杀必中", 职业 = Jobs.NIN, 减伤百分比 = 5, 持续秒 = 20, 冷却秒 = 120, 减伤类型 = 减伤类型.全能, 状态ID = 3856 },
+                new() { 技能ID = 7549, 名称 = "牵制", 职业 = Jobs.NIN, 减伤百分比 = 10, 持续秒 = 10, 冷却秒 = 90, 减伤类型 = 减伤类型.物理, 状态ID = 1195 },
+            ]);
+
+        // DRG 龙骑士 — 牵制
+        DecisionSkillRegistry.注册(Jobs.DRG,
+            teamMit:
+            [
+                new() { 技能ID = 7549, 名称 = "牵制", 职业 = Jobs.DRG, 减伤百分比 = 10, 持续秒 = 10, 冷却秒 = 90, 减伤类型 = 减伤类型.物理, 状态ID = 1195 },
+            ]);
+
+        // SAM 武士 — 牵制
+        DecisionSkillRegistry.注册(Jobs.SAM,
+            teamMit:
+            [
+                new() { 技能ID = 7549, 名称 = "牵制", 职业 = Jobs.SAM, 减伤百分比 = 10, 持续秒 = 10, 冷却秒 = 90, 减伤类型 = 减伤类型.物理, 状态ID = 1195 },
+            ]);
+
+        // RPR 钐镰客 — 牵制
+        DecisionSkillRegistry.注册(Jobs.RPR,
+            teamMit:
+            [
+                new() { 技能ID = 7549, 名称 = "牵制", 职业 = Jobs.RPR, 减伤百分比 = 10, 持续秒 = 10, 冷却秒 = 90, 减伤类型 = 减伤类型.物理, 状态ID = 1195 },
+            ]);
+
+        // BLM 黑魔法师 — 昏乱
+        DecisionSkillRegistry.注册(Jobs.BLM,
+            teamMit:
+            [
+                new() { 技能ID = 7560, 名称 = "昏乱", 职业 = Jobs.BLM, 减伤百分比 = 10, 持续秒 = 10, 冷却秒 = 90, 减伤类型 = 减伤类型.魔法, 状态ID = 1203 },
+            ]);
+
+        // SMN 召唤师 — 昏乱
+        DecisionSkillRegistry.注册(Jobs.SMN,
+            teamMit:
+            [
+                new() { 技能ID = 7560, 名称 = "昏乱", 职业 = Jobs.SMN, 减伤百分比 = 10, 持续秒 = 10, 冷却秒 = 90, 减伤类型 = 减伤类型.魔法, 状态ID = 1203 },
+            ]);
+
+        // RDM 赤魔法师 — 魔障 + 昏乱
+        DecisionSkillRegistry.注册(Jobs.RDM,
+            teamMit:
+            [
+                new() { 技能ID = 25857, 名称 = "魔障", 职业 = Jobs.RDM, 减伤百分比 = 10, 持续秒 = 10, 冷却秒 = 120, 减伤类型 = 减伤类型.魔法, 状态ID = 2707 },
+                new() { 技能ID = 7560, 名称 = "昏乱", 职业 = Jobs.RDM, 减伤百分比 = 10, 持续秒 = 10, 冷却秒 = 90, 减伤类型 = 减伤类型.魔法, 状态ID = 1203 },
             ]);
 
         // ============================================================
@@ -398,6 +453,11 @@ public sealed class DecisionEngine
         FactSpellTable.注册(16889, "策动");
         // DNC
         FactSpellTable.注册(16012, "盾桑巴");
+        // NIN
+        FactSpellTable.注册(36957, "攻杀必中");
+        // RDM
+        FactSpellTable.注册(25857, "魔障");
+        // (牵制 7549 / 昏乱 7560 已在 MNK/BRD 注册，无需重复)
     }
 
     #endregion
