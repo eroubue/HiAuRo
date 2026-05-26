@@ -63,50 +63,49 @@
     </section>
 
     <aside class="sidebar">
-      <div class="sidebar-section">
-        <div class="sidebar-label">轴信息</div>
-        <div class="info-box">
-          <div class="info-row"><span class="info-key">轴类型</span><span class="info-val" id="infoType">—</span></div>
-          <div class="info-row"><span class="info-key">文件名</span><span class="info-val" id="infoFile">—</span></div>
-          <div class="info-row"><span class="info-key">副本ID</span><input class="info-input" type="number" id="territoryId" value="0" style="width:80px"></div>
-          <div class="info-row"><span class="info-key">节点数</span><span class="info-val" id="infoCount">0</span></div>
-          <div class="info-row"><span class="info-key">状态</span><span class="info-val" id="infoDirty">—</span></div>
+      <!-- 轴信息面板（可收起、独立于属性面板） -->
+      <div class="axis-panel" id="axisPanel">
+        <div class="axis-panel-bar" id="axisPanelBar" onclick="toggleAxisPanel()">
+          <span id="axisPanelLabel">▼ 轴信息</span>
+        </div>
+        <div class="axis-panel-body" id="axisPanelBody">
+          <div class="info-box">
+            <div class="info-row"><span class="info-key">轴类型</span><span class="info-val" id="infoType">—</span></div>
+            <div class="info-row"><span class="info-key">文件名</span><span class="info-val" id="infoFile">—</span></div>
+            <div class="info-row"><span class="info-key">副本ID</span><input class="info-input" type="number" id="territoryId" value="0" style="width:80px"></div>
+            <div class="info-row"><span class="info-key">节点数</span><span class="info-val" id="infoCount">0</span></div>
+            <div class="info-row"><span class="info-key">状态</span><span class="info-val" id="infoDirty">—</span></div>
+          </div>
+          <!-- 元数据 -->
+          <div class="sidebar-section" style="margin-top:4px">
+            <div class="sidebar-label">元数据</div>
+            <div class="props-scroll">
+              <div style="margin:2px 0"><span style="font-size:11px;color:var(--tx2)">作者</span>
+                <input class="prop-input" type="text" id="metaAuthor" placeholder="作者" style="width:100%">
+              </div>
+              <div style="margin:2px 0"><span style="font-size:11px;color:var(--tx2)">职业</span>
+                <select class="prop-input" id="metaJob" style="width:100%">
+                  <option value="0">通用</option><option value="25">BLM</option><option value="20">MNK</option><option value="24">WHM</option><option value="23">BRD</option><option value="22">WAR</option>
+                </select>
+              </div>
+              <div style="margin:2px 0"><span style="font-size:11px;color:var(--tx2)">GUID</span>
+                <input class="prop-input" type="text" id="metaGuid" readonly style="width:100%;font-size:10px;color:var(--tx2)">
+              </div>
+              <div style="margin:2px 0"><span style="font-size:11px;color:var(--tx2)">变量说明</span>
+                <textarea class="prop-input" id="metaVarDesc" placeholder="多行说明..." style="width:100%;height:60px;margin-top:2px;resize:vertical;font-size:11px"></textarea>
+              </div>
+            </div>
+          </div>
+          <!-- 暴露变量 -->
+          <div class="sidebar-section" style="margin-top:4px">
+            <div class="sidebar-label">暴露变量</div>
+            <div id="varList" style="max-height:120px;overflow-y:auto"></div>
+            <button class="btn-sm" id="btnAddVar" style="margin-top:4px;font-size:11px">+ 添加变量</button>
+          </div>
         </div>
       </div>
-      <!-- 元数据 -->
-      <div class="sidebar-section">
-        <div class="sidebar-label" onclick="toggleSection('secMeta')" id="hdrMeta">▼ 元数据</div>
-        <div id="secMeta">
-        <div class="props-scroll">
-          <div style="margin:2px 0"><span style="font-size:11px;color:var(--tx2)">作者</span>
-            <input class="prop-input" type="text" id="metaAuthor" placeholder="作者" style="width:100%">
-          </div>
-          <div style="margin:2px 0"><span style="font-size:11px;color:var(--tx2)">职业</span>
-            <select class="prop-input" id="metaJob" style="width:100%">
-              <option value="0">通用</option>
-              <option value="25">BLM</option>
-              <option value="20">MNK</option>
-              <option value="24">WHM</option>
-              <option value="23">BRD</option>
-              <option value="22">WAR</option>
-            </select>
-          </div>
-          <div style="margin:2px 0"><span style="font-size:11px;color:var(--tx2)">GUID</span>
-            <input class="prop-input" type="text" id="metaGuid" readonly style="width:100%;font-size:10px;color:var(--tx2)">
-          </div>
-          <div style="margin:2px 0"><span style="font-size:11px;color:var(--tx2)">变量说明</span>
-            <textarea class="prop-input" id="metaVarDesc" placeholder="多行说明..." style="width:100%;height:60px;margin-top:2px;resize:vertical;font-size:11px"></textarea>
-          </div>
-        </div>
-      </div>
-      <!-- 暴露变量 -->
-      <div class="sidebar-section">
-        <div class="sidebar-label" onclick="toggleSection('secVars')" id="hdrVars">▼ 暴露变量</div>
-        <div id="secVars">
-        <div id="varList" style="max-height:120px;overflow-y:auto"></div>
-        <button class="btn-sm" id="btnAddVar" style="margin-top:4px;font-size:11px">+ 添加变量</button>
-        </div>
-      </div>
+
+      <!-- 节点属性面板（独立滚动） -->
       <div class="sidebar-section" id="treeTools" style="display:none">
         <div class="sidebar-label">快捷添加</div>
         <div class="quick-btns">

@@ -432,3 +432,12 @@ body.drag-active { user-select:none; -webkit-user-select:none; cursor:grabbing; 
     cursor:pointer; font-size:12px; color:var(--tx1);
 }
 .quick-item:hover { background:rgba(255,255,255,0.06); }
+
+/* 轴信息面板（独立可收起） */
+.axis-panel { border-bottom: 1px solid var(--bd); }
+.axis-panel-bar { padding: 5px 8px; cursor: pointer; user-select: none; font-size: 12px; color: var(--tx2); background: var(--bg1); display: flex; align-items: center; gap: 6px; }
+.axis-panel-bar:hover { background: var(--bg2); }
+.axis-panel-bar .axis-summary { font-size: 11px; color: var(--tx0); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.axis-panel-body { padding: 6px 8px; overflow-y: auto; }
+.axis-panel-body.hidden { display: none; }
+#propsBody { overflow-y: auto; }

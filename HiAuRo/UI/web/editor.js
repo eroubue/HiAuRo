@@ -1283,6 +1283,21 @@ function toggleSection(id) {
     }
 }
 
+// 轴信息面板折叠
+var axisPanelOpen = true;
+function toggleAxisPanel() {
+    var body = document.getElementById('axisPanelBody');
+    var bar = document.getElementById('axisPanelBar');
+    axisPanelOpen = !axisPanelOpen;
+    if (axisPanelOpen) {
+        body.classList.remove('hidden');
+        if (bar) bar.querySelector('#axisPanelLabel').textContent = '▼ 轴信息';
+    } else {
+        body.classList.add('hidden');
+        if (bar) bar.querySelector('#axisPanelLabel').textContent = '▶ 轴信息';
+    }
+}
+
 function markDirty() { isDirty = true; renderTree(); renderProps(); updateFooter(); }
 function updateFooter() {
     var labels = { execution:'执行轴', assist:'辅助轴' };
@@ -1300,6 +1315,16 @@ function updateFooter() {
     // 同步副本 ID
     var tidEl = document.getElementById('territoryId');
     if (tidEl && timelineData) tidEl.value = timelineData.TerritoryTypeId || 0;
+    // 轴信息摘要（收起时显示）
+    var summary = '';
+    if (timelineData) {
+        var name = timelineData.Name || '';
+        var tid = timelineData.TerritoryTypeId || 0;
+        var author = timelineData.Author || '';
+        summary = (name ? name : '未命名') + (tid ? ' · ' + tid : '') + (author ? ' · ' + author : '');
+    }
+    var lbl = document.getElementById('axisPanelLabel');
+    if (lbl) lbl.textContent = (axisPanelOpen ? '▼' : '▶') + ' ' + (summary || '轴信息');
     syncMeta();
 }
 
