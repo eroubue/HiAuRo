@@ -1301,6 +1301,23 @@ public sealed class MainWindow : Window
             _saveConfig();
         }
 
+        // === 轴信息 ===
+        ImGui.Text("轴信息"); ImGui.Separator();
+        var ft = FactTimeline.Instance;
+        var fState = ft.State;
+        if (fState.IsRunning)
+        {
+            ImGui.Text("● 运行中");
+            var territory = OmenTools.OmenService.GameState.TerritoryType;
+            ImGui.Text($"副本: {territory}");
+        }
+        else
+        {
+            ImGui.Text("○ 未启动");
+        }
+
+        ImGui.Spacing();
+
         // 显示当前事实轴状态
         ImGui.Text("运行时状态");
         ImGui.Separator();
@@ -1324,6 +1341,58 @@ public sealed class MainWindow : Window
         var config = PluginConfig.Instance;
         var axis = Execution.ExecutionAxis.Instance;
         var port = Plugin.Instance._uiManager?.WebServerPort ?? 5678;
+
+        // === 轴信息 ===
+        if (axis.Initialized)
+        {
+            ImGui.Text("轴信息"); ImGui.Separator();
+            ImGui.Text(axis.IsRunning ? "● 运行中" : "○ 未启动");
+            if (!string.IsNullOrEmpty(axis.TimelineName))
+                ImGui.Text($"名称: {axis.TimelineName}");
+
+            var data = axis.TimelineData;
+            if (data != null)
+            {
+                var territory = OmenTools.OmenService.GameState.TerritoryType;
+                ImGui.Text($"副本: {territory} (TerritoryTypeId: {data.TerritoryId})");
+                if (!string.IsNullOrEmpty(data.Author))
+                    ImGui.Text($"作者: {data.Author}");
+                if (!string.IsNullOrEmpty(data.Guid))
+                {
+                    ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.5f, 0.5f, 0.5f, 1f));
+                    ImGui.Text(data.Guid);
+                    ImGui.PopStyleColor();
+                }
+            }
+
+            if (data != null && data.ExposedVarNames is { Count: > 0 })
+            {
+                ImGui.Spacing();
+                ImGui.Text("暴露变量"); ImGui.Separator();
+                if (!string.IsNullOrEmpty(data.ExposedVarDesc))
+                {
+                    ImGui.PushStyleColor(ImGuiCol.Text, new Vector4(0.7f, 0.7f, 0.7f, 1f));
+                    ImGui.TextWrapped(data.ExposedVarDesc);
+                    ImGui.PopStyleColor();
+                    ImGui.Spacing();
+                }
+                foreach (var varName in data.ExposedVarNames)
+                {
+                    var val = axis.Context.GetVariable(varName);
+                    ImGui.Text(varName);
+                    if (ImGui.RadioButton("开##" + varName, val != 0)) axis.Context.SetVariable(varName, 1);
+                    ImGui.SameLine();
+                    if (ImGui.RadioButton("关##" + varName, val == 0)) axis.Context.SetVariable(varName, 0);
+                }
+            }
+        }
+        else
+        {
+            ImGui.Text("轴信息"); ImGui.Separator();
+            ImGui.TextDisabled("未加载执行轴");
+        }
+
+        ImGui.Spacing();
 
         // 自动加载
         ImGui.Text("加载");
@@ -1408,6 +1477,22 @@ public sealed class MainWindow : Window
         var config = PluginConfig.Instance;
         var axis = Execution.AssistAxis.Instance;
         var port = Plugin.Instance._uiManager?.WebServerPort ?? 5678;
+
+        // === 轴信息 ===
+        if (axis.Initialized)
+        {
+            ImGui.Text("轴信息"); ImGui.Separator();
+            ImGui.Text(axis.IsRunning ? "● 运行中" : "○ 未启动");
+            if (!string.IsNullOrEmpty(axis.TimelineName))
+                ImGui.Text($"名称: {axis.TimelineName}");
+        }
+        else
+        {
+            ImGui.Text("轴信息"); ImGui.Separator();
+            ImGui.TextDisabled("未加载辅助轴");
+        }
+
+        ImGui.Spacing();
 
         // 自动加载
         ImGui.Text("加载");

@@ -25,6 +25,8 @@ public sealed class ExecutionAxis
     public string TimelineName { get; private set; } = "";
     /// <summary>副本 ID</summary>
     public uint TerritoryId { get; private set; }
+    /// <summary>已加载的时间线数据（供 UI 读取元数据）</summary>
+    public ExecutionTimelineData? TimelineData { get; private set; }
     /// <summary>调试信息</summary>
     public ExecutionDebug Debug { get; } = new();
     /// <summary>战斗时间（毫秒）</summary>
@@ -61,6 +63,7 @@ public sealed class ExecutionAxis
         Events.GameEventHook.Instance.OnEventFired -= OnEventFired;
         Stop();
         Root = null;
+        TimelineData = null;
         Initialized = false;
         TimelineName = "";
         TerritoryId = 0;
@@ -217,6 +220,7 @@ public sealed class ExecutionAxis
         Root = data.Root;
         TimelineName = data.Name;
         TerritoryId = data.TerritoryId;
+        TimelineData = data;
 
         foreach (var kv in data.ExposedVars)
             Context.Variables[kv.Key] = kv.Value;
