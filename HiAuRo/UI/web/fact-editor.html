@@ -41,8 +41,8 @@
 
     <div class="right-sidebar" style="display:flex;flex-direction:column;width:320px;flex-shrink:0;border-left:1px solid var(--border)">
       <div id="factMetaPanel" style="padding:12px 16px;border-bottom:1px solid var(--border);flex-shrink:0">
-        <div style="font-size:10px;font-weight:600;text-transform:uppercase;color:var(--tx2);margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid var(--border)">轴信息</div>
-        <div style="padding:2px 0">
+        <div class="sidebar-label" onclick="toggleSection('secAxisInfo')" id="hdrAxisInfo">▼ 轴信息</div>
+        <div id="secAxisInfo">
           <div style="margin:3px 0"><span style="font-size:11px;color:var(--tx2)">名称</span>
             <input class="prop-input" type="text" id="factName" style="width:100%" placeholder="轴名称">
           </div>

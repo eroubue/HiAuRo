@@ -103,6 +103,20 @@ var _dragHandlersBound = false; // 防止重复绑定拖拽事件
 
 // ==================== 工具函数 ====================
 
+function toggleSection(id) {
+    var el = document.getElementById(id);
+    var hdrId = 'hdr' + id.substring(3);
+    var hdr = document.getElementById(hdrId);
+    if (!el) return;
+    if (el.style.display === 'none') {
+        el.style.display = '';
+        if (hdr) hdr.textContent = '▼ ' + hdr.textContent.substring(2);
+    } else {
+        el.style.display = 'none';
+        if (hdr) hdr.textContent = '▶ ' + hdr.textContent.substring(2);
+    }
+}
+
 function esc(s) {
     return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }

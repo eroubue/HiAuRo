@@ -1,3 +1,29 @@
+/* === UX 尺寸优化 === */
+button, .p-btn, .btn {
+    min-height: 30px !important;
+    padding: 4px 12px !important;
+    font-size: 13px !important;
+}
+.btn-sm { min-height: 24px; padding: 2px 8px; font-size: 12px; }
+.prop-input, input[type="text"], input[type="number"], select, textarea.prop-input {
+    height: 28px;
+    font-size: 13px;
+    padding: 2px 6px;
+}
+textarea.prop-input { height: auto; }
+.prop-row { margin: 4px 0; display: flex; align-items: center; gap: 6px; }
+.prop-label { font-size: 12px; font-weight: 600; }
+.ed-add-btn, .ed-del-btn { min-width: 22px; min-height: 22px; font-size: 12px; }
+.sidebar-label {
+    font-size: 13px;
+    padding: 6px 0;
+    cursor: pointer;
+    user-select: none;
+}
+.sidebar-label:hover { color: var(--blue, #4dabf7); }
+.sidebar-section { margin: 6px 0; border-bottom: 1px solid var(--bd, #444); padding-bottom: 6px; }
+.toolbar .actions { gap: 6px; }
+
 /* ============================================================
    HiAuRo 事实轴编辑器 — 深色主题基础样式
    ============================================================ */
