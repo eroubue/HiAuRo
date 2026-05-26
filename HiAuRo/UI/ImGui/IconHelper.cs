@@ -1038,8 +1038,6 @@ public static class IconHelper
         public const string LightMode = UiLightMode;
     }
 
-    private static ImFontPtr? _iconFont18;
-    private static ImFontPtr? _iconFont24;
     private static readonly object _initLock = new();
     private static bool _initialized;
     private static IFontHandle? _fontHandle18;
@@ -1110,46 +1108,23 @@ public static class IconHelper
         }
     }
 
-    /// <summary>确保字体已构建（首次渲染时调用）</summary>
-    private static void EnsureFontsBuilt()
-    {
-        if (_iconFont18 != null) return;
-        lock (_initLock)
-        {
-            if (_iconFont18 != null) return;
-
-            try
-            {
-                using var lk18 = _fontHandle18!.Lock();
-                _iconFont18 = lk18.ImFont;
-            }
-            catch (Exception ex)
-            {
-                DService.Instance().Log.Warning($"[IconHelper] 18px font build failed: {ex.Message}");
-                return;
-            }
-
-            try
-            {
-                using var lk24 = _fontHandle24!.Lock();
-                _iconFont24 = lk24.ImFont;
-                DService.Instance().Log.Information("[IconHelper] Game-Icon-Pack fonts built");
-            }
-            catch (Exception ex)
-            {
-                DService.Instance().Log.Warning($"[IconHelper] 24px font build failed: {ex.Message}");
-            }
-        }
-    }
-
     /// <summary>在指定中心绘制图标文本</summary>
     public static void DrawIcon(ImDrawListPtr dl, Vector2 center, string iconChar, uint color, float sizePx = 18f)
     {
-        EnsureFontsBuilt();
-        var fontPtr = sizePx >= 22f ? _iconFont24 : _iconFont18;
-        if (fontPtr == null) return;
-        using var font = ImRaii.PushFont(fontPtr.Value);
-        var size = ImGui.CalcTextSize(iconChar);
-        dl.AddText(center - size / 2, color, iconChar);
+        var fontHandle = sizePx >= 22f ? _fontHandle24 : _fontHandle18;
+        if (fontHandle == null) return;
+
+        try
+        {
+            using var lk = fontHandle.Lock();
+            var fontPtr = lk.ImFont;
+            using var font = ImRaii.PushFont(fontPtr);
+            var size = ImGui.CalcTextSize(iconChar);
+            dl.AddText(center - size / 2, color, iconChar);
+        }
+        catch (Exception ex)
+        {
+            DService.Instance().Log.Warning($"[IconHelper] DrawIcon font lock failed: {ex.Message}");
+        }
     }
 }
