@@ -144,7 +144,7 @@ public sealed class OverlayHotkeyPanel : OverlayBase
     /// <summary>图标纹理缓存</summary>
     private static readonly Dictionary<uint, ImTextureID> _iconTextureCache = new();
 
-    /// <summary>加载游戏技能图标纹理（带缓存）</summary>
+    /// <summary>加载游戏技能图标纹理（带缓存，失败不缓存以允许后续帧重试）</summary>
     private static ImTextureID LoadIconTexture(uint iconId)
     {
         if (_iconTextureCache.TryGetValue(iconId, out var cached))
@@ -152,7 +152,8 @@ public sealed class OverlayHotkeyPanel : OverlayBase
 
         var wrap = DService.Instance().Texture.GetFromGameIcon(new GameIconLookup(iconId)).GetWrapOrDefault();
         var handle = wrap?.Handle ?? 0;
-        _iconTextureCache[iconId] = handle;
+        if (handle != 0) // 只在加载成功时缓存，失败时允许后续帧重试
+            _iconTextureCache[iconId] = handle;
         return handle;
     }
 

@@ -213,7 +213,8 @@ public static class ImGuiWidgetRenderer
             .GetFromGameIcon(new GameIconLookup(iconId))
             .GetWrapOrDefault();
         var handle = wrap?.Handle ?? default;
-        _iconCache[iconId] = handle;
+        if (handle != default) // 只在加载成功时缓存，失败时允许后续帧重试
+            _iconCache[iconId] = handle;
         return handle;
     }
 
