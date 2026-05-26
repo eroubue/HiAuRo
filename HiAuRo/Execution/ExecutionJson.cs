@@ -22,6 +22,22 @@ public sealed class ExecutionTimelineData
     [JsonPropertyName("Note")]
     public string Note { get; set; } = "";
 
+    /// <summary>唯一标识（新建时自动生成）</summary>
+    [JsonPropertyName("Guid")]
+    public string Guid { get; set; } = System.Guid.NewGuid().ToString();
+
+    /// <summary>作者</summary>
+    [JsonPropertyName("Author")]
+    public string Author { get; set; } = "";
+
+    /// <summary>目标职业（Jobs 枚举值，0=通用）</summary>
+    [JsonPropertyName("TargetJob")]
+    public int TargetJob { get; set; }
+
+    /// <summary>暴露变量说明（多行文本）</summary>
+    [JsonPropertyName("ExposedVarDesc")]
+    public string ExposedVarDesc { get; set; } = "";
+
     /// <summary>暴露的变量名列表</summary>
     [JsonPropertyName("ExposedVars")]
     public List<string> ExposedVarNames { get; set; } = [];
