@@ -13,7 +13,9 @@ var NODE_DEFS = [
     { type: 'treeCondNode',  label: '条件',  color: '#15aabf', cssClass: 'c-cond',     composite: false },
     { type: 'treeActionNode',label: '动作',  color: '#f06595', cssClass: 'c-action',   composite: false },
     { type: 'treeDelayNode', label: '延迟',  color: '#fcc419', cssClass: 'c-delay',    composite: false },
-    { type: 'treeScriptNode',label: '脚本',  color: '#4dabf7', cssClass: 'c-script',   composite: false }
+    { type: 'treeScriptNode',label: '脚本',  color: '#4dabf7', cssClass: 'c-script',   composite: false },
+    { type: 'treePrintNode', label: '调试输出', color: '#868e96', cssClass: 'c-print', composite: false },
+    { type: 'treeClearWait', label: '清除等待', color: '#495057', cssClass: 'c-clear', composite: false }
 ];
 
 var TYPE_FULL = {
@@ -25,7 +27,9 @@ var TYPE_FULL = {
     treeCondNode:   'HiAuRo.Execution.TreeCondNode, HiAuRo',
     treeActionNode: 'HiAuRo.Execution.TreeActionNode, HiAuRo',
     treeDelayNode:  'HiAuRo.Execution.TreeDelayNode, HiAuRo',
-    treeScriptNode: 'HiAuRo.Execution.TreeScriptNode, HiAuRo'
+    treeScriptNode: 'HiAuRo.Execution.TreeScriptNode, HiAuRo',
+    treePrintNode:  'HiAuRo.Execution.TreePrintDebugInfoNode, HiAuRo',
+    treeClearWait:  'HiAuRo.Execution.TreeClearWaitNode, HiAuRo'
 };
 
 // ====== Part 2: State ======
@@ -1037,6 +1041,16 @@ function renderProps() {
         h += '<button class="btn" style="margin-top:4px;font-size:11px" id="btnSaveScript">保存脚本</button>';
         h += '</div>';
     }
+    if (def.type === 'treePrintNode') {
+        h += '<div class="prop-section"><div class="prop-head">调试输出</div>';
+        h += propRow('内容', 'text', 'Info', node.Info || '');
+        h += '</div>';
+    }
+    if (def.type === 'treeClearWait') {
+        h += '<div class="prop-section"><div class="prop-head">清除等待</div>';
+        h += propRow('仅前置', 'checkbox', 'OnlyPreNode', node.OnlyPreNode);
+        h += '</div>';
+    }
     if (def.type === 'treeSequence') {
         h += '<div class="prop-section">';
         h += propRow('忽略结果', 'checkbox', 'IgnoreNodeResult', node.IgnoreNodeResult);
@@ -1344,7 +1358,8 @@ function getNodeDefByData(nodeData) {
         'TreeParallel': 'treeParallel', 'TreeSelect': 'treeSelect',
         'TreeLoop': 'treeLoop', 'TreeCondNode': 'treeCondNode',
         'TreeActionNode': 'treeActionNode', 'TreeDelayNode': 'treeDelayNode',
-        'TreeScriptNode': 'treeScriptNode'
+        'TreeScriptNode': 'treeScriptNode', 'TreePrintDebugInfoNode': 'treePrintNode',
+        'TreeClearWaitNode': 'treeClearWait'
     };
     var type = typeMap[tn];
     if (type) return NODE_DEFS.find(function(d) { return d.type === type; });
@@ -1375,6 +1390,8 @@ function newNodeDefaults(type) {
     if (type === 'treeCondNode') { d.CheckOnce = false; d.ReverseResult = false; d.TriggerConds = []; }
     if (type === 'treeActionNode') d.TriggerActions = [];
     if (type === 'treeScriptNode') { d.Script = ''; d.OnlyCheck = false; }
+    if (type === 'treePrintNode') d.Info = '';
+    if (type === 'treeClearWait') d.OnlyPreNode = true;
     if (type === 'treeParallel') d.AnyReturn = false;
     if (type === 'treeSequence') d.IgnoreNodeResult = false;
     return d;
