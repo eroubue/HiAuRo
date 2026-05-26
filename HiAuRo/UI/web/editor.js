@@ -69,7 +69,13 @@ document.addEventListener('DOMContentLoaded', function() {
     document.addEventListener('click', function(e) {
         if (e.target && e.target.closest('#btnLoadFactAxis')) loadFactAxisFile();
     });
-    // 工具栏事实轴按钮
+    // 副本 ID 输入
+    var tidEl = document.getElementById('territoryId');
+    if (tidEl) {
+        tidEl.addEventListener('change', function() {
+            if (timelineData) { timelineData.TerritoryTypeId = parseInt(this.value) || 0; markDirty(); }
+        });
+    }
     var btnFactBar = document.getElementById('btnLoadFactAxisBar');
     if (btnFactBar) btnFactBar.addEventListener('click', loadFactAxisFile);
     // 快捷添加按钮
@@ -129,6 +135,31 @@ document.addEventListener('DOMContentLoaded', function() {
     // 从文件加载触发器目录
     var btnLoadCatalog = document.getElementById('btnLoadCatalog');
     if (btnLoadCatalog) btnLoadCatalog.addEventListener('click', loadCatalogFile);
+
+    // 元数据字段绑定
+    ['metaAuthor', 'metaVarDesc'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('change', function() {
+            if (!timelineData) return;
+            if (id === 'metaAuthor') timelineData.Author = this.value;
+            if (id === 'metaVarDesc') timelineData.ExposedVarDesc = this.value;
+            markDirty();
+        });
+    });
+    var jobEl = document.getElementById('metaJob');
+    if (jobEl) jobEl.addEventListener('change', function() {
+        if (timelineData) { timelineData.TargetJob = parseInt(this.value); markDirty(); }
+    });
+    var btnAddVar = document.getElementById('btnAddVar');
+    if (btnAddVar) btnAddVar.addEventListener('click', function() {
+        if (!timelineData) return;
+        var vlist = timelineData.ExposedVars || timelineData.ExposedVarNames;
+        if (!vlist) { vlist = []; timelineData.ExposedVars = vlist; }
+        vlist.push('新变量');
+        renderVarList();
+        markDirty();
+    });
 
     updateFooter();
 });
@@ -857,7 +888,7 @@ async function openFromDir(fileName) {
 
 function newFile() {
     if (isDirty && !confirm('当前有未保存的修改，是否放弃？')) return;
-    timelineData = { Name:'新执行轴', TerritoryTypeId:0, Note:'', ExposedVars:[], TreeRoot:{ '$type':'HiAuRo.Execution.TreeRoot, HiAuRo', DisplayName:'Root', Id:1, Enable:true, Remark:'', Tag:'', Childs:[] } };
+    timelineData = { Name:'新执行轴', TerritoryTypeId:0, Note:'', Guid:generateUUID(), ExposedVars:[], TreeRoot:{ '$type':'HiAuRo.Execution.TreeRoot, HiAuRo', DisplayName:'Root', Id:1, Enable:true, Remark:'', Tag:'', Childs:[] } };
     currentFile=''; fileHandle=null; isDirty=true; selectedNodePath=null;
     switchAxis(); setStatus('已新建');
 }
@@ -869,7 +900,7 @@ async function loadFile() {
 }
 function readFileObj(file) {
     var r = new FileReader();
-        r.onload = function() { try { timelineData = JSON.parse(r.result); } catch(ex) { setStatus('JSON解析失败: '+ex.message,'error'); return; } currentFile=file.name; isDirty=false; selectedNodePath=null; switchAxis(); setStatus('已加载: '+file.name,'success'); };
+        r.onload = function() { try { timelineData = JSON.parse(r.result); } catch(ex) { setStatus('JSON解析失败: '+ex.message,'error'); return; } currentFile=file.name; isDirty=false; selectedNodePath=null; switchAxis(); syncMeta(); setStatus('已加载: '+file.name,'success'); };
     r.readAsText(file);
 }
 async function saveFile() {
@@ -966,6 +997,55 @@ function removeTriggerAction(nodePath, idx) {
     markDirty();
 }
 
+// ==================== UUID ====================
+
+function generateUUID() {
+    if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID();
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        var r = Math.random() * 16 | 0;
+        return (c === 'x' ? r : (r & 0x3 | 0x8)).toString(16);
+    });
+}
+
+// ==================== 元数据同步 ====================
+
+function syncMeta() {
+    if (!timelineData) return;
+    document.getElementById('metaAuthor').value = timelineData.Author || '';
+    document.getElementById('metaGuid').value = timelineData.Guid || '';
+    document.getElementById('metaVarDesc').value = timelineData.ExposedVarDesc || '';
+    document.getElementById('metaJob').value = timelineData.TargetJob || 0;
+    renderVarList();
+}
+
+// ==================== 暴露变量 CRUD ====================
+
+function renderVarList() {
+    var list = document.getElementById('varList');
+    if (!list || !timelineData) return;
+    var vars = timelineData.ExposedVars || timelineData.ExposedVarNames || [];
+    var html = '';
+    vars.forEach(function(v, i) {
+        html += '<div class="var-row" style="display:flex;align-items:center;gap:4px;margin:2px 0">';
+        html += '<input value="' + esc(v || '') + '" data-var-idx="' + i + '" style="flex:1;padding:2px 4px;font-size:11px;border:1px solid var(--bd);background:var(--bg1);color:var(--tx1);border-radius:3px">';
+        html += '<button class="ed-del-btn" onclick="removeVar(' + i + ')" style="font-size:10px;padding:1px 4px">✕</button>';
+        html += '</div>';
+    });
+    list.innerHTML = html;
+    list.querySelectorAll('[data-var-idx]').forEach(function(el) {
+        el.addEventListener('change', function() {
+            var idx = parseInt(this.dataset.varIdx);
+            var vlist = timelineData.ExposedVars || timelineData.ExposedVarNames;
+            if (vlist) { vlist[idx] = this.value; markDirty(); }
+        });
+    });
+}
+
+function removeVar(i) {
+    var vlist = timelineData.ExposedVars || timelineData.ExposedVarNames;
+    if (vlist) { vlist.splice(i, 1); renderVarList(); markDirty(); }
+}
+
 // ==================== 工具 ====================
 
 function markDirty() { isDirty = true; renderTree(); renderProps(); updateFooter(); }
@@ -982,6 +1062,10 @@ function updateFooter() {
     if (el) el.textContent = countNodes();
     el = document.getElementById('infoDirty');
     if (el) { el.textContent = isDirty ? '已修改' : '已保存'; el.style.color = isDirty ? 'var(--orange)' : 'var(--green)'; }
+    // 同步副本 ID
+    var tidEl = document.getElementById('territoryId');
+    if (tidEl && timelineData) tidEl.value = timelineData.TerritoryTypeId || 0;
+    syncMeta();
 }
 
 function countNodes() {
