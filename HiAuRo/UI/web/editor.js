@@ -284,6 +284,17 @@ function bindTreeClicks() {
             renderProps();
         });
 
+        // 双击快捷操作
+        row.addEventListener('dblclick', function(e) {
+            if (e.target.closest('.tn-add') || e.target.closest('.tn-del')) return;
+            var path = this.dataset.path;
+            var node = getNodeByPath(path);
+            if (!node) return;
+            var type = detectType(node);
+            var isComp = ['treeRoot','treeSequence','treeParallel','treeSelect','treeLoop'].indexOf(type) >= 0;
+            showQuickPopup(e, path, type, isComp);
+        });
+
         row.addEventListener('contextmenu', function(e) {
             e.preventDefault();
             e.stopPropagation();
@@ -455,6 +466,111 @@ function hideContextMenu() {
     if (m && m.remove) m.remove();
     contextMenuPath = null;
 }
+
+// 双击快捷弹窗
+function showQuickPopup(e, path, type, isComp) {
+    hideQuickPopup();
+    var node = getNodeByPath(path);
+    if (!node) return;
+
+    var pop = document.createElement('div');
+    pop.className = 'quick-popup';
+    pop.id = 'quickPopup';
+
+    if (isComp) {
+        // 组合节点 → 快捷添加
+        pop.innerHTML = '<div class="quick-title">快捷添加</div>';
+        ADD_TYPES.forEach(function(ct) {
+            var ns = NODE_STYLES[ct];
+            var btn = document.createElement('div');
+            btn.className = 'quick-item';
+            btn.innerHTML = '<span class="ctx-dot" style="background:' + ns.color + '"></span>' + ns.label;
+            btn.addEventListener('click', function() { addChildNode(path, ct); hideQuickPopup(); });
+            pop.appendChild(btn);
+        });
+    } else {
+        // 叶子节点 → 快捷编辑
+        pop.innerHTML = '<div class="quick-title">快捷编辑</div>';
+        var fields = [
+            { label: '名称', key: 'DisplayName', type: 'text' },
+            { label: '启用', key: 'Enable', type: 'checkbox' },
+            { label: '备注', key: 'Remark', type: 'text' },
+            { label: '标签', key: 'Tag', type: 'text' }
+        ];
+        fields.forEach(function(f) {
+            var row = document.createElement('div');
+            row.style.cssText = 'display:flex;align-items:center;gap:6px;margin:4px 0';
+            var lbl = document.createElement('span');
+            lbl.style.cssText = 'font-size:12px;color:var(--tx2);min-width:36px';
+            lbl.textContent = f.label;
+            row.appendChild(lbl);
+            var input = document.createElement('input');
+            input.type = f.type;
+            input.style.cssText = 'flex:1;height:26px;font-size:12px;padding:2px 6px;border:1px solid var(--bd);background:var(--bg1);color:var(--tx1);border-radius:3px';
+            if (f.type === 'checkbox') {
+                input.style.cssText = 'width:auto;flex:none';
+                input.checked = node[f.key] || false;
+            } else {
+                input.value = node[f.key] || '';
+            }
+            input.addEventListener('change', function() {
+                if (f.type === 'checkbox') node[f.key] = this.checked;
+                else node[f.key] = this.value;
+                markDirty();
+            });
+            row.appendChild(input);
+            pop.appendChild(row);
+        });
+        // 特殊: 延迟节点的秒数
+        if (type === 'treeDelayNode') {
+            var dRow = document.createElement('div');
+            dRow.style.cssText = 'display:flex;align-items:center;gap:6px;margin:4px 0';
+            dRow.innerHTML = '<span style="font-size:12px;color:var(--tx2);min-width:36px">秒数</span>';
+            var dIn = document.createElement('input');
+            dIn.type = 'number'; dIn.step = 'any';
+            dIn.style.cssText = 'flex:1;height:26px;font-size:12px;padding:2px 6px;border:1px solid var(--bd);background:var(--bg1);color:var(--tx1);border-radius:3px';
+            dIn.value = node.Delay || 0;
+            dIn.addEventListener('change', function() { node.Delay = parseFloat(this.value) || 0; markDirty(); });
+            dRow.appendChild(dIn); pop.appendChild(dRow);
+        }
+        // 特殊: 循环次數
+        if (type === 'treeLoop') {
+            var lRow = document.createElement('div');
+            lRow.style.cssText = 'display:flex;align-items:center;gap:6px;margin:4px 0';
+            lRow.innerHTML = '<span style="font-size:12px;color:var(--tx2);min-width:36px">次数</span>';
+            var lIn = document.createElement('input');
+            lIn.type = 'number'; lIn.step = '1';
+            lIn.style.cssText = 'flex:1;height:26px;font-size:12px;padding:2px 6px;border:1px solid var(--bd);background:var(--bg1);color:var(--tx1);border-radius:3px';
+            lIn.value = node.Times || 1;
+            lIn.addEventListener('change', function() { node.Times = parseInt(this.value) || 1; markDirty(); });
+            lRow.appendChild(lIn); pop.appendChild(lRow);
+        }
+    }
+
+    // 定位在双击位置附近
+    pop.style.left = (e.clientX + 10) + 'px';
+    pop.style.top = (e.clientY - 10) + 'px';
+    // 防止超出右边界
+    setTimeout(function() {
+        var r = pop.getBoundingClientRect();
+        if (r.right > window.innerWidth) pop.style.left = (window.innerWidth - r.width - 20) + 'px';
+        if (r.bottom > window.innerHeight) pop.style.top = (window.innerHeight - r.height - 20) + 'px';
+    }, 0);
+
+    document.body.appendChild(pop);
+    e.stopPropagation();
+}
+
+function hideQuickPopup() {
+    var p = document.getElementById('quickPopup');
+    if (p) p.remove();
+}
+
+// 点击空白处关闭弹窗
+document.addEventListener('click', function(e) {
+    var pop = document.getElementById('quickPopup');
+    if (pop && !pop.contains(e.target)) hideQuickPopup();
+});
 
 function clearDropIndicators() {
     document.querySelectorAll('.tn-row.drop-above, .tn-row.drop-below, .tn-row.drop-child').forEach(function(r) {

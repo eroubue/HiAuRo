@@ -416,3 +416,19 @@ body.drag-active { user-select:none; -webkit-user-select:none; cursor:grabbing; 
     outline: 3px solid rgb(0 122 255 / 50%);
     border-color: rgb(0 122 255);
 }
+
+/* 双击快捷弹窗 */
+.quick-popup {
+    position: fixed; z-index: 1000;
+    background: var(--bg0, #222); border: 1px solid var(--bd, #555);
+    border-radius: 8px; padding: 8px; min-width: 180px;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.3);
+    animation: popIn 0.12s ease;
+}
+@keyframes popIn { from { opacity:0; transform:scale(0.95) } to { opacity:1; transform:scale(1) } }
+.quick-title { font-size:12px; font-weight:600; color:var(--tx2); padding:2px 0 6px 0; border-bottom:1px solid var(--bd); margin-bottom:4px; }
+.quick-item {
+    display:flex; align-items:center; gap:8px; padding:5px 8px; border-radius:4px;
+    cursor:pointer; font-size:12px; color:var(--tx1);
+}
+.quick-item:hover { background:rgba(255,255,255,0.06); }
