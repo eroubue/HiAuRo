@@ -245,8 +245,10 @@ html, body {
 .ax-node-body { padding: 8px 10px; }
 .ax-node-name {
   font-size: 12px; font-weight: 500; color: var(--tx0);
-  margin-bottom: 4px; word-break: break-all;
+  margin-bottom: 2px; word-break: break-all;
 }
+.ax-node-tag { font-size: 9px; color: var(--tx2); margin-bottom: 1px; }
+.ax-node-remark { font-size: 9px; color: var(--tx2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 140px; }
 .ax-node-info { font-size: 10px; color: var(--tx2); }
 
 /* Node type colors */

@@ -129,6 +129,8 @@ body.drag-active { user-select:none; -webkit-user-select:none; cursor:grabbing; 
 .tn-row.sel { background:rgba(10,132,255,0.12); border-color:rgba(10,132,255,0.3); }
 .tn-tag { font-size:10px; font-weight:600; color:#fff; padding:2px 7px; border-radius:4px; flex-shrink:0; letter-spacing:0.02em; }
 .tn-name { color:var(--tx0); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:500; }
+.tn-tag-label { font-size:10px; color:var(--tx2); background:var(--bg2); padding:1px 5px; border-radius:3px; flex-shrink:0; }
+.tn-remark { font-size:10px; color:var(--tx2); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:200px; flex-shrink:1; }
 .tn-child-count { font-size:10px; color:var(--tx2); flex-shrink:0; margin-left:2px; }
 .tn-add, .tn-del {
     width:24px; height:24px; font-size:14px; font-weight:600; border:none; border-radius:6px;

@@ -252,6 +252,8 @@ function buildTreeNodeHtml(node, path, depth) {
     h += '<div class="tn-row' + selClass + '" data-path="' + nodePath + '" data-type="' + type + '" style="border-left:4px solid ' + st.color + '">';
     h += '<span class="tn-tag" style="background:' + st.color + '">' + st.label + '</span>';
     h += '<span class="tn-name">' + esc(label) + '</span>';
+    if (node.Tag) h += '<span class="tn-tag-label">#' + esc(node.Tag) + '</span>';
+    if (node.Remark) h += '<span class="tn-remark">' + esc(node.Remark) + '</span>';
     if (isComp) h += '<span class="tn-child-count">' + children.length + ' 子</span>';
     if (isComp) h += '<button class="tn-add" data-add="' + nodePath + '" title="添加子节点">＋</button>';
     if (type !== 'treeRoot') h += '<button class="tn-del" data-del="' + nodePath + '" title="删除节点">✕</button>';

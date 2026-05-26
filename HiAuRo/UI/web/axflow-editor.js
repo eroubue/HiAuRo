@@ -366,6 +366,8 @@ function buildNodeHtml(def, nodeData) {
         '</div>' +
         '<div class="ax-node-body">' +
             '<div class="ax-node-name">' + name + '</div>' +
+            (nodeData.Tag ? '<div class="ax-node-tag">#' + esc(nodeData.Tag) + '</div>' : '') +
+            (nodeData.Remark ? '<div class="ax-node-remark">' + esc(nodeData.Remark) + '</div>' : '') +
         '</div>' +
     '</div>';
 }
@@ -380,6 +382,19 @@ function updateNodeView(dfId) {
 
     var nameEl = nodeEl.querySelector('.ax-node-name');
     if (nameEl) nameEl.textContent = data.DisplayName || def.label;
+
+    // 更新 Tag / Remark
+    var tagEl = nodeEl.querySelector('.ax-node-tag');
+    if (data.Tag) {
+        if (!tagEl) { tagEl = document.createElement('div'); tagEl.className = 'ax-node-tag'; nodeEl.querySelector('.ax-node-body').appendChild(tagEl); }
+        tagEl.textContent = '#' + data.Tag;
+    } else if (tagEl) tagEl.remove();
+    
+    var remarkEl = nodeEl.querySelector('.ax-node-remark');
+    if (data.Remark) {
+        if (!remarkEl) { remarkEl = document.createElement('div'); remarkEl.className = 'ax-node-remark'; nodeEl.querySelector('.ax-node-body').appendChild(remarkEl); }
+        remarkEl.textContent = data.Remark;
+    } else if (remarkEl) remarkEl.remove();
 
     var extraEl = nodeEl.querySelector('.ax-node-extra');
     if (extraEl) {
