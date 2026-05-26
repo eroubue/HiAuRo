@@ -100,7 +100,9 @@ function initToolbar() {
     document.getElementById('edFileInput').addEventListener('change', function() {
         var f = this.files[0]; if (f) { readFileObj(f); this.value = ''; }
     });
-    document.getElementById('btnLoadCatalog').addEventListener('click', loadCatalogFile);
+    var oldCat = document.getElementById('btnLoadCatalog'); if (oldCat) oldCat.addEventListener('click', loadCatalogFile);
+    var c2 = document.getElementById('btnLoadCatalog2'); if (c2) c2.addEventListener('click', loadCatalogFile);
+    var f2 = document.getElementById('btnLoadFactAxisBar2'); if (f2) f2.addEventListener('click', loadFactAxisFile);
     document.getElementById('axisName').addEventListener('change', function() {
         if (!AXIS_DATA[currentAxis]) return;
         AXIS_DATA[currentAxis].Name = this.value;

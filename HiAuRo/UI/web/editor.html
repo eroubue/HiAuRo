@@ -20,14 +20,11 @@
     </div>
     <div class="actions">
       <button class="p-btn" id="btnNew">新建</button>
-      <button class="p-btn" id="btnLoad">加载轴文件</button>
+      <button class="p-btn" id="btnLoad">加载</button>
       <button class="p-btn p-prim-col" id="btnSave">保存</button>
       <button class="p-btn" id="btnSaveAs">另存</button>
       <button class="p-btn" id="btnExport">导出</button>
       <button class="p-btn" id="btnImport">导入</button>
-      <button class="p-btn" id="btnImportTrigger" title="导入本地触发器定义（JSON粘贴）">📥 导入触发器</button>
-      <button class="p-btn" id="btnLoadCatalog" title="从JSON文件加载触发器目录">📂 加载目录</button>
-      <button class="p-btn" id="btnLoadFactAxisBar" title="加载事实轴文件">📋 事实轴</button>
       <span class="status" id="edStatus"></span>
     </div>
   </header>
@@ -41,6 +38,14 @@
       <div class="fileside-dir" id="fileDir">未选择目录</div>
       <div class="fileside-list" id="fileList">
         <div class="props-hint">点"选择目录"浏览文件</div>
+      </div>
+      <div style="padding:6px;border-top:1px solid var(--bd);margin-top:6px">
+        <div style="font-size:11px;color:var(--tx2);margin-bottom:4px">工具</div>
+        <div style="display:flex;flex-direction:column;gap:3px">
+          <button class="p-btn" id="btnLoadCatalog2" style="width:100%;font-size:12px;padding:4px 6px">📂 加载目录</button>
+          <button class="p-btn" id="btnImportTrigger2" style="width:100%;font-size:12px;padding:4px 6px">📥 导入触发器</button>
+          <button class="p-btn" id="btnLoadFactAxisBar2" style="width:100%;font-size:12px;padding:4px 6px">📋 加载事实轴</button>
+        </div>
       </div>
     </aside>
 

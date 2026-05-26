@@ -78,6 +78,11 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     var btnFactBar = document.getElementById('btnLoadFactAxisBar');
     if (btnFactBar) btnFactBar.addEventListener('click', loadFactAxisFile);
+    // 左侧栏工具按钮
+    var btnCat2 = document.getElementById('btnLoadCatalog2');
+    if (btnCat2) btnCat2.addEventListener('click', loadCatalogFile);
+    var btnFact2 = document.getElementById('btnLoadFactAxisBar2');
+    if (btnFact2) btnFact2.addEventListener('click', loadFactAxisFile);
     // 快捷添加按钮
     document.querySelectorAll('.qbtn').forEach(function(btn) {
         btn.addEventListener('click', function() {
@@ -105,10 +110,10 @@ document.addEventListener('DOMContentLoaded', function() {
         if (saved) localTriggers = JSON.parse(saved);
     } catch(e) { localTriggers = { conditions: [], actions: [] }; }
 
-    // 导入本地触发器
-    var btnImport = document.getElementById('btnImportTrigger');
-    if (btnImport) {
-        btnImport.addEventListener('click', function() {
+    // 导入本地触发器（左侧栏按钮）
+    var btnTrig2 = document.getElementById('btnImportTrigger2');
+    if (btnTrig2) {
+        btnTrig2.addEventListener('click', function() {
             var json = prompt('粘贴触发器 JSON 定义（单条或数组）：\n格式：{ "typeName":"...", "aeTypeName":"...", "displayName":"触发名", "description":"描述", "parameters":[{ "name":"spellId", "type":"number", "defaultValue":0 }] }');
             if (!json) return;
             try {
@@ -132,9 +137,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // 从文件加载触发器目录
-    var btnLoadCatalog = document.getElementById('btnLoadCatalog');
-    if (btnLoadCatalog) btnLoadCatalog.addEventListener('click', loadCatalogFile);
+
 
     // 元数据字段绑定
     ['metaAuthor', 'metaVarDesc'].forEach(function(id) {
