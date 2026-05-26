@@ -52,49 +52,22 @@ internal sealed class BrowsingwayIpc : IDisposable
         try { pi.GetIpcProvider<bool>("HiAuRo.IsWebUIMode").UnregisterFunc(); } catch { }
     }
 
-    /// <summary>异步等待 Browsingway 就绪，未安装则自动安装</summary>
-    public async Task InitAsync(OverlayWindowSetting[] overlays)
+    /// <summary>初始化 overlay（不等待 Browsingway 就绪，失败静默忽略）</summary>
+    public void Init(OverlayWindowSetting[] overlays)
     {
         try
         {
             _overlayConfigs = overlays;
-            await WaitForReadyAsync();
 
             foreach (var ol in overlays)
-            {
                 CreateOrUpdateOverlay(ol);
-            }
 
             IsReady = true;
-            DService.Instance().Log.Information($"[BrowsingwayIpc] 已就绪, 注册 {overlays.Length} 个 overlay");
-        }
-        catch (OperationCanceledException)
-        {
-            DService.Instance().Log.Information("[BrowsingwayIpc] 初始化已取消");
+            DService.Instance().Log.Information($"[BrowsingwayIpc] 已注册 {overlays.Length} 个 overlay");
         }
         catch (Exception ex)
         {
             DService.Instance().Log.Warning($"[BrowsingwayIpc] 初始化失败: {ex.Message}");
-        }
-    }
-
-    private async Task WaitForReadyAsync()
-    {
-        var pi = DService.Instance().PI;
-
-        while (!_cts.IsCancellationRequested)
-        {
-            try
-            {
-                if (pi.GetIpcSubscriber<bool>("Browsingway.IsReady").InvokeFunc())
-                {
-                    DService.Instance().Log.Information("[BrowsingwayIpc] Browsingway 已就绪");
-                    return;
-                }
-            }
-            catch { }
-
-            await Task.Delay(1000, _cts.Token);
         }
     }
 
