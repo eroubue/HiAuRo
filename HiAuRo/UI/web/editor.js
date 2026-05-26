@@ -1284,7 +1284,7 @@ function toggleSection(id) {
 }
 
 // 轴信息面板折叠
-var axisPanelOpen = true;
+var axisPanelOpen = false;
 function toggleAxisPanel() {
     var body = document.getElementById('axisPanelBody');
     var bar = document.getElementById('axisPanelBar');
