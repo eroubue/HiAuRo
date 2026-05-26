@@ -69,8 +69,6 @@ var selectedEventPath = null;  // 选中事件路径 (如 'p0_ev0')
 var currentPhaseIdx = 0;       // 当前编辑的阶段索引
 var collapsedPhases = {};      // 左侧面板阶段折叠状态
 var collapsedBranches = {};    // 左侧面板分支折叠状态
-var localTriggers = JSON.parse(localStorage.getItem('hiAutoLocalTriggers') || '{"conditions":[],"actions":[],"scripts":[]}');
-
 // ---- 录制数据 ----
 var recordingData = null;
 var recordingChecked = {};
@@ -1482,29 +1480,7 @@ document.addEventListener('DOMContentLoaded', function() {
     document.getElementById('btnLoad').addEventListener('click', loadFile);
     document.getElementById('btnSave').addEventListener('click', saveFile);
     document.getElementById('btnExport').addEventListener('click', exportFile);
-    document.getElementById('btnLoadCatalog').addEventListener('click', function() {
-        var input = document.getElementById('catalogFileInput');
-        input.click();
-    });
-    document.getElementById('catalogFileInput').addEventListener('change', function(e) {
-        var file = e.target.files[0];
-        if (!file) return;
-        var reader = new FileReader();
-        reader.onload = function() {
-            try {
-                var catalog = JSON.parse(reader.result);
-                var conds = (catalog.conditions || []).map(function(c) { c.category = 'catalog'; return c; });
-                var acts = (catalog.actions || []).map(function(a) { a.category = 'catalog'; return a; });
-                localTriggers.conditions = conds.concat(localTriggers.conditions || []);
-                localTriggers.actions = acts.concat(localTriggers.actions || []);
-                localStorage.setItem('hiAutoLocalTriggers', JSON.stringify(localTriggers));
-                document.getElementById('footer').textContent = '已加载目录: ' + conds.length + 'C ' + acts.length + 'A';
-            } catch(e) {
-                document.getElementById('footer').textContent = '目录加载失败: ' + e.message;
-            }
-        };
-        reader.readAsText(file);
-    });
+
     document.getElementById('btnRecording').addEventListener('click', function() {
         document.getElementById('recordingFileInput').click();
     });
