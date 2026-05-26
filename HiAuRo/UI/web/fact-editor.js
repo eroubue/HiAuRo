@@ -136,6 +136,8 @@ function newTimeline() {
         name: '新事实轴',
         territoryId: 0,
         author: '',
+        guid: generateUUID(),
+        note: '',
         phases: [
             { id: 'p1', name: 'P1', events: [], switch: null }
         ]
@@ -508,6 +510,16 @@ function deletePhase(idx) {
 
     selectedEventPath = null;
     markDirty();
+}
+
+function syncFactMeta() {
+    if (!timelineData) return;
+    var el;
+    el = document.getElementById('factName'); if (el) el.value = timelineData.name || '';
+    el = document.getElementById('factTerritoryId'); if (el) el.value = timelineData.territoryId || 0;
+    el = document.getElementById('factAuthor'); if (el) el.value = timelineData.author || '';
+    el = document.getElementById('factGuid'); if (el) el.value = timelineData.guid || '';
+    el = document.getElementById('factNote'); if (el) el.value = timelineData.note || '';
 }
 
 function renderTimeScale() {
@@ -1177,6 +1189,7 @@ function newFile() {
     currentPhaseIdx = 0;
     selectedEventPath = null;
     renderAll();
+    syncFactMeta();
     updateFooter();
 }
 
@@ -1198,6 +1211,7 @@ function readFileObj(file) {
             currentPhaseIdx = 0;
             selectedEventPath = null;
             renderAll();
+            syncFactMeta();
             updateFooter();
         } catch (ex) {
             showError('JSON解析失败: ' + esc(ex.message));
@@ -1472,7 +1486,21 @@ document.addEventListener('DOMContentLoaded', function() {
         timelineData = newTimeline();
     }
     renderAll();
+    syncFactMeta();
     updateFooter();
+
+    ['factName', 'factTerritoryId', 'factAuthor', 'factNote'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        el.addEventListener('change', function() {
+            if (!timelineData) return;
+            if (id === 'factName') timelineData.name = this.value;
+            if (id === 'factTerritoryId') timelineData.territoryId = parseInt(this.value) || 0;
+            if (id === 'factAuthor') timelineData.author = this.value;
+            if (id === 'factNote') timelineData.note = this.value;
+            markDirty();
+        });
+    });
 
     // ---- 文件操作绑定 ----
 
