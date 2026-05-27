@@ -25,6 +25,8 @@ public sealed class 团队减伤
     public float 持续秒 { get; init; }
     public float 冷却秒 { get; init; }
     public 减伤类型 减伤类型 { get; init; }
+    /// <summary>对应的状态 ID（buff/debuff），用于动态检查已生效的减伤</summary>
+    public uint 状态ID { get; init; }
 }
 
 /// <summary>单人减伤技能（含盾，盾已换算为等效减伤%）</summary>
@@ -37,6 +39,8 @@ public sealed class 单人减伤
     public float 持续秒 { get; init; }
     public float 冷却秒 { get; init; }
     public 减伤类型 减伤类型 { get; init; }
+    /// <summary>对应的状态 ID（buff），用于动态检查已生效的减伤</summary>
+    public uint 状态ID { get; init; }
 }
 
 /// <summary>团队治疗技能</summary>
@@ -95,6 +99,8 @@ public sealed class 减伤分配
     public string 技能名称 { get; set; } = "";
     public Jobs 职业 { get; set; }
     public int 减伤值 { get; set; }
+    /// <summary>减伤持续秒</summary>
+    public float 持续秒 { get; set; }
     public bool 团队减伤 { get; set; }
 }
 
